@@ -39,9 +39,6 @@ class MyEventHandler :
 
 	nctl::UniquePtr<Texture> texture_;
 	nctl::UniquePtr<Sprite> sprite_;
-
-	bool saveAnim_;
-	int currentFrame_;
 };
 
 #endif

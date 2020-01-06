@@ -17,7 +17,11 @@ set(PACKAGE_SOURCES
 	include/UserInterface.h
 	include/RenderResources.h
 	include/EasingCurve.h
-	include/Animation.h
+	include/IAnimation.h
+	include/PropertyAnimation.h
+	include/AnimationGroup.h
+	include/SequentialAnimationGroup.h
+	include/ParallelAnimationGroup.h
 	include/AnimationManager.h
 	#include/LuaSerializer.h
 
@@ -29,7 +33,10 @@ set(PACKAGE_SOURCES
 	src/UserInterface.cpp
 	src/RenderResources.cpp
 	src/EasingCurve.cpp
-	src/Animation.cpp
+	src/PropertyAnimation.cpp
+	src/AnimationGroup.cpp
+	src/SequentialAnimationGroup.cpp
+	src/ParallelAnimationGroup.cpp
 	src/AnimationManager.cpp
 	#src/LuaSerializer.cpp
 )

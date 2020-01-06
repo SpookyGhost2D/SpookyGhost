@@ -40,9 +40,22 @@ class Sprite
 	void updateRender();
 	void render();
 
+	inline nc::Recti texRect() const { return texRect_; }
+	inline void setTexRect(const nc::Recti &texRect);
+
+	inline const Texture &texture() const { return *texture_; }
+	inline Texture &texture() { return *texture_; }
 	void setTexture(Texture *texture);
 
+	inline bool isFlippedX() const { return flippedX_; }
+	void setFlippedX(bool flippedX);
+
+	inline bool isFlippedY() const { return flippedY_; }
+	void setFlippedY(bool flippedY);
+
 	void testAnim(float value);
+
+	void *imguiTexId();
 
   private:
 	nc::Matrix4x4f modelView_;
@@ -51,8 +64,8 @@ class Sprite
 
 	//nc::Colorf color_;
 
-	//bool flippedX_;
-	//bool flippedY_;
+	bool flippedX_;
+	bool flippedY_;
 
 	nctl::Array<Vertex> interleavedVertices_;
 	nctl::Array<unsigned short> indices_;

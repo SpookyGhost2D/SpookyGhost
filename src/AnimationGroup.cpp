@@ -1,32 +1,41 @@
-#include "AnimationManager.h"
-#include "IAnimation.h"
+#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-AnimationManager::AnimationManager()
-    : anims_(4)
-{
-}
 
 ///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void AnimationManager::update(float deltaTime)
+void AnimationGroup::stop()
 {
-	for (unsigned int i = 0; i < anims_.size(); i++)
-		anims_[i]->update(deltaTime);
-//	anim_->update(deltaTime);
+	for (auto &&anim : anims_)
+		anim->stop();
+
+	state_ = State::STOPPED;
 }
 
-void AnimationManager::reset()
+void AnimationGroup::update(float deltaTime)
 {
-	for (unsigned int i = 0; i < anims_.size(); i++)
-		anims_[i]->reset();
-//	anim_->reset();
+	bool allStopped = true;
+	for (auto &&anim : anims_)
+	{
+		anim->update(deltaTime);
+		if (anim->state() != State::STOPPED)
+			allStopped = false;
+	}
+	if (allStopped)
+		state_ = State::STOPPED;
 }
+
+void AnimationGroup::reset()
+{
+	for (auto &&anim : anims_)
+		anim->reset();
+}
+
 
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS

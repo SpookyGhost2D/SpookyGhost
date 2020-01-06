@@ -1,16 +1,16 @@
-#include "Animation.h"
+#include "PropertyAnimation.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-Animation::Animation()
-    : Animation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED)
+PropertyAnimation::PropertyAnimation()
+    : PropertyAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED)
 {
 }
 
-Animation::Animation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : curve_(type, loopMode), state_(State::STOPPED), property_(nullptr), propertyName_(64)
+PropertyAnimation::PropertyAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
+    : curve_(type, loopMode), property_(nullptr), propertyName_(64)
 {
 }
 
@@ -18,7 +18,20 @@ Animation::Animation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void Animation::update(float deltaTime)
+void PropertyAnimation::stop()
+{
+	curve_.reset();
+	state_ = State::STOPPED;
+}
+
+void PropertyAnimation::play()
+{
+	if (state_ == State::STOPPED)
+		curve_.reset();
+	state_ = State::PLAYING;
+}
+
+void PropertyAnimation::update(float deltaTime)
 {
 	switch (state_)
 	{

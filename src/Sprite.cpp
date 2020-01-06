@@ -27,8 +27,8 @@ struct VertexFormat
 Sprite::Sprite(Texture *texture)
     : rotation(0.0f), anchorPoint(0.0f, 0.0f), scaleFactor(1.0f, 1.0f),
       modelView_(nc::Matrix4x4f::Identity), texture_(nullptr),
-      texRect_(0, 0, 0, 0), interleavedVertices_(0), indices_(0)
-      //color_(nc::Colorf::White), flippedX_(false), flippedY_(false)
+      texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false), //color_(nc::Colorf::White)
+      interleavedVertices_(0), indices_(0)
 {
 	spriteShaderProgram_ = RenderResources::spriteShaderProgram();
 	spriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(spriteShaderProgram_);
@@ -64,8 +64,6 @@ void Sprite::transform()
 	modelView_.rotateZ(rotation);
 	modelView_.scale(scaleFactor.x, scaleFactor.y, 1.0f);
 	modelView_.translate(-anchorPoint.x, -anchorPoint.y, 0.0f);
-
-	//modelView_ = nc::Matrix4x4f::Identity;
 }
 
 void Sprite::updateRender()
@@ -132,6 +130,44 @@ void Sprite::setTexture(Texture *texture)
 	ASSERT(indices_.capacity() == indicesCapacity);
 }
 
+void Sprite::setTexRect(const nc::Recti &rect)
+{
+	texRect_ = rect;
+	//setSize(static_cast<float>(rect.w), static_cast<float>(rect.h));
+
+	if (flippedX_)
+	{
+		texRect_.x += texRect_.w;
+		texRect_.w *= -1;
+	}
+
+	if (flippedY_)
+	{
+		texRect_.y += texRect_.h;
+		texRect_.h *= -1;
+	}
+}
+
+void Sprite::setFlippedX(bool flippedX)
+{
+	if (flippedX_ != flippedX)
+	{
+		texRect_.x += texRect_.w;
+		texRect_.w *= -1;
+		flippedX_ = flippedX;
+	}
+}
+
+void Sprite::setFlippedY(bool flippedY)
+{
+	if (flippedY_ != flippedY)
+	{
+		texRect_.y += texRect_.h;
+		texRect_.h *= -1;
+		flippedY_ = flippedY;
+	}
+}
+
 void Sprite::testAnim(float value)
 {
 	const int width = texture_->width();
@@ -149,6 +185,11 @@ void Sprite::testAnim(float value)
 			v.y = -0.5f + static_cast<float>(y) * deltaY + 0.25f * sin(value + 2 * x * deltaX);
 		}
 	}
+}
+
+void *Sprite::imguiTexId()
+{
+	return reinterpret_cast<void *>(texture_);
 }
 
 ///////////////////////////////////////////////////////////

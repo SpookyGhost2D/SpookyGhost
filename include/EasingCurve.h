@@ -7,10 +7,14 @@ class EasingCurve
   public:
 	enum class Type
 	{
-		/// t*c0
 		LINEAR,
-		/// t*t*c0 + t*c1 + c2
-		QUAD
+		QUAD,
+		CUBIC,
+		QUART,
+		QUINT,
+		SINE,
+		EXPO,
+		CIRC,
 	};
 
 	enum class LoopMode
@@ -34,17 +38,13 @@ class EasingCurve
 	inline float time() const { return time_; }
 	void setTime(float time);
 
-	inline float coeff0() const { return c0_; }
-	inline float coeff1() const { return c1_; }
-	inline float coeff2() const { return c2_; }
+	inline float scale() const { return scale_; }
+	inline float &scale() { return scale_; }
+	void setScale(float scale) { scale_ = scale; }
 
-	inline float &coeff0() { return c0_; }
-	inline float &coeff1() { return c1_; }
-	inline float &coeff2() { return c2_; }
-
-	void setCoefficients(float c0);
-	void setCoefficients(float c0, float c1);
-	void setCoefficients(float c0, float c1, float c2);
+	inline float shift() const { return shift_; }
+	inline float &shift() { return shift_; }
+	void setShift(float shift) { shift_ = shift; }
 
 	void reset();
 	float value();
@@ -55,13 +55,9 @@ class EasingCurve
 	LoopMode loopMode_;
 	bool forward_;
 
-	float c0_;
-	float c1_;
-	float c2_;
-
 	float time_;
-
-	void initCoefficients();
+	float scale_;
+	float shift_;
 };
 
 #endif

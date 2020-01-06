@@ -1,3 +1,4 @@
+#include <ncine/common_constants.h>
 #include "EasingCurve.h"
 
 ///////////////////////////////////////////////////////////
@@ -6,9 +7,8 @@
 
 EasingCurve::EasingCurve(Type type, LoopMode loopMode)
     : type_(type), loopMode_(loopMode), forward_(true),
-      c0_(0.0f), c1_(0.0f), c2_(0.0f), time_(0.0f)
+      time_(0.0f), scale_(1.0f), shift_(0.0f)
 {
-	initCoefficients();
 }
 
 ///////////////////////////////////////////////////////////
@@ -25,24 +25,6 @@ void EasingCurve::setTime(float time)
 		time_ = 1.0f;
 }
 
-void EasingCurve::setCoefficients(float c0)
-{
-	c0_ = c0;
-}
-
-void EasingCurve::setCoefficients(float c0, float c1)
-{
-	c0_ = c0;
-	c1_ = c1;
-}
-
-void EasingCurve::setCoefficients(float c0, float c1, float c2)
-{
-	c0_ = c0;
-	c1_ = c1;
-	c2_ = c2;
-}
-
 void EasingCurve::reset()
 {
 	time_ = 0.0f;
@@ -53,9 +35,21 @@ float EasingCurve::value()
 	switch (type_)
 	{
 		case Type::LINEAR:
-			return time_ * c0_ + c1_;
+			return time_ * scale_ + shift_;
 		case Type::QUAD:
-			return time_ * time_ * c0_ + time_ * c1_ + c2_;
+			return time_ * time_ * scale_ + shift_;
+		case Type::CUBIC:
+			return time_ * time_ * time_ * scale_ + shift_;
+		case Type::QUART:
+			return time_ * time_ * time_ * time_ * scale_ + shift_;
+		case Type::QUINT:
+			return time_ * time_ * time_ * time_ * time_ * scale_ + shift_;
+		case Type::SINE:
+			return sinf(time_ * ncine::fPi) * scale_ + shift_;
+		case Type::EXPO:
+			return powf(2, time_) * scale_ + shift_;
+		case Type::CIRC:
+			return sqrtf(1.0f - time_ * time_) * scale_ + shift_;
 	}
 }
 
@@ -91,18 +85,3 @@ float EasingCurve::next(float deltaTime)
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void EasingCurve::initCoefficients()
-{
-	switch (type_)
-	{
-		case Type::LINEAR:
-			c0_ = 1.0f;
-			c1_ = 0.0f;
-			break;
-		case Type::QUAD:
-			c0_ = 1.0f;
-			c1_ = 0.0f;
-			c2_ = 0.0f;
-			break;
-	}
-}

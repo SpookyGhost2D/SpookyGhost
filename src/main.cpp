@@ -1,12 +1,12 @@
-#define NCINE_INCLUDE_OPENGL
-#include <ncine/common_headers.h>
-
 #include "main.h"
 #include "RenderResources.h"
 #include "Canvas.h"
 #include "UserInterface.h"
 
 #include "AnimationManager.h"
+#include "PropertyAnimation.h"
+#include "ParallelAnimationGroup.h"
+#include "SequentialAnimationGroup.h"
 
 #include <ncine/Application.h>
 #include <ncine/IFile.h>
@@ -61,35 +61,39 @@ void MyEventHandler::onInit()
 {
 	RenderResources::create();
 
-	ca_ = nctl::makeUnique<Canvas>();
-	ca_->initTexture(imageWidth, imageHeight);
+	ca_ = nctl::makeUnique<Canvas>(imageWidth, imageHeight);
 	animMgr_ = nctl::makeUnique<AnimationManager>();
-	ui_ = nctl::makeUnique<UserInterface>(*ca_, *animMgr_);
 
 	texture_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "dog.png").data());
 	sprite_ = nctl::makeUnique<Sprite>(texture_.get());
 	sprite_->x = 11.0f;//150.0f;
 	sprite_->y = 100.0f;
 	sprite_->rotation = 45.0f;
-	saveAnim_ = false;
 
-	Animation anim(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
-	anim.curve().setCoefficients(150.0f, 0.0f, 0.0f);
-	anim.setProperty(&sprite_->y);
-	anim.play();
-	animMgr_->anims().pushBack(anim);
+	ui_ = nctl::makeUnique<UserInterface>(*ca_, *animMgr_, *sprite_);
 
-	Animation anim2(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
-	anim2.curve().setCoefficients(150.0f, 0.0f, 0.0f);
-	anim2.setProperty(&sprite_->rotation);
-	anim2.play();
-	animMgr_->anims().pushBack(anim2);
+	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
 
-	Animation anim3(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
-	anim3.curve().setCoefficients(20.0f, 0.0f, 0.0f);
-	anim3.setProperty(&sprite_->x);
-	anim3.play();
-	animMgr_->anims().pushBack(anim3);
+	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
+	anim->curve().setScale(150.0f);
+	anim->setProperty(&sprite_->y);
+	anim->setPropertyName("Position Y");
+	animGroup->anims().pushBack(nctl::move(anim));
+
+	anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
+	anim->curve().setScale(150.0f);
+	anim->setProperty(&sprite_->rotation);
+	anim->setPropertyName("Rotation");
+	animGroup->anims().pushBack(nctl::move(anim));
+
+	anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
+	anim->curve().setScale(20.0f);
+	anim->setProperty(&sprite_->x);
+	anim->setPropertyName("Position X");
+	animGroup->anims().pushBack(nctl::move(anim));
+
+	animGroup->play();
+	animMgr_->anims().pushBack(nctl::move(animGroup));
 }
 
 void MyEventHandler::onShutdown()
@@ -99,7 +103,7 @@ void MyEventHandler::onShutdown()
 
 void MyEventHandler::onFrameStart()
 {
-	const float interval = saveAnim_ ? 1.0f / 60.0f : nc::theApplication().interval();
+	const float interval = nc::theApplication().interval();
 	glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -107,7 +111,8 @@ void MyEventHandler::onFrameStart()
 
 	static float angle = 0.0f;
 	angle += 5.0f * interval;
-	animMgr_->update(interval);
+	if (ui_->shouldSaveAnim() == false)
+		animMgr_->update(interval);
 
 	sprite_->testAnim(angle);
 	sprite_->transform();
@@ -115,19 +120,17 @@ void MyEventHandler::onFrameStart()
 	sprite_->render();
 	ca_->unbind();
 
-	ui_->createGuiMainWindow();
+	ui_->createGui();
 
-	if (saveAnim_)
+	if (ui_->shouldSaveAnim())
 	{
-		if (currentFrame_ > 60)
-			saveAnim_ = false;
-		else if (currentFrame_ > 0)
-		{
-			nctl::String frameName(32);
-			frameName.format("test_%03d.png", currentFrame_);
-			ca_->save(frameName.data());
-		}
-		currentFrame_++;
+		const UserInterface::SaveAnim saveAnimStatus = ui_->saveAnimStatus();
+		if (saveAnimStatus.numSavedFrames == 0)
+			animMgr_->reset();
+
+			ca_->save(saveAnimStatus.filename.data());
+			ui_->signalFrameSaved();
+			animMgr_->update(saveAnimStatus.inverseFps());
 	}
 }
 
@@ -135,10 +138,4 @@ void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 {
 	if (event.sym == nc::KeySym::ESCAPE || event.sym == nc::KeySym::Q)
 		nc::theApplication().quit();
-	if (event.sym == nc::KeySym::SPACE)
-	{
-		currentFrame_ = 0;
-		saveAnim_ = true;
-		animMgr_->reset();
-	}
 }
