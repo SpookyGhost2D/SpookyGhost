@@ -1,9 +1,8 @@
 #ifndef CLASS_ANIMATIONMANAGER
 #define CLASS_ANIMATIONMANAGER
 
-#include <nctl/Array.h>
-//#include <nctl/UniquePtr.h>
-class IAnimation;
+#include <nctl/UniquePtr.h>
+#include "AnimationGroup.h"
 
 /// The animation manager class
 class AnimationManager
@@ -11,20 +10,15 @@ class AnimationManager
   public:
 	AnimationManager();
 
-	inline nctl::Array<nctl::UniquePtr<IAnimation>> &anims() { return anims_; }
-	inline const nctl::Array<nctl::UniquePtr<IAnimation>> &anims() const { return anims_; }
-
-	//inline IAnimation &anim() { return *anim_.get(); }
-	//inline const IAnimation &anim() const { return *anim_.get(); }
-
-	//inline void setAnim(nctl::UniquePtr<IAnimation> &&anim) { anim_ = nctl::move(anim); }
+	inline nctl::Array<nctl::UniquePtr<IAnimation>> &anims() { return (*animGroup_).anims(); }
+	inline const nctl::Array<nctl::UniquePtr<IAnimation>> &anims() const { return (*animGroup_).anims(); }
 
 	void update(float deltaTime);
 	void reset();
+	void clear();
 
   private:
-	nctl::Array<nctl::UniquePtr<IAnimation>> anims_;
-	//nctl::UniquePtr<IAnimation> anim_;
+	nctl::UniquePtr<AnimationGroup> animGroup_;
 };
 
 #endif

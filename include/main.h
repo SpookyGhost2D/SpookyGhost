@@ -30,6 +30,7 @@ class MyEventHandler :
 	void onShutdown() override;
 	void onFrameStart() override;
 
+	void onKeyPressed(const nc::KeyboardEvent &event) override;
 	void onKeyReleased(const nc::KeyboardEvent &event) override;
 
   private:

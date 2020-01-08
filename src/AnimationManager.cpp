@@ -1,12 +1,12 @@
 #include "AnimationManager.h"
-#include "IAnimation.h"
+#include "ParallelAnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
 AnimationManager::AnimationManager()
-    : anims_(4)
+    : animGroup_(nctl::makeUnique<ParallelAnimationGroup>())
 {
 }
 
@@ -16,16 +16,17 @@ AnimationManager::AnimationManager()
 
 void AnimationManager::update(float deltaTime)
 {
-	for (unsigned int i = 0; i < anims_.size(); i++)
-		anims_[i]->update(deltaTime);
-//	anim_->update(deltaTime);
+	animGroup_->update(deltaTime);
 }
 
 void AnimationManager::reset()
 {
-	for (unsigned int i = 0; i < anims_.size(); i++)
-		anims_[i]->reset();
-//	anim_->reset();
+	animGroup_->reset();
+}
+
+void AnimationManager::clear()
+{
+	animGroup_->anims().clear();
 }
 
 ///////////////////////////////////////////////////////////

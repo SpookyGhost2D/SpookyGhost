@@ -5,7 +5,7 @@
 #include "IAnimation.h"
 #include "EasingCurve.h"
 
-/// The animation class
+/// The property animation class
 class PropertyAnimation : public IAnimation
 {
   public:
@@ -30,15 +30,20 @@ class PropertyAnimation : public IAnimation
 
 	inline EasingCurve &curve() { return curve_; }
 
+	inline float speed() const { return speed_; }
+	inline float &speed() { return speed_; }
+	inline void setSpeed(float speed) { speed_ = speed; }
+
 	inline const float *property() const { return property_; }
 	inline float *property() { return property_; }
 	inline void setProperty(float *property) { property_ = property; }
 	inline const nctl::String &propertyName() const { return propertyName_; }
 	inline void setPropertyName(const nctl::String &name) { propertyName_ = name; }
-	//setProperty(void *fun); //TODO: with setter function
+	//setProperty(void *function); //TODO: with setter function
 
   private:
 	EasingCurve curve_;
+	float speed_;
 
 	float *property_;
 	nctl::String propertyName_;

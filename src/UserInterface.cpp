@@ -1,13 +1,16 @@
 #include <ncine/imgui.h>
 #include <ncine/imgui_internal.h>
 #include <ncine/Application.h>
+#include<ncine/IFile.h>
 
+#include "gui_labels.h"
 #include "UserInterface.h"
 #include "Canvas.h"
 #include "AnimationManager.h"
 #include "PropertyAnimation.h"
 #include "ParallelAnimationGroup.h"
 #include "SequentialAnimationGroup.h"
+#include "GridAnimation.h"
 #include "Sprite.h"
 #include "Texture.h"
 //#include "LuaSerializer.h"
@@ -17,11 +20,14 @@ namespace {
 const char *easingCurveTypes[] = { "Linear", "Quadratic", "Cubic", "Quartic", "Quintic", "Sine", "Exponential", "Circular" };
 const char *easingCurveLoopModes[] = { "Disabled", "Rewind", "Ping Pong" };
 
-const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property" };
-enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY };
+const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid" };
+enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 
 const char *propertyTypes[] = { "None", "Position X", "Position Y", "Rotation" };
 enum PropertyTypesEnum { NONE, POSITION_X, POSITION_Y, ROTATION };
+
+const char *gridAnimTypes[] = { "Wobble" };
+enum GridAnimTypesEnum { WOBBLE };
 
 const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
@@ -50,6 +56,273 @@ const char *animStateToString(IAnimation::State state)
 	return "Unknown";
 }
 
+void applyDefaultStyle()
+{
+	ImGuiStyle* style = &ImGui::GetStyle();
+	ImVec4* colors = style->Colors;
+
+	colors[ImGuiCol_Text]                   = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
+	colors[ImGuiCol_TextDisabled]           = ImVec4(0.500f, 0.500f, 0.500f, 1.000f);
+	colors[ImGuiCol_WindowBg]               = ImVec4(0.180f, 0.180f, 0.180f, 1.000f);
+	colors[ImGuiCol_ChildBg]                = ImVec4(0.280f, 0.280f, 0.280f, 0.000f);
+	colors[ImGuiCol_PopupBg]                = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
+	colors[ImGuiCol_Border]                 = ImVec4(0.266f, 0.266f, 0.266f, 1.000f);
+	colors[ImGuiCol_BorderShadow]           = ImVec4(0.000f, 0.000f, 0.000f, 0.000f);
+	colors[ImGuiCol_FrameBg]                = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
+	colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.200f, 0.200f, 0.200f, 1.000f);
+	colors[ImGuiCol_FrameBgActive]          = ImVec4(0.280f, 0.280f, 0.280f, 1.000f);
+	colors[ImGuiCol_TitleBg]                = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
+	colors[ImGuiCol_TitleBgActive]          = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
+	colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
+	colors[ImGuiCol_MenuBarBg]              = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+	colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
+	colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.277f, 0.277f, 0.277f, 1.000f);
+	colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.300f, 0.300f, 0.300f, 1.000f);
+	colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_CheckMark]              = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
+	colors[ImGuiCol_SliderGrab]             = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
+	colors[ImGuiCol_SliderGrabActive]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_Button]                 = ImVec4(1.000f, 1.000f, 1.000f, 0.000f);
+	colors[ImGuiCol_ButtonHovered]          = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
+	colors[ImGuiCol_ButtonActive]           = ImVec4(1.000f, 1.000f, 1.000f, 0.391f);
+	colors[ImGuiCol_Header]                 = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
+	colors[ImGuiCol_HeaderHovered]          = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
+	colors[ImGuiCol_HeaderActive]           = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
+	colors[ImGuiCol_Separator]              = colors[ImGuiCol_Border];
+	colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
+	colors[ImGuiCol_SeparatorActive]        = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_ResizeGrip]             = ImVec4(1.000f, 1.000f, 1.000f, 0.250f);
+	colors[ImGuiCol_ResizeGripHovered]      = ImVec4(1.000f, 1.000f, 1.000f, 0.670f);
+	colors[ImGuiCol_ResizeGripActive]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_Tab]                    = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
+	colors[ImGuiCol_TabHovered]             = ImVec4(0.352f, 0.352f, 0.352f, 1.000f);
+	colors[ImGuiCol_TabActive]              = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+	colors[ImGuiCol_TabUnfocused]           = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
+	colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+	colors[ImGuiCol_DockingPreview]         = ImVec4(1.000f, 0.391f, 0.000f, 0.781f);
+	colors[ImGuiCol_DockingEmptyBg]         = ImVec4(0.180f, 0.180f, 0.180f, 1.000f);
+	colors[ImGuiCol_PlotLines]              = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
+	colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_PlotHistogram]          = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
+	colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_TextSelectedBg]         = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
+	colors[ImGuiCol_DragDropTarget]         = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_NavHighlight]           = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
+	colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
+
+	style->ChildRounding = 4.0f;
+	style->FrameBorderSize = 1.0f;
+	style->FrameRounding = 2.0f;
+	style->GrabMinSize = 7.0f;
+	style->PopupRounding = 2.0f;
+	style->ScrollbarRounding = 12.0f;
+	style->ScrollbarSize = 13.0f;
+	style->TabBorderSize = 1.0f;
+	style->TabRounding = 0.0f;
+	style->WindowRounding = 4.0f;
+}
+
+void applyDarcula()
+{
+	ImGuiStyle *style = &ImGui::GetStyle();
+	style->WindowRounding = 5.3f;
+	style->GrabRounding = style->FrameRounding = 2.3f;
+	style->ScrollbarRounding = 5.0f;
+	style->FrameBorderSize = 1.0f;
+	style->ItemSpacing.y = 6.5f;
+
+	style->Colors[ImGuiCol_Text]                  = {0.73333335f, 0.73333335f, 0.73333335f, 1.00f};
+	style->Colors[ImGuiCol_TextDisabled]          = {0.34509805f, 0.34509805f, 0.34509805f, 1.00f};
+	style->Colors[ImGuiCol_WindowBg]              = {0.23529413f, 0.24705884f, 0.25490198f, 0.94f};
+	style->Colors[ImGuiCol_ChildBg]               = {0.23529413f, 0.24705884f, 0.25490198f, 0.00f};
+	style->Colors[ImGuiCol_PopupBg]               = {0.23529413f, 0.24705884f, 0.25490198f, 0.94f};
+	style->Colors[ImGuiCol_Border]                = {0.33333334f, 0.33333334f, 0.33333334f, 0.50f};
+	style->Colors[ImGuiCol_BorderShadow]          = {0.15686275f, 0.15686275f, 0.15686275f, 0.00f};
+	style->Colors[ImGuiCol_FrameBg]               = {0.16862746f, 0.16862746f, 0.16862746f, 0.54f};
+	style->Colors[ImGuiCol_FrameBgHovered]        = {0.453125f, 0.67578125f, 0.99609375f, 0.67f};
+	style->Colors[ImGuiCol_FrameBgActive]         = {0.47058827f, 0.47058827f, 0.47058827f, 0.67f};
+	style->Colors[ImGuiCol_TitleBg]               = {0.04f, 0.04f, 0.04f, 1.00f};
+	style->Colors[ImGuiCol_TitleBgCollapsed]      = {0.16f, 0.29f, 0.48f, 1.00f};
+	style->Colors[ImGuiCol_TitleBgActive]         = {0.00f, 0.00f, 0.00f, 0.51f};
+	style->Colors[ImGuiCol_MenuBarBg]             = {0.27058825f, 0.28627452f, 0.2901961f, 0.80f};
+	style->Colors[ImGuiCol_ScrollbarBg]           = {0.27058825f, 0.28627452f, 0.2901961f, 0.60f};
+	style->Colors[ImGuiCol_ScrollbarGrab]         = {0.21960786f, 0.30980393f, 0.41960788f, 0.51f};
+	style->Colors[ImGuiCol_ScrollbarGrabHovered]  = {0.21960786f, 0.30980393f, 0.41960788f, 1.00f};
+	style->Colors[ImGuiCol_ScrollbarGrabActive]   = {0.13725491f, 0.19215688f, 0.2627451f, 0.91f};
+	// style->Colors[ImGuiCol_ComboBg]               = {0.1f, 0.1f, 0.1f, 0.99f};
+	style->Colors[ImGuiCol_CheckMark]             = {0.90f, 0.90f, 0.90f, 0.83f};
+	style->Colors[ImGuiCol_SliderGrab]            = {0.70f, 0.70f, 0.70f, 0.62f};
+	style->Colors[ImGuiCol_SliderGrabActive]      = {0.30f, 0.30f, 0.30f, 0.84f};
+	style->Colors[ImGuiCol_Button]                = {0.33333334f, 0.3529412f, 0.36078432f, 0.49f};
+	style->Colors[ImGuiCol_ButtonHovered]         = {0.21960786f, 0.30980393f, 0.41960788f, 1.00f};
+	style->Colors[ImGuiCol_ButtonActive]          = {0.13725491f, 0.19215688f, 0.2627451f, 1.00f};
+	style->Colors[ImGuiCol_Header]                = {0.33333334f, 0.3529412f, 0.36078432f, 0.53f};
+	style->Colors[ImGuiCol_HeaderHovered]         = {0.453125f, 0.67578125f, 0.99609375f, 0.67f};
+	style->Colors[ImGuiCol_HeaderActive]          = {0.47058827f, 0.47058827f, 0.47058827f, 0.67f};
+	style->Colors[ImGuiCol_Separator]             = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
+	style->Colors[ImGuiCol_SeparatorHovered]      = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
+	style->Colors[ImGuiCol_SeparatorActive]       = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
+	style->Colors[ImGuiCol_ResizeGrip]            = {1.00f, 1.00f, 1.00f, 0.85f};
+	style->Colors[ImGuiCol_ResizeGripHovered]     = {1.00f, 1.00f, 1.00f, 0.60f};
+	style->Colors[ImGuiCol_ResizeGripActive]      = {1.00f, 1.00f, 1.00f, 0.90f};
+	style->Colors[ImGuiCol_PlotLines]             = {0.61f, 0.61f, 0.61f, 1.00f};
+	style->Colors[ImGuiCol_PlotLinesHovered]      = {1.00f, 0.43f, 0.35f, 1.00f};
+	style->Colors[ImGuiCol_PlotHistogram]         = {0.90f, 0.70f, 0.00f, 1.00f};
+	style->Colors[ImGuiCol_PlotHistogramHovered]  = {1.00f, 0.60f, 0.00f, 1.00f};
+	style->Colors[ImGuiCol_TextSelectedBg]        = {0.18431373f, 0.39607847f, 0.79215693f, 0.90f};
+}
+
+inline void applyDarkStyle()
+{
+	ImGuiStyle & style = ImGui::GetStyle();
+	ImVec4 * colors = style.Colors;
+
+	/// 0 = FLAT APPEARENCE
+	/// 1 = MORE "3D" LOOK
+	int is3D = 1;
+
+	colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+	colors[ImGuiCol_TextDisabled]           = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+	colors[ImGuiCol_ChildBg]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	colors[ImGuiCol_WindowBg]               = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	colors[ImGuiCol_PopupBg]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	colors[ImGuiCol_Border]                 = ImVec4(0.12f, 0.12f, 0.12f, 0.71f);
+	colors[ImGuiCol_BorderShadow]           = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
+	colors[ImGuiCol_FrameBg]                = ImVec4(0.42f, 0.42f, 0.42f, 0.54f);
+	colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.42f, 0.42f, 0.42f, 0.40f);
+	colors[ImGuiCol_FrameBgActive]          = ImVec4(0.56f, 0.56f, 0.56f, 0.67f);
+	colors[ImGuiCol_TitleBg]                = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);
+	colors[ImGuiCol_TitleBgActive]          = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+	colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.17f, 0.17f, 0.17f, 0.90f);
+	colors[ImGuiCol_MenuBarBg]              = ImVec4(0.335f, 0.335f, 0.335f, 1.000f);
+	colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.24f, 0.24f, 0.24f, 0.53f);
+	colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+	colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.52f, 0.52f, 0.52f, 1.00f);
+	colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.76f, 0.76f, 0.76f, 1.00f);
+	colors[ImGuiCol_CheckMark]              = ImVec4(0.65f, 0.65f, 0.65f, 1.00f);
+	colors[ImGuiCol_SliderGrab]             = ImVec4(0.52f, 0.52f, 0.52f, 1.00f);
+	colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.64f, 0.64f, 0.64f, 1.00f);
+	colors[ImGuiCol_Button]                 = ImVec4(0.54f, 0.54f, 0.54f, 0.35f);
+	colors[ImGuiCol_ButtonHovered]          = ImVec4(0.52f, 0.52f, 0.52f, 0.59f);
+	colors[ImGuiCol_ButtonActive]           = ImVec4(0.76f, 0.76f, 0.76f, 1.00f);
+	colors[ImGuiCol_Header]                 = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
+	colors[ImGuiCol_HeaderHovered]          = ImVec4(0.47f, 0.47f, 0.47f, 1.00f);
+	colors[ImGuiCol_HeaderActive]           = ImVec4(0.76f, 0.76f, 0.76f, 0.77f);
+	colors[ImGuiCol_Separator]              = ImVec4(0.000f, 0.000f, 0.000f, 0.137f);
+	colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.700f, 0.671f, 0.600f, 0.290f);
+	colors[ImGuiCol_SeparatorActive]        = ImVec4(0.702f, 0.671f, 0.600f, 0.674f);
+	colors[ImGuiCol_ResizeGrip]             = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
+	colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+	colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+	colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+	colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+	colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+	colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+	colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.73f, 0.73f, 0.73f, 0.35f);
+	colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+	colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+	colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+	colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+	colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+
+	style.PopupRounding = 3;
+
+	style.WindowPadding = ImVec2(4, 4);
+	style.FramePadding  = ImVec2(6, 4);
+	style.ItemSpacing   = ImVec2(6, 2);
+
+	style.ScrollbarSize = 18;
+
+	style.WindowBorderSize = 1;
+	style.ChildBorderSize  = 1;
+	style.PopupBorderSize  = 1;
+	style.FrameBorderSize  = is3D;
+
+	style.WindowRounding    = 3;
+	style.ChildRounding     = 3;
+	style.FrameRounding     = 3;
+	style.ScrollbarRounding = 2;
+	style.GrabRounding      = 3;
+
+	#ifdef IMGUI_HAS_DOCK
+		style.TabBorderSize = is3D;
+		style.TabRounding   = 3;
+
+		colors[ImGuiCol_DockingEmptyBg]     = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
+		colors[ImGuiCol_Tab]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+		colors[ImGuiCol_TabHovered]         = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+		colors[ImGuiCol_TabActive]          = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
+		colors[ImGuiCol_TabUnfocused]       = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+		colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
+		colors[ImGuiCol_DockingPreview]     = ImVec4(0.85f, 0.85f, 0.85f, 0.28f);
+
+		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			style.WindowRounding = 0.0f;
+			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+		}
+	#endif
+}
+
+void applyYetAnotherDarkStyle()
+{
+	//imGuiIO.Fonts->AddFontFromFileTTF("../data/Fonts/Ruda-Bold.ttf", 15.0f, &config);
+	ImGui::GetStyle().FrameRounding = 4.0f;
+	ImGui::GetStyle().GrabRounding = 4.0f;
+
+	ImVec4* colors = ImGui::GetStyle().Colors;
+	colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
+	colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
+	colors[ImGuiCol_WindowBg] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+	colors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
+	colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+	colors[ImGuiCol_Border] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+	colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+	colors[ImGuiCol_FrameBgHovered] = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
+	colors[ImGuiCol_FrameBgActive] = ImVec4(0.09f, 0.12f, 0.14f, 1.00f);
+	colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.12f, 0.14f, 0.65f);
+	colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+	colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+	colors[ImGuiCol_MenuBarBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
+	colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.39f);
+	colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+	colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
+	colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
+	colors[ImGuiCol_CheckMark] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+	colors[ImGuiCol_SliderGrab] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+	colors[ImGuiCol_SliderGrabActive] = ImVec4(0.37f, 0.61f, 1.00f, 1.00f);
+	colors[ImGuiCol_Button] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+	colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
+	colors[ImGuiCol_ButtonActive] = ImVec4(0.06f, 0.53f, 0.98f, 1.00f);
+	colors[ImGuiCol_Header] = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
+	colors[ImGuiCol_HeaderHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+	colors[ImGuiCol_HeaderActive] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+	colors[ImGuiCol_Separator] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+	colors[ImGuiCol_SeparatorHovered] = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
+	colors[ImGuiCol_SeparatorActive] = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
+	colors[ImGuiCol_ResizeGrip] = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
+	colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
+	colors[ImGuiCol_ResizeGripActive] = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
+	colors[ImGuiCol_Tab] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+	colors[ImGuiCol_TabHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
+	colors[ImGuiCol_TabActive] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
+	colors[ImGuiCol_TabUnfocused] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+	colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+	colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+	colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+	colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+	colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+	colors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+}
+
 }
 
 ///////////////////////////////////////////////////////////
@@ -57,8 +330,7 @@ const char *animStateToString(IAnimation::State state)
 ///////////////////////////////////////////////////////////
 
 UserInterface::UserInterface(Canvas &canvas, AnimationManager &animMgr, Sprite &sprite)
-    : auxString_(MaxStringLength), filename_(MaxStringLength),
-      canvas_(canvas), animMgr_(animMgr), sprite_(sprite)
+    : canvas_(canvas), animMgr_(animMgr), sprite_(sprite)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -67,6 +339,20 @@ UserInterface::UserInterface(Canvas &canvas, AnimationManager &animMgr, Sprite &
 #ifdef __ANDROID__
 	io.FontGlobalScale = 2.0f;
 #endif
+
+#ifdef WITH_FONTAWESOME
+	// Merge icons from Font Awesome into the default font
+	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+	ImFontConfig icons_config;
+	icons_config.MergeMode = true;
+	icons_config.PixelSnapH = true;
+	io.Fonts->AddFontFromFileTTF((nc::IFile::dataPath() + "fonts/" FONT_ICON_FILE_NAME_FAS).data(), 12.0f, &icons_config, icons_ranges);
+#endif
+
+	//applyDefaultStyle();
+	//applyDarcula();
+	applyDarkStyle();
+	//applyYetAnotherDarkStyle();
 }
 
 ///////////////////////////////////////////////////////////
@@ -77,19 +363,25 @@ void UserInterface::signalFrameSaved()
 {
 	ASSERT(shouldSaveAnim_ == true);
 
-	saveAnimStatus_.filename.format("%s_%03d.png", filename_.data(), saveAnimStatus_.numSavedFrames);
 	saveAnimStatus_.numSavedFrames++;
-	if (saveAnimStatus_.numSavedFrames == saveAnimStatus_.lastFrame - saveAnimStatus_.firstFrame)
+	saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+	if (saveAnimStatus_.numSavedFrames == saveAnimStatus_.numFrames)
 	{
 		shouldSaveAnim_ = false;
 		saveAnimStatus_.numSavedFrames = 0;
-		pushStatusMessage("Animation saved");
+		pushStatusInfoMessage("Animation saved");
 	}
 }
 
-void UserInterface::pushStatusMessage(const char *message)
+void UserInterface::pushStatusInfoMessage(const char *message)
 {
-	statusMessage_ = message;
+	statusMessage_.format("%s%s", Labels::INFO_MARKER, message);
+	lastStatus_ = nc::TimeStamp::now();
+}
+
+void UserInterface::pushStatusErrorMessage(const char *message)
+{
+	statusMessage_.format("%s%s", Labels::ERROR_MARKER, message);
 	lastStatus_ = nc::TimeStamp::now();
 }
 
@@ -181,9 +473,10 @@ void UserInterface::createMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("Open")) { pushStatusMessage("Open and Save are not implemented yet"); }
-			if (ImGui::MenuItem("Save")) { pushStatusMessage("Open and Save are not implemented yet"); }
-			if (ImGui::MenuItem("Quit")) { nc::theApplication().quit(); }
+			if (ImGui::MenuItem(Labels::New, "CTRL + N")) { animMgr_.clear(); }
+			if (ImGui::MenuItem(Labels::Open)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
+			if (ImGui::MenuItem(Labels::Save)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
+			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q")) { nc::theApplication().quit(); }
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();
@@ -192,7 +485,7 @@ void UserInterface::createMenuBar()
 
 void UserInterface::createCanvasGui()
 {
-	if (ImGui::CollapsingHeader("Canvas"))
+	if (ImGui::CollapsingHeader(Labels::Canvas))
 	{
 		ImGui::Text("Zoom:");
 		ImGui::SameLine();
@@ -250,7 +543,7 @@ void UserInterface::createCanvasGui()
 			desiredCanvasSize.y = canvas_.maxTextureSize();
 
 		ImGui::SameLine();
-		if (ImGui::Button("Resize") &&
+		if (ImGui::Button(Labels::Apply) &&
 		    (canvas_.size().x != desiredCanvasSize.x || canvas_.size().y != desiredCanvasSize.y))
 		{
 			canvas_.resizeTexture(desiredCanvasSize);
@@ -267,8 +560,25 @@ void UserInterface::createSpriteGui()
 	// TODO: Set texrect
 	// TODO: Show current info like position, rotation, frame, etc...
 
-	if (ImGui::CollapsingHeader("Sprite"))
+	if (ImGui::CollapsingHeader(Labels::Sprite))
 	{
+		ImGui::InputText("Filename", texFilename_.data(), MaxStringLength,
+		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &texFilename_);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
+		{
+			if (nc::IFile::access(texFilename_.data(), nc::IFile::AccessMode::READABLE))
+			{
+				sprite_.loadTexture(texFilename_.data());
+				auxString_.format("Loaded file \"%s\"", texFilename_.data());
+			}
+			else
+				auxString_.format("Cannot load file \"%s\"", texFilename_.data());
+
+			pushStatusInfoMessage(auxString_.data());
+		}
+
+		ImGui::Text("Texture size: %dx%d", sprite_.texture().width(), sprite_.texture().height());
 		nc::Vector2f position(sprite_.x, sprite_.y);
 		ImGui::SliderFloat2("Position", position.data(), 0.0f, canvas_.texWidth());
 		sprite_.x = roundf(position.x);
@@ -375,12 +685,12 @@ void UserInterface::createSpriteGui()
 
 void UserInterface::createAnimationsGui()
 {
-	if (ImGui::CollapsingHeader("Animations"))
+	if (ImGui::CollapsingHeader(Labels::Animations))
 	{
 		static int currentComboAnimType = 0;
 		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
 		ImGui::SameLine();
-		if (ImGui::Button("Add"))
+		if (ImGui::Button(Labels::Add))
 		{
 			switch (currentComboAnimType)
 			{
@@ -393,12 +703,15 @@ void UserInterface::createAnimationsGui()
 				case AnimationTypesEnum::PROPERTY:
 					animMgr_.anims().pushBack(nctl::makeUnique<PropertyAnimation>());
 					break;
+				case AnimationTypesEnum::GRID:
+					animMgr_.anims().pushBack(nctl::makeUnique<GridAnimation>());
+					break;
 			}
 		}
 
 		ImGui::SameLine();
-		if (ImGui::Button("Clear"))
-			animMgr_.anims().clear();
+		if (ImGui::Button(Labels::Clear))
+			animMgr_.clear();
 		ImGui::Separator();
 
 		for (unsigned int i = 0; i < animMgr_.anims().size(); i++)
@@ -408,38 +721,36 @@ void UserInterface::createAnimationsGui()
 
 void UserInterface::createRenderGui()
 {
-	if (ImGui::CollapsingHeader("Render"))
+	if (ImGui::CollapsingHeader(Labels::Render))
 	{
-		ImGui::InputText("Filename prefix", filename_.data(), MaxStringLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &filename_);
+		ImGui::InputText("Filename prefix", animFilename_.data(), MaxStringLength,
+		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &animFilename_);
 
-		ImGui::InputFloat("FPS", &saveAnimStatus_.fps);
-		ImGui::InputInt("First frame", &saveAnimStatus_.firstFrame);
-		ImGui::InputInt("Last frame", &saveAnimStatus_.lastFrame);
-		const float duration = saveAnimStatus_.numFrames() * saveAnimStatus_.inverseFps();
-		ImGui::Text("Duration: %.2fs", duration);
+		int fps = static_cast<int>(saveAnimStatus_.fps);
+		ImGui::InputInt("FPS", &fps);
+		saveAnimStatus_.fps = static_cast<float>(fps);
+		ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, 10 * saveAnimStatus_.fps); // Hard-coded limit
+		float duration = saveAnimStatus_.numFrames * saveAnimStatus_.inverseFps();
+		ImGui::SliderFloat("Duration", &duration, 0.0f, 10.0f, "%.3fs"); // Hard-coded limit
 
-		if (saveAnimStatus_.firstFrame < 0)
-			saveAnimStatus_.firstFrame = 0;
-		if (saveAnimStatus_.lastFrame < 0)
-			saveAnimStatus_.lastFrame = 0;
-		if (saveAnimStatus_.lastFrame <= saveAnimStatus_.firstFrame)
-			saveAnimStatus_.lastFrame = saveAnimStatus_.firstFrame + 1;
+		saveAnimStatus_.numFrames = duration * saveAnimStatus_.fps;
+		if (saveAnimStatus_.numFrames < 1)
+			saveAnimStatus_.numFrames = 1;
 
 		if (shouldSaveAnim_)
 		{
 			const unsigned int numSavedFrames = saveAnimStatus_.numSavedFrames;
-			const float fraction = numSavedFrames / static_cast<float>(saveAnimStatus_.numFrames());
-			auxString_.format("Frame: %d (%d/%d)", numSavedFrames, saveAnimStatus_.firstFrame + numSavedFrames, saveAnimStatus_.lastFrame);
+			const float fraction = numSavedFrames / static_cast<float>(saveAnimStatus_.numFrames);
+			auxString_.format("Frame: %d/%d", numSavedFrames, saveAnimStatus_.numFrames);
 			ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), auxString_.data());
 		}
 		else if (ImGui::Button("Save to PNG") && shouldSaveAnim_ == false)
 		{
-			if (filename_.isEmpty())
-				pushStatusMessage("Set a filename prefix before saving an animation");
+			if (animFilename_.isEmpty())
+				pushStatusErrorMessage("Set a filename prefix before saving an animation");
 			else
 			{
-				saveAnimStatus_.filename.format("%s_%03d.png", filename_.data(), saveAnimStatus_.numSavedFrames);
+				saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
 				shouldSaveAnim_ = true;
 			}
 		}
@@ -457,33 +768,44 @@ void UserInterface::createRecursiveAnimationsGui(IAnimation &anim)
 			createPropertyAnimationGui(propertyAnim);
 			break;
 		}
+		case IAnimation::Type::GRID:
+		{
+			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+			createGridAnimationGui(gridAnim);
+			break;
+		}
 		case IAnimation::Type::PARALLEL_GROUP:
 		{
-			ParallelAnimationGroup &parallelAnim = static_cast<ParallelAnimationGroup &>(anim);
-			createParallelAnimationGui(parallelAnim);
+			AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
+			createAnimationGroupGui(animGroup);
 			break;
 		}
 		case IAnimation::Type::SEQUENTIAL_GROUP:
 		{
-			SequentialAnimationGroup &sequentialAnim = static_cast<SequentialAnimationGroup &>(anim);
-			createSequentialAnimationGui(sequentialAnim);
+			AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
+			createAnimationGroupGui(animGroup);
 			break;
 		}
 	}
 	ImGui::PopID();
 }
 
-// TODO:: Unify with create sequential gui
-void UserInterface::createParallelAnimationGui(ParallelAnimationGroup &animGroup)
+void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
 {
-	ASSERT(animGroup.type() == IAnimation::Type::PARALLEL_GROUP);
+	ASSERT(animGroup.type() == IAnimation::Type::PARALLEL_GROUP ||
+	       animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP);
 
-	if (ImGui::TreeNodeEx("Parallel Animation", ImGuiTreeNodeFlags_DefaultOpen))
+	if (animGroup.type() == IAnimation::Type::PARALLEL_GROUP)
+		auxString_ = "Parallel Animation";
+	else if (animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP)
+		auxString_ = "Sequential Animation";
+
+	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		static int currentComboAnimType = 0;
 		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
 		ImGui::SameLine();
-		if (ImGui::Button("Add"))
+		if (ImGui::Button(Labels::Add))
 		{
 			switch (currentComboAnimType)
 			{
@@ -505,75 +827,27 @@ void UserInterface::createParallelAnimationGui(ParallelAnimationGroup &animGroup
 			}
 		}
 		ImGui::SameLine();
-		if (ImGui::Button("Clear"))
+		if (ImGui::Button(Labels::RemoveAll))
 			animGroup.anims().clear();
 
 		ImGui::Text("State: %s", animStateToString(animGroup.state()));
-		if (ImGui::Button("Stop"))
+		if (ImGui::Button(Labels::Stop))
 			animGroup.stop();
 		ImGui::SameLine();
-		if (ImGui::Button("Pause"))
+		if (ImGui::Button(Labels::Pause))
 			animGroup.pause();
 		ImGui::SameLine();
-		if (ImGui::Button("Play"))
+		if (ImGui::Button(Labels::Play))
 			animGroup.play();
 		ImGui::Separator();
 
 		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
-			createRecursiveAnimationsGui(*animGroup.anims()[i].get());
-
-		ImGui::TreePop();
-	}
-}
-
-void UserInterface::createSequentialAnimationGui(SequentialAnimationGroup &animGroup)
-{
-	ASSERT(animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP);
-
-	if (ImGui::TreeNodeEx("Sequential Animation", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		static int currentComboAnimType = 0;
-		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
-		ImGui::SameLine();
-		if (ImGui::Button("Add"))
 		{
-			switch (currentComboAnimType)
-			{
-				case AnimationTypesEnum::PARALLEL_GROUP:
-				{
-
-					animGroup.anims().pushBack(nctl::makeUnique<ParallelAnimationGroup>());
-					break;
-				}
-				case AnimationTypesEnum::SEQUENTIAL_GROUP:
-				{
-					animGroup.anims().pushBack(nctl::makeUnique<SequentialAnimationGroup>());
-					break;
-				}
-				case AnimationTypesEnum::PROPERTY:
-				{
-					animGroup.anims().pushBack(nctl::makeUnique<PropertyAnimation>());
-					break;
-				}
-			}
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Clear"))
-			animGroup.anims().clear();
-
-		ImGui::Text("State: %s", animStateToString(animGroup.state()));
-		if (ImGui::Button("Stop"))
-			animGroup.stop();
-		ImGui::SameLine();
-		if (ImGui::Button("Pause"))
-			animGroup.pause();
-		ImGui::SameLine();
-		if (ImGui::Button("Play"))
-			animGroup.play();
-		ImGui::Separator();
-
-		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
 			createRecursiveAnimationsGui(*animGroup.anims()[i].get());
+			auxString_.format("%s##%u", Labels::Remove, i);
+			if (ImGui::Button(auxString_.data()))
+				animGroup.anims().removeAt(i);
+		}
 
 		ImGui::TreePop();
 	}
@@ -626,26 +900,99 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 
 		ImGui::SliderFloat("Shift", &anim.curve().shift(), -500.0f, 500.0f);
 		ImGui::SameLine();
-		if (ImGui::Button("Reset##Shift"))
+		auxString_.format("%s##Shift", Labels::Reset);
+		if (ImGui::Button(auxString_.data()))
 			anim.curve().shift() = 0.0f;
 		ImGui::SliderFloat("Scale", &anim.curve().scale(), -500.0f, 500.0f);
 		ImGui::SameLine();
-		if (ImGui::Button("Reset##Scale"))
+		auxString_.format("%s##Scale", Labels::Reset);
+		if (ImGui::Button(auxString_.data()))
 			anim.curve().scale() = 1.0f;
 
 		ImGui::Separator();
-		float time = anim.curve().time();
-		ImGui::SliderFloat("Time", &time, 0.0f, 1.0f);
-		anim.curve().setTime(time);
+		ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
+		ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
+		ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
+		ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
+
+		if (anim.curve().start() > anim.curve().end() ||
+		    anim.curve().end() < anim.curve().start())
+		{
+			anim.curve().start() = anim.curve().end();
+		}
+		if (anim.curve().time() < anim.curve().start())
+			anim.curve().time() = anim.curve().start();
+		else if (anim.curve().time() > anim.curve().end())
+			anim.curve().time() = anim.curve().end();
 
 		ImGui::Text("State: %s", animStateToString(anim.state()));
-		if (ImGui::Button("Stop"))
+		if (ImGui::Button(Labels::Stop))
 			anim.stop();
 		ImGui::SameLine();
-		if (ImGui::Button("Pause"))
+		if (ImGui::Button(Labels::Pause))
 			anim.pause();
 		ImGui::SameLine();
-		if (ImGui::Button("Play"))
+		if (ImGui::Button(Labels::Play))
+			anim.play();
+
+		ImGui::TreePop();
+	}
+}
+
+void UserInterface::createGridAnimationGui(GridAnimation &anim)
+{
+	ASSERT(anim.type() == IAnimation::Type::GRID);
+
+	if (ImGui::TreeNodeEx("Grid Animation", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		static int currentComboType = -1;
+		currentComboType = static_cast<int>(anim.gridAnimationType());
+		ImGui::Combo("Type", &currentComboType, gridAnimTypes, IM_ARRAYSIZE(gridAnimTypes));
+		anim.setGridAnimationType(static_cast<GridAnimation::AnimationType>(currentComboType));
+
+		int currentComboCurveType = static_cast<int>(anim.curve().type());
+		ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
+		anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
+
+		int currentComboLoopMode = static_cast<int>(anim.curve().loopMode());
+		ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
+		anim.curve().setLoopMode(static_cast<EasingCurve::LoopMode>(currentComboLoopMode));
+
+		ImGui::SliderFloat("Shift", &anim.curve().shift(), -500.0f, 500.0f);
+		ImGui::SameLine();
+		auxString_.format("%s##Shift", Labels::Reset);
+		if (ImGui::Button(auxString_.data()))
+			anim.curve().shift() = 0.0f;
+		ImGui::SliderFloat("Scale", &anim.curve().scale(), -500.0f, 500.0f);
+		ImGui::SameLine();
+		auxString_.format("%s##Scale", Labels::Reset);
+		if (ImGui::Button(auxString_.data()))
+			anim.curve().scale() = 1.0f;
+
+		ImGui::Separator();
+		ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
+		ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
+		ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
+		ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
+
+		if (anim.curve().start() > anim.curve().end() ||
+		    anim.curve().end() < anim.curve().start())
+		{
+			anim.curve().start() = anim.curve().end();
+		}
+		if (anim.curve().time() < anim.curve().start())
+			anim.curve().time() = anim.curve().start();
+		else if (anim.curve().time() > anim.curve().end())
+			anim.curve().time() = anim.curve().end();
+
+		ImGui::Text("State: %s", animStateToString(anim.state()));
+		if (ImGui::Button(Labels::Stop))
+			anim.stop();
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Pause))
+			anim.pause();
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Play))
 			anim.play();
 
 		ImGui::TreePop();

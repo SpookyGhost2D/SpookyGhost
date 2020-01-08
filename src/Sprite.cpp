@@ -26,9 +26,9 @@ struct VertexFormat
 
 Sprite::Sprite(Texture *texture)
     : rotation(0.0f), anchorPoint(0.0f, 0.0f), scaleFactor(1.0f, 1.0f),
-      modelView_(nc::Matrix4x4f::Identity), texture_(nullptr),
-      texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false), //color_(nc::Colorf::White)
-      interleavedVertices_(0), indices_(0)
+      width_(0), height_(0), modelView_(nc::Matrix4x4f::Identity),
+      texture_(nullptr), texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false), //color_(nc::Colorf::White)
+      interleavedVertices_(0), indices_(0), restPositions_(0)
 {
 	spriteShaderProgram_ = RenderResources::spriteShaderProgram();
 	spriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(spriteShaderProgram_);
@@ -95,7 +95,7 @@ void Sprite::updateRender()
 void Sprite::render()
 {
 	texture_->bind();
-#if 0
+#if 1
 	meshSpriteShaderProgram_->use();
 	vbo_->bind();
 	ibo_->bind();
@@ -114,26 +114,13 @@ void Sprite::setTexture(Texture *texture)
 	FATAL_ASSERT(texture);
 	texture_ = texture;
 	texRect_ = nc::Recti(0, 0, texture->width(), texture->height());
-	const unsigned int verticesCapacity = (texture->width() + 1) * (texture->height() + 1) + 1;
-	interleavedVertices_.setCapacity(verticesCapacity);
-	const unsigned int indicesCapacity = (texture->width() + 1) * (texture->height() + 1) * 2;
-	indices_.setCapacity(indicesCapacity);
-
-	const long int vboBytes = interleavedVertices_.capacity() * sizeof(Vertex);
-	vbo_->bufferData(vboBytes, nullptr, GL_STATIC_DRAW);
-	const long int iboBytes = indices_.capacity() * sizeof(unsigned short);
-	ibo_->bufferData(iboBytes, nullptr, GL_STATIC_DRAW);
-
-	resetVertices();
-	ASSERT(interleavedVertices_.capacity() == verticesCapacity);
-	resetIndices();
-	ASSERT(indices_.capacity() == indicesCapacity);
+	setSize(texRect_.w, texRect_.h);
 }
 
 void Sprite::setTexRect(const nc::Recti &rect)
 {
 	texRect_ = rect;
-	//setSize(static_cast<float>(rect.w), static_cast<float>(rect.h));
+	setSize(static_cast<float>(rect.w), static_cast<float>(rect.h));
 
 	if (flippedX_)
 	{
@@ -146,6 +133,13 @@ void Sprite::setTexRect(const nc::Recti &rect)
 		texRect_.y += texRect_.h;
 		texRect_.h *= -1;
 	}
+}
+
+void Sprite::loadTexture(const char *filename)
+{
+	texture_->load(filename, 0, 0);
+	texRect_ = nc::Recti(0, 0, texture_->width(), texture_->height());
+	setSize(texRect_.w, texRect_.h);
 }
 
 void Sprite::setFlippedX(bool flippedX)
@@ -182,7 +176,7 @@ void Sprite::testAnim(float value)
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Vertex &v = interleavedVertices_[index];
 			v.x = -0.5f + static_cast<float>(x) * deltaX;
-			v.y = -0.5f + static_cast<float>(y) * deltaY + 0.25f * sin(value + 2 * x * deltaX);
+			v.y = -0.5f + static_cast<float>(y) * deltaY + 0.25f * sinf(value + 2 * x * deltaX);
 		}
 	}
 }
@@ -196,11 +190,41 @@ void *Sprite::imguiTexId()
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void Sprite::resetVertices()
+void Sprite::setSize(int width, int height)
+{
+	ASSERT(width > 0 && height > 0);
+
+/*
+	// Update anchor points when size changes
+	if (anchorPoint_.x != 0.0f)
+		anchorPoint_.x = (anchorPoint_.x / width_) * width;
+	if (anchorPoint_.y != 0.0f)
+		anchorPoint_.y = (anchorPoint_.y / height_) * height;
+*/
+
+	width_ = width;
+	height_ = height;
+
+	const unsigned int verticesCapacity = (width + 1) * (height + 1);
+	interleavedVertices_.setCapacity(verticesCapacity);
+	restPositions_.setCapacity(verticesCapacity);
+	const unsigned int indicesCapacity = (width + 1) * (height + 1) * 2;
+	indices_.setCapacity(indicesCapacity);
+
+	const long int vboBytes = interleavedVertices_.capacity() * sizeof(Vertex);
+	vbo_->bufferData(vboBytes, nullptr, GL_STATIC_DRAW);
+	const long int iboBytes = indices_.capacity() * sizeof(unsigned short);
+	ibo_->bufferData(iboBytes, nullptr, GL_STATIC_DRAW);
+
+	resetVertices(width, height);
+	ASSERT(interleavedVertices_.capacity() == verticesCapacity);
+	resetIndices(width, height);
+	ASSERT(indices_.capacity() == indicesCapacity);
+}
+
+void Sprite::resetVertices(int width, int height)
 {
 	interleavedVertices_.clear();
-	const int width = texture_->width();
-	const int height = texture_->height();
 	const float deltaX = 1.0f / static_cast<float>(width);
 	const float deltaY = 1.0f / static_cast<float>(height);
 
@@ -210,10 +234,13 @@ void Sprite::resetVertices()
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Vertex &v = interleavedVertices_[index];
+			VertexPosition &restPos = restPositions_[index];
 			v.x = -0.5f + static_cast<float>(x) * deltaX;
 			v.y = -0.5f + static_cast<float>(y) * deltaY;
 			v.u = static_cast<float>(x) * deltaX;
 			v.v = static_cast<float>(y) * deltaY;
+			restPos.x = v.x;
+			restPos.y = v.y;
 		}
 	}
 
@@ -225,29 +252,29 @@ void Sprite::resetVertices()
 #endif
 }
 
-void Sprite::resetIndices()
+void Sprite::resetIndices(int width, int height)
 {
 	indices_.clear();
-	const int width = texture_->width() + 1;
-	const int height = texture_->height() + 1;
+	const int gridWidth = width + 1;
+	const int gridHeight = height + 1;
 
-	unsigned short vertexIndex = width;
+	unsigned short vertexIndex = gridWidth;
 	unsigned int arrayIndex = 0;
-	for (unsigned short i = 0; i < height - 1; i++)
+	for (unsigned short i = 0; i < gridHeight - 1; i++)
 	{
-		for (unsigned short j = 0; j < width; j++)
+		for (unsigned short j = 0; j < gridWidth; j++)
 		{
 			indices_[arrayIndex++] = vertexIndex + j;
 			if (j == 0 && i != 0) // degenerate vertex
 				indices_[arrayIndex++] = vertexIndex + j;
-			indices_[arrayIndex++] = vertexIndex + j - width;
+			indices_[arrayIndex++] = vertexIndex + j - gridWidth;
 		}
-		if (i != width - 2) // degenerate vertex
+		if (i != gridWidth - 2) // degenerate vertex
 		{
 			indices_[arrayIndex] = indices_[arrayIndex - 1];
 			arrayIndex++;
 		}
-		vertexIndex += width;
+		vertexIndex += gridWidth;
 	}
 
 #if 0

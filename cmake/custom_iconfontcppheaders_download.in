@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(iconfontcppheaders-download NONE)
+
+include(ExternalProject)
+ExternalProject_Add(iconfontcppheaders
+	GIT_REPOSITORY    https://github.com/juliettef/IconFontCppHeaders.git
+	GIT_TAG           ""
+	GIT_SHALLOW       TRUE
+	SOURCE_DIR        "${CMAKE_BINARY_DIR}/iconfontcppheaders-src"
+	CONFIGURE_COMMAND ""
+	BUILD_COMMAND     ""
+	INSTALL_COMMAND   ""
+	TEST_COMMAND      ""
+)

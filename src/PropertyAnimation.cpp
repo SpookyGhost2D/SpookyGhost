@@ -10,7 +10,7 @@ PropertyAnimation::PropertyAnimation()
 }
 
 PropertyAnimation::PropertyAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : curve_(type, loopMode), property_(nullptr), propertyName_(64)
+    : curve_(type, loopMode), speed_(1.0f), property_(nullptr), propertyName_(64)
 {
 }
 
@@ -41,7 +41,7 @@ void PropertyAnimation::update(float deltaTime)
 				*property_ = curve().value();
 			break;
 		case State::PLAYING:
-			const float value = curve_.next(deltaTime);
+			const float value = curve_.next(speed_ * deltaTime);
 			if (property_)
 				*property_ = value;
 			break;

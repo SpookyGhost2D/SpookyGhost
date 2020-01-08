@@ -10,6 +10,7 @@ class IAnimation
 	enum class Type
 	{
 		PROPERTY,
+		GRID,
 		SEQUENTIAL_GROUP,
 		PARALLEL_GROUP
 	};

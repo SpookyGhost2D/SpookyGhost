@@ -33,6 +33,13 @@ void Texture::bind()
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+void Texture::load(const char *filename, int width, int height)
+{
+	glTexture_->bind();
+	nctl::UniquePtr<nc::ITextureLoader> texLoader = nc::ITextureLoader::createFromFile(filename);
+	load(*texLoader.get(), width, height);
+}
+
 void Texture::load(const nc::ITextureLoader &texLoader, int width, int height)
 {
 	// Loading a texture without overriding the size detected by the loader
@@ -54,9 +61,6 @@ void Texture::load(const nc::ITextureLoader &texLoader, int width, int height)
 
 	const nc::TextureFormat &texFormat = texLoader.texFormat();
 
-	int levelWidth = width;
-	int levelHeight = height;
-
 #if (defined(__ANDROID__) && GL_ES_VERSION_3_0) || defined(WITH_ANGLE) || defined(__EMSCRIPTEN__)
 	const bool withTexStorage = true;
 #else
@@ -66,10 +70,10 @@ void Texture::load(const nc::ITextureLoader &texLoader, int width, int height)
 	if (withTexStorage)
 	{
 		glTexture_->texStorage2D(texLoader.mipMapCount(), texFormat.internalFormat(), width, height);
-		glTexture_->texSubImage2D(0, 0, 0, levelWidth, levelHeight, texFormat.format(), texFormat.type(), texLoader.pixels());
+		glTexture_->texSubImage2D(0, 0, 0, width, height, texFormat.format(), texFormat.type(), texLoader.pixels());
 	}
 	else
-		glTexture_->texImage2D(0, texFormat.internalFormat(), levelWidth, levelHeight, texFormat.format(), texFormat.type(), texLoader.pixels());
+		glTexture_->texImage2D(0, texFormat.internalFormat(), width, height, texFormat.format(), texFormat.type(), texLoader.pixels());
 
 	width_ = width;
 	height_ = height;

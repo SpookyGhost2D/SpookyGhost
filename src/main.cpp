@@ -5,6 +5,7 @@
 
 #include "AnimationManager.h"
 #include "PropertyAnimation.h"
+#include "GridAnimation.h"
 #include "ParallelAnimationGroup.h"
 #include "SequentialAnimationGroup.h"
 
@@ -64,17 +65,24 @@ void MyEventHandler::onInit()
 	ca_ = nctl::makeUnique<Canvas>(imageWidth, imageHeight);
 	animMgr_ = nctl::makeUnique<AnimationManager>();
 
-	texture_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "dog.png").data());
+	texture_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon48.png").data());
 	sprite_ = nctl::makeUnique<Sprite>(texture_.get());
-	sprite_->x = 11.0f;//150.0f;
+	sprite_->x = 50.0f;
 	sprite_->y = 100.0f;
-	sprite_->rotation = 45.0f;
+	sprite_->rotation = 0.0f;
 
 	ui_ = nctl::makeUnique<UserInterface>(*ca_, *animMgr_, *sprite_);
 
 	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
 
+/*
 	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
+	anim->curve().setScale(20.0f);
+	anim->setProperty(&sprite_->x);
+	anim->setPropertyName("Position X");
+	animGroup->anims().pushBack(nctl::move(anim));
+
+	anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
 	anim->curve().setScale(150.0f);
 	anim->setProperty(&sprite_->y);
 	anim->setPropertyName("Position Y");
@@ -85,12 +93,11 @@ void MyEventHandler::onInit()
 	anim->setProperty(&sprite_->rotation);
 	anim->setPropertyName("Rotation");
 	animGroup->anims().pushBack(nctl::move(anim));
-
-	anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
-	anim->curve().setScale(20.0f);
-	anim->setProperty(&sprite_->x);
-	anim->setPropertyName("Position X");
-	animGroup->anims().pushBack(nctl::move(anim));
+*/
+	nctl::UniquePtr<GridAnimation> gridAnim = nctl::makeUnique<GridAnimation>(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::PING_PONG);
+	gridAnim->curve().setScale(20.0f);
+	gridAnim->setSprite(sprite_.get());
+	animGroup->anims().pushBack(nctl::move(gridAnim));
 
 	animGroup->play();
 	animMgr_->anims().pushBack(nctl::move(animGroup));
@@ -104,7 +111,7 @@ void MyEventHandler::onShutdown()
 void MyEventHandler::onFrameStart()
 {
 	const float interval = nc::theApplication().interval();
-	glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+	glClearColor(0.25f, 0.25f, 0.25f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	ca_->bind();
@@ -114,7 +121,7 @@ void MyEventHandler::onFrameStart()
 	if (ui_->shouldSaveAnim() == false)
 		animMgr_->update(interval);
 
-	sprite_->testAnim(angle);
+	//sprite_->testAnim(angle);
 	sprite_->transform();
 	sprite_->updateRender();
 	sprite_->render();
@@ -134,8 +141,18 @@ void MyEventHandler::onFrameStart()
 	}
 }
 
+void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
+{
+	if (event.mod & nc::KeyMod::CTRL)
+	{
+		if (event.sym == nc::KeySym::Q)
+			nc::theApplication().quit();
+	}
+}
+
 void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 {
-	if (event.sym == nc::KeySym::ESCAPE || event.sym == nc::KeySym::Q)
+	// TEMPORARY
+	if (event.sym == nc::KeySym::ESCAPE)
 		nc::theApplication().quit();
 }

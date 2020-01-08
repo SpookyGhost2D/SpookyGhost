@@ -8,9 +8,9 @@
 class Canvas;
 class AnimationManager;
 class IAnimation;
-class ParallelAnimationGroup;
-class SequentialAnimationGroup;
+class AnimationGroup;
 class PropertyAnimation;
+class GridAnimation;
 class Sprite;
 
 namespace nc = ncine;
@@ -20,14 +20,11 @@ class UserInterface
 {
   public:
 	struct SaveAnim {
-
-		inline unsigned int numFrames() const { return lastFrame - firstFrame; }
 		inline float inverseFps() const { return 1.0f / fps; }
 
 		nctl::String filename = nctl::String(MaxStringLength);
 		unsigned int numSavedFrames = 0;
-		int firstFrame = 0;
-		int lastFrame = 0;
+		int numFrames = 60;
 		float fps = 60.0f;
 	};
 
@@ -36,7 +33,8 @@ class UserInterface
 	bool shouldSaveAnim() const { return shouldSaveAnim_; }
 	void signalFrameSaved();
 
-	void pushStatusMessage(const char *message);
+	void pushStatusInfoMessage(const char *message);
+	void pushStatusErrorMessage(const char *message);
 
 	void createGui();
 
@@ -48,7 +46,8 @@ class UserInterface
 	AnimationManager &animMgr_;
 	Sprite &sprite_;
 
-	nctl::String filename_ = nctl::String(MaxStringLength);
+	nctl::String texFilename_ = nctl::String(MaxStringLength);
+	nctl::String animFilename_ = nctl::String(MaxStringLength);
 	SaveAnim saveAnimStatus_;
 	bool shouldSaveAnim_ = false;
 
@@ -68,9 +67,9 @@ class UserInterface
 	void createRenderGui();
 
 	void createRecursiveAnimationsGui(IAnimation &anim);
-	void createParallelAnimationGui(ParallelAnimationGroup &animGroup);
-	void createSequentialAnimationGui(SequentialAnimationGroup &animGroup);
+	void createAnimationGroupGui(AnimationGroup &animGroup);
 	void createPropertyAnimationGui(PropertyAnimation &anim);
+	void createGridAnimationGui(GridAnimation &anim);
 };
 
 #endif

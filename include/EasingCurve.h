@@ -36,7 +36,16 @@ class EasingCurve
 	inline void goForward(bool forward) { forward_ = forward; }
 
 	inline float time() const { return time_; }
+	inline float &time() { return time_; }
 	void setTime(float time);
+
+	inline float start() const { return start_; }
+	inline float &start() { return start_; }
+	inline void setStart(float start) { start_ = start; }
+
+	inline float end() const { return end_; }
+	inline float &end() { return end_; }
+	inline void setEnd(float end) { end_ = end; }
 
 	inline float scale() const { return scale_; }
 	inline float &scale() { return scale_; }
@@ -56,6 +65,9 @@ class EasingCurve
 	bool forward_;
 
 	float time_;
+	float start_;
+	float end_;
+
 	float scale_;
 	float shift_;
 };
