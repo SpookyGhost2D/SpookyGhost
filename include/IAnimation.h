@@ -23,7 +23,7 @@ class IAnimation
 	};
 
 	IAnimation()
-	    :state_(State::PAUSED) {}
+	    : state_(State::PAUSED) {}
 	virtual ~IAnimation() {}
 
 	virtual Type type() const = 0;

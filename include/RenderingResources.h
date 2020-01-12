@@ -1,17 +1,19 @@
-#ifndef CLASS_RENDERRESOURCES
-#define CLASS_RENDERRESOURCES
+#ifndef CLASS_RENDERINGRESOURCES
+#define CLASS_RENDERINGRESOURCES
 
-#include <ncine/GLShaderProgram.h>
 #include <nctl/UniquePtr.h>
 #include <ncine/Matrix4x4.h>
 
+namespace ncine {
+class GLShaderProgram;
+}
 
 // TODO: RENAME
 
 namespace nc = ncine;
 
-/// The class that creates and handles application common OpenGL rendering resources
-class RenderResources
+/// The class that creates and handles some common rendering resources
+class RenderingResources
 {
   public:
 	static inline nc::GLShaderProgram *textureShaderProgram() { return spriteShaderProgram_.get(); }
@@ -34,11 +36,11 @@ class RenderResources
 	static nc::Matrix4x4f projectionMatrix_;
 
 	/// Static class, deleted constructor
-	RenderResources() = delete;
+	RenderingResources() = delete;
 	/// Static class, deleted copy constructor
-	RenderResources(const RenderResources &other) = delete;
+	RenderingResources(const RenderingResources &other) = delete;
 	/// Static class, deleted assignement operator
-	RenderResources &operator=(const RenderResources &other) = delete;
+	RenderingResources &operator=(const RenderingResources &other) = delete;
 };
 
 #endif

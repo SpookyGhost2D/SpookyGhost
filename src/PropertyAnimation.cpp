@@ -22,6 +22,8 @@ void PropertyAnimation::stop()
 {
 	curve_.reset();
 	state_ = State::STOPPED;
+	if (property_)
+		*property_ = curve().value();
 }
 
 void PropertyAnimation::play()
@@ -51,7 +53,3 @@ void PropertyAnimation::update(float deltaTime)
 	    curve_.loopMode() == EasingCurve::LoopMode::DISABLED)
 		state_ = State::STOPPED;
 }
-
-///////////////////////////////////////////////////////////
-// PRIVATE FUNCTIONS
-///////////////////////////////////////////////////////////

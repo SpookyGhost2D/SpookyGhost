@@ -1,11 +1,6 @@
 #include "SequentialAnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
-// CONSTRUCTORS and DESTRUCTOR
-///////////////////////////////////////////////////////////
-
-
-///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
@@ -55,7 +50,7 @@ void SequentialAnimationGroup::update(float deltaTime)
 {
 	bool playNext = false;
 	bool allStopped = true;
-	for(unsigned int i = 0; i < anims_.size(); i++)
+	for (unsigned int i = 0; i < anims_.size(); i++)
 	{
 		IAnimation *anim = anims_[i].get();
 		bool wasPlaying = false;
@@ -79,7 +74,3 @@ void SequentialAnimationGroup::update(float deltaTime)
 	if (allStopped)
 		state_ = State::STOPPED;
 }
-
-///////////////////////////////////////////////////////////
-// PRIVATE FUNCTIONS
-///////////////////////////////////////////////////////////

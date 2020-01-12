@@ -9,7 +9,6 @@
 class PropertyAnimation : public IAnimation
 {
   public:
-
 	enum class LoopMode
 	{
 		DISABLED,

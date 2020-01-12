@@ -6,6 +6,7 @@
 #include <ncine/TimeStamp.h>
 
 class Canvas;
+class SpriteManager;
 class AnimationManager;
 class IAnimation;
 class AnimationGroup;
@@ -19,7 +20,8 @@ namespace nc = ncine;
 class UserInterface
 {
   public:
-	struct SaveAnim {
+	struct SaveAnim
+	{
 		inline float inverseFps() const { return 1.0f / fps; }
 
 		nctl::String filename = nctl::String(MaxStringLength);
@@ -28,7 +30,7 @@ class UserInterface
 		float fps = 60.0f;
 	};
 
-	UserInterface(Canvas &canvas, AnimationManager &animMgr, Sprite &sprite);
+	UserInterface(Canvas &canvas, SpriteManager &spriteMgr, AnimationManager &animMgr);
 	const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
 	bool shouldSaveAnim() const { return shouldSaveAnim_; }
 	void signalFrameSaved();
@@ -41,10 +43,12 @@ class UserInterface
   private:
 	static const unsigned int MaxStringLength = 256;
 
+	nctl::String comboString_ = nctl::String(1024 * 2);
 	nctl::String auxString_ = nctl::String(MaxStringLength);
 	Canvas &canvas_;
+	SpriteManager &spriteMgr_;
 	AnimationManager &animMgr_;
-	Sprite &sprite_;
+	int selectedSpriteIndex_ = 0;
 
 	nctl::String texFilename_ = nctl::String(MaxStringLength);
 	nctl::String animFilename_ = nctl::String(MaxStringLength);
@@ -62,7 +66,7 @@ class UserInterface
 	void createMenuBar();
 
 	void createCanvasGui();
-	void createSpriteGui();
+	void createSpritesGui();
 	void createAnimationsGui();
 	void createRenderGui();
 

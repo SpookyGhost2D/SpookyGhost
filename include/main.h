@@ -12,10 +12,9 @@ class AppConfiguration;
 }
 
 class Canvas;
+class SpriteManager;
 class AnimationManager;
 class UserInterface;
-class Texture;
-class Sprite;
 
 namespace nc = ncine;
 
@@ -35,11 +34,9 @@ class MyEventHandler :
 
   private:
 	nctl::UniquePtr<Canvas> ca_;
+	nctl::UniquePtr<SpriteManager> spriteMgr_;
 	nctl::UniquePtr<AnimationManager> animMgr_;
 	nctl::UniquePtr<UserInterface> ui_;
-
-	nctl::UniquePtr<Texture> texture_;
-	nctl::UniquePtr<Sprite> sprite_;
 };
 
 #endif

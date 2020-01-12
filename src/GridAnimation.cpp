@@ -23,6 +23,7 @@ void GridAnimation::stop()
 {
 	curve_.reset();
 	state_ = State::STOPPED;
+	deform(curve_.value());
 }
 
 void GridAnimation::play()

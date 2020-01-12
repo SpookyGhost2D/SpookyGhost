@@ -13,11 +13,9 @@ Texture::Texture(const char *filename)
 
 Texture::Texture(const char *filename, int width, int height)
     : glTexture_(nctl::makeUnique<nc::GLTexture>(GL_TEXTURE_2D)),
-      width_(0), height_(0), numChannels_(0), dataSize_(0)
+      name_(MaxNameLength), width_(0), height_(0), numChannels_(0), dataSize_(0)
 {
-	glTexture_->bind();
-	nctl::UniquePtr<nc::ITextureLoader> texLoader = nc::ITextureLoader::createFromFile(filename);
-	load(*texLoader.get(), width, height);
+	load(filename, width, height);
 }
 
 ///////////////////////////////////////////////////////////
@@ -38,6 +36,7 @@ void Texture::load(const char *filename, int width, int height)
 	glTexture_->bind();
 	nctl::UniquePtr<nc::ITextureLoader> texLoader = nc::ITextureLoader::createFromFile(filename);
 	load(*texLoader.get(), width, height);
+	name_ = filename;
 }
 
 void Texture::load(const nc::ITextureLoader &texLoader, int width, int height)

@@ -1,5 +1,5 @@
 #include "Canvas.h"
-#include "RenderResources.h"
+#include "RenderingResources.h"
 #include <ncine/Application.h>
 #include <ncine/GLTexture.h>
 #include <ncine/GLFramebufferObject.h>
@@ -52,7 +52,7 @@ void Canvas::resizeTexture(int width, int height)
 
 void Canvas::bind()
 {
-	RenderResources::setCanvasSize(texWidth_, texHeight_);
+	RenderingResources::setCanvasSize(texWidth_, texHeight_);
 	glViewport(0, 0, texWidth_, texHeight_);
 	fbo_->bind(GL_FRAMEBUFFER);
 	glClearColor(backgroundColor.r(), backgroundColor.g(), backgroundColor.b(), backgroundColor.a());

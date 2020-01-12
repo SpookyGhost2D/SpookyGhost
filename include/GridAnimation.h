@@ -10,7 +10,6 @@ class Sprite;
 class GridAnimation : public IAnimation
 {
   public:
-
 	enum class LoopMode
 	{
 		DISABLED,
@@ -40,6 +39,7 @@ class GridAnimation : public IAnimation
 	inline float &speed() { return speed_; }
 	inline void setSpeed(float speed) { speed_ = speed; }
 
+	inline const Sprite *sprite() const { return sprite_; }
 	inline void setSprite(Sprite *sprite) { sprite_ = sprite; }
 
 	inline AnimationType gridAnimationType() const { return type_; }

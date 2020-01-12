@@ -1,7 +1,6 @@
 #include "shader_strings.h"
 
-char const *const ShaderStrings::texture_vs =
-R"glsl(
+char const *const ShaderStrings::texture_vs = R"glsl(
 uniform vec2 size;
 uniform mat4 projection;
 uniform mat4 modelView;
@@ -18,8 +17,7 @@ void main()
 }
 )glsl";
 
-char const *const ShaderStrings::texture_fs =
-R"glsl(
+char const *const ShaderStrings::texture_fs = R"glsl(
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -34,8 +32,7 @@ void main()
 }
 )glsl";
 
-char const *const ShaderStrings::sprite_vs =
-R"glsl(
+char const *const ShaderStrings::sprite_vs = R"glsl(
 uniform vec4 texRect;
 uniform vec2 spriteSize;
 uniform mat4 projection;
@@ -53,8 +50,7 @@ void main()
 }
 )glsl";
 
-char const *const ShaderStrings::sprite_fs =
-R"glsl(
+char const *const ShaderStrings::sprite_fs = R"glsl(
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -69,8 +65,7 @@ void main()
 }
 )glsl";
 
-char const *const ShaderStrings::meshsprite_vs =
-R"glsl(
+char const *const ShaderStrings::meshsprite_vs = R"glsl(
 uniform vec4 texRect;
 uniform vec2 spriteSize;
 uniform mat4 projection;
@@ -87,8 +82,7 @@ void main()
 }
 )glsl";
 
-char const *const ShaderStrings::meshsprite_snap_vs =
-R"glsl(
+char const *const ShaderStrings::meshsprite_snap_vs = R"glsl(
 uniform vec4 texRect;
 uniform vec2 spriteSize;
 uniform mat4 projection;

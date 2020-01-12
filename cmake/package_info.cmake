@@ -16,7 +16,7 @@ set(PACKAGE_SOURCES
 	include/Sprite.h
 	include/Texture.h
 	include/UserInterface.h
-	include/RenderResources.h
+	include/RenderingResources.h
 	include/EasingCurve.h
 	include/IAnimation.h
 	include/PropertyAnimation.h
@@ -25,7 +25,7 @@ set(PACKAGE_SOURCES
 	include/SequentialAnimationGroup.h
 	include/ParallelAnimationGroup.h
 	include/AnimationManager.h
-	#include/LuaSerializer.h
+	include/SpriteManager.h
 
 	src/main.cpp
 	src/shader_strings.cpp
@@ -33,7 +33,7 @@ set(PACKAGE_SOURCES
 	src/Sprite.cpp
 	src/Texture.cpp
 	src/UserInterface.cpp
-	src/RenderResources.cpp
+	src/RenderingResources.cpp
 	src/EasingCurve.cpp
 	src/PropertyAnimation.cpp
 	src/GridAnimation.cpp
@@ -41,7 +41,7 @@ set(PACKAGE_SOURCES
 	src/SequentialAnimationGroup.cpp
 	src/ParallelAnimationGroup.cpp
 	src/AnimationManager.cpp
-	#src/LuaSerializer.cpp
+	src/SpriteManager.cpp
 )
 
 function(callback_before_target)

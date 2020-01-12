@@ -1,4 +1,5 @@
-#include "RenderResources.h"
+#include "RenderingResources.h"
+#include <ncine/GLShaderProgram.h>
 #include <ncine/Application.h>
 #include <ncine/AppConfiguration.h>
 #include <ncine/IFile.h> // for dataPath()
@@ -9,12 +10,12 @@
 // STATIC DEFINITIONS
 ///////////////////////////////////////////////////////////
 
-nctl::UniquePtr<nc::GLShaderProgram> RenderResources::textureShaderProgram_;
-nctl::UniquePtr<nc::GLShaderProgram> RenderResources::spriteShaderProgram_;
-nctl::UniquePtr<nc::GLShaderProgram> RenderResources::meshSpriteShaderProgram_;
+nctl::UniquePtr<nc::GLShaderProgram> RenderingResources::textureShaderProgram_;
+nctl::UniquePtr<nc::GLShaderProgram> RenderingResources::spriteShaderProgram_;
+nctl::UniquePtr<nc::GLShaderProgram> RenderingResources::meshSpriteShaderProgram_;
 
-nc::Vector2f RenderResources::canvasSize_(0.0f, 0.0f);
-nc::Matrix4x4f RenderResources::projectionMatrix_ = nc::Matrix4x4f::Identity;
+nc::Vector2f RenderingResources::canvasSize_(0.0f, 0.0f);
+nc::Matrix4x4f RenderingResources::projectionMatrix_ = nc::Matrix4x4f::Identity;
 
 ///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
@@ -22,32 +23,32 @@ nc::Matrix4x4f RenderResources::projectionMatrix_ = nc::Matrix4x4f::Identity;
 
 namespace {
 
-	struct ShaderLoad
-	{
-		nctl::UniquePtr<nc::GLShaderProgram> &shaderProgram;
-		const char *vertexShader;
-		const char *fragmentShader;
-		nc::GLShaderProgram::Introspection introspection;
-	};
+struct ShaderLoad
+{
+	nctl::UniquePtr<nc::GLShaderProgram> &shaderProgram;
+	const char *vertexShader;
+	const char *fragmentShader;
+	nc::GLShaderProgram::Introspection introspection;
+};
 
 }
 
-void RenderResources::setCanvasSize(int width, int height)
+void RenderingResources::setCanvasSize(int width, int height)
 {
 	canvasSize_.set(width, height);
 	projectionMatrix_ = nc::Matrix4x4f::ortho(0.0f, width, 0.0f, height, 0.0f, 1.0f);
 }
 
-void RenderResources::create()
+void RenderingResources::create()
 {
 	LOGI("Creating rendering resources...");
 
 	const nc::AppConfiguration &appCfg = nc::theApplication().appConfiguration();
 
 	ShaderLoad shadersToLoad[] = {
-		{ RenderResources::textureShaderProgram_, ShaderStrings::texture_vs, ShaderStrings::texture_fs, nc::GLShaderProgram::Introspection::ENABLED },
-		{ RenderResources::spriteShaderProgram_, ShaderStrings::sprite_vs, ShaderStrings::sprite_fs, nc::GLShaderProgram::Introspection::ENABLED },
-	    { RenderResources::meshSpriteShaderProgram_, ShaderStrings::meshsprite_vs, ShaderStrings::sprite_fs, nc::GLShaderProgram::Introspection::ENABLED },
+		{ RenderingResources::textureShaderProgram_, ShaderStrings::texture_vs, ShaderStrings::texture_fs, nc::GLShaderProgram::Introspection::ENABLED },
+		{ RenderingResources::spriteShaderProgram_, ShaderStrings::sprite_vs, ShaderStrings::sprite_fs, nc::GLShaderProgram::Introspection::ENABLED },
+		{ RenderingResources::meshSpriteShaderProgram_, ShaderStrings::meshsprite_vs, ShaderStrings::sprite_fs, nc::GLShaderProgram::Introspection::ENABLED },
 	};
 
 	const nc::GLShaderProgram::QueryPhase queryPhase = appCfg.deferShaderQueries ? nc::GLShaderProgram::QueryPhase::DEFERRED : nc::GLShaderProgram::QueryPhase::IMMEDIATE;
@@ -66,7 +67,7 @@ void RenderResources::create()
 	LOGI("Rendering resources created");
 }
 
-void RenderResources::dispose()
+void RenderingResources::dispose()
 {
 	meshSpriteShaderProgram_.reset(nullptr);
 	spriteShaderProgram_.reset(nullptr);

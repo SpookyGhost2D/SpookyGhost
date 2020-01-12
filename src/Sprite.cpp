@@ -1,7 +1,7 @@
 #include <stddef.h> // for offsetof()
 #include "Sprite.h"
 #include "Texture.h"
-#include "RenderResources.h"
+#include "RenderingResources.h"
 #include <ncine/Matrix4x4.h>
 #include <ncine/RenderResources.h>
 #include <ncine/GLShaderProgram.h>
@@ -25,12 +25,12 @@ struct VertexFormat
 ///////////////////////////////////////////////////////////
 
 Sprite::Sprite(Texture *texture)
-    : rotation(0.0f), anchorPoint(0.0f, 0.0f), scaleFactor(1.0f, 1.0f),
+    : name(MaxNameLength), rotation(0.0f), anchorPoint(0.0f, 0.0f), scaleFactor(1.0f, 1.0f),
       width_(0), height_(0), modelView_(nc::Matrix4x4f::Identity),
       texture_(nullptr), texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false), //color_(nc::Colorf::White)
-      interleavedVertices_(0), indices_(0), restPositions_(0)
+      interleavedVertices_(0), restPositions_(0), indices_(0)
 {
-	spriteShaderProgram_ = RenderResources::spriteShaderProgram();
+	spriteShaderProgram_ = RenderingResources::spriteShaderProgram();
 	spriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(spriteShaderProgram_);
 	spriteShaderUniforms_->setUniformsDataPointer(uniformsBuffer_);
 	spriteShaderUniforms_->uniform("uTexture")->setIntValue(0);
@@ -38,7 +38,7 @@ Sprite::Sprite(Texture *texture)
 
 	FATAL_ASSERT(UniformsBufferSize >= spriteShaderProgram_->uniformsSize());
 
-	meshSpriteShaderProgram_ = RenderResources::meshSpriteShaderProgram();
+	meshSpriteShaderProgram_ = RenderingResources::meshSpriteShaderProgram();
 	meshSpriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(meshSpriteShaderProgram_);
 	meshSpriteShaderUniforms_->setUniformsDataPointer(uniformsBuffer_);
 	meshSpriteShaderUniforms_->uniform("uTexture")->setIntValue(0);
@@ -76,13 +76,13 @@ void Sprite::updateRender()
 
 	spriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
 	spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texSize.x, texSize.y);
-	spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderResources::projectionMatrix().data());
+	spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
 	spriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
 	spriteShaderUniforms_->commitUniforms();
 
 	meshSpriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
 	meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texSize.x, texSize.y);
-	meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderResources::projectionMatrix().data());
+	meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
 	meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
 	meshSpriteShaderUniforms_->commitUniforms();
 
@@ -183,7 +183,7 @@ void Sprite::testAnim(float value)
 
 void *Sprite::imguiTexId()
 {
-	return reinterpret_cast<void *>(texture_);
+	return reinterpret_cast<void *>(texture_->glTexture_.get());
 }
 
 ///////////////////////////////////////////////////////////
@@ -194,13 +194,13 @@ void Sprite::setSize(int width, int height)
 {
 	ASSERT(width > 0 && height > 0);
 
-/*
+#if 0
 	// Update anchor points when size changes
 	if (anchorPoint_.x != 0.0f)
 		anchorPoint_.x = (anchorPoint_.x / width_) * width;
 	if (anchorPoint_.y != 0.0f)
 		anchorPoint_.y = (anchorPoint_.y / height_) * height;
-*/
+#endif
 
 	width_ = width;
 	height_ = height;
@@ -284,4 +284,3 @@ void Sprite::resetIndices(int width, int height)
 	LOGE_X("Indices:%s", indicesString.data());
 #endif
 }
-

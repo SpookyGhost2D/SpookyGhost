@@ -51,6 +51,8 @@ float EasingCurve::value()
 		case Type::CIRC:
 			return sqrtf(1.0f - time_ * time_) * scale_ + shift_;
 	}
+
+	return 1.0f;
 }
 
 float EasingCurve::next(float deltaTime)
@@ -80,8 +82,3 @@ float EasingCurve::next(float deltaTime)
 
 	return value();
 }
-
-///////////////////////////////////////////////////////////
-// PRIVATE FUNCTIONS
-///////////////////////////////////////////////////////////
-

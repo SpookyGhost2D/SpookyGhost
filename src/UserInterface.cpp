@@ -1,11 +1,12 @@
 #include <ncine/imgui.h>
 #include <ncine/imgui_internal.h>
 #include <ncine/Application.h>
-#include<ncine/IFile.h>
+#include <ncine/IFile.h>
 
 #include "gui_labels.h"
 #include "UserInterface.h"
 #include "Canvas.h"
+#include "SpriteManager.h"
 #include "AnimationManager.h"
 #include "PropertyAnimation.h"
 #include "ParallelAnimationGroup.h"
@@ -13,7 +14,6 @@
 #include "GridAnimation.h"
 #include "Sprite.h"
 #include "Texture.h"
-//#include "LuaSerializer.h"
 
 namespace {
 
@@ -58,8 +58,8 @@ const char *animStateToString(IAnimation::State state)
 
 void applyDefaultStyle()
 {
-	ImGuiStyle* style = &ImGui::GetStyle();
-	ImVec4* colors = style->Colors;
+	ImGuiStyle *style = &ImGui::GetStyle();
+	ImVec4 *colors = style->Colors;
 
 	colors[ImGuiCol_Text]                   = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
 	colors[ImGuiCol_TextDisabled]           = ImVec4(0.500f, 0.500f, 0.500f, 1.000f);
@@ -177,7 +177,7 @@ void applyDarcula()
 inline void applyDarkStyle()
 {
 	ImGuiStyle & style = ImGui::GetStyle();
-	ImVec4 * colors = style.Colors;
+	ImVec4 *colors = style.Colors;
 
 	/// 0 = FLAT APPEARENCE
 	/// 1 = MORE "3D" LOOK
@@ -272,7 +272,7 @@ void applyYetAnotherDarkStyle()
 	ImGui::GetStyle().FrameRounding = 4.0f;
 	ImGui::GetStyle().GrabRounding = 4.0f;
 
-	ImVec4* colors = ImGui::GetStyle().Colors;
+	ImVec4 *colors = ImGui::GetStyle().Colors;
 	colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
 	colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
 	colors[ImGuiCol_WindowBg] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
@@ -329,8 +329,8 @@ void applyYetAnotherDarkStyle()
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-UserInterface::UserInterface(Canvas &canvas, AnimationManager &animMgr, Sprite &sprite)
-    : canvas_(canvas), animMgr_(animMgr), sprite_(sprite)
+UserInterface::UserInterface(Canvas &canvas, SpriteManager &spriteMgr, AnimationManager &animMgr)
+    : canvas_(canvas), spriteMgr_(spriteMgr), animMgr_(animMgr)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -392,7 +392,7 @@ void UserInterface::createGui()
 	ImGui::Begin("SpookyGhost");
 
 	createCanvasGui();
-	createSpriteGui();
+	createSpritesGui();
 	createAnimationsGui();
 	createRenderGui();
 
@@ -554,45 +554,103 @@ void UserInterface::createCanvasGui()
 	}
 }
 
-void UserInterface::createSpriteGui()
+void UserInterface::createSpritesGui()
 {
 	// TODO: Load image
 	// TODO: Set texrect
 	// TODO: Show current info like position, rotation, frame, etc...
 
-	if (ImGui::CollapsingHeader(Labels::Sprite))
+	static int selectedTextureIndex = 0;
+	if (ImGui::CollapsingHeader(Labels::Sprites))
 	{
+		if (spriteMgr_.textures().isEmpty() == false)
+		{
+			comboString_.clear();
+			for (unsigned int i = 0; i < spriteMgr_.textures().size(); i++)
+			{
+				Texture &texture = *spriteMgr_.textures()[i];
+				comboString_.formatAppend("#%u: %s (%d x %d)", i, texture.name().data(), texture.width(), texture.height());
+				comboString_.setLength(comboString_.length() + 1);
+			}
+			comboString_.setLength(comboString_.length() + 1);
+			// Append a second '\0' to signal the end of the combo item list
+			comboString_[comboString_.length() - 1] = '\0';
+
+			ImGui::Combo("Selected Texture", &selectedTextureIndex, comboString_.data());
+		}
 		ImGui::InputText("Filename", texFilename_.data(), MaxStringLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &texFilename_);
+						 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &texFilename_);
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
 		{
 			if (nc::IFile::access(texFilename_.data(), nc::IFile::AccessMode::READABLE))
 			{
-				sprite_.loadTexture(texFilename_.data());
-				auxString_.format("Loaded file \"%s\"", texFilename_.data());
+				spriteMgr_.textures().pushBack(nctl::makeUnique<Texture>(texFilename_.data()));
+				auxString_.format("Loaded texture \"%s\"", texFilename_.data());
 			}
 			else
-				auxString_.format("Cannot load file \"%s\"", texFilename_.data());
+				auxString_.format("Cannot load texture \"%s\"", texFilename_.data());
 
 			pushStatusInfoMessage(auxString_.data());
 		}
 
-		ImGui::Text("Texture size: %dx%d", sprite_.texture().width(), sprite_.texture().height());
-		nc::Vector2f position(sprite_.x, sprite_.y);
-		ImGui::SliderFloat2("Position", position.data(), 0.0f, canvas_.texWidth());
-		sprite_.x = roundf(position.x);
-		sprite_.y = roundf(position.y);
+		ImGui::Separator();
 
-		ImGui::SliderFloat("Rotation", &sprite_.rotation, 0.0f, 360.0f);
+		if (ImGui::Button(Labels::New))
+		{
+			if (selectedTextureIndex >= 0 && selectedTextureIndex < spriteMgr_.textures().size())
+			{
+				Texture &tex = *spriteMgr_.textures()[selectedTextureIndex];
+				spriteMgr_.sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
+			}
+		}
 
-		Texture &tex = sprite_.texture();
-		const float texWidth = static_cast<float>(tex.width());
-		const float texHeight = static_cast<float>(tex.height());
-		ImVec2 size(texWidth * 4, texHeight * 4);
-		ImVec2 uv0(0.0f, 0.0f);
-		ImVec2 uv1(1.0, 1.0f);
-		ImGui::Image(sprite_.imguiTexId(), size, uv0, uv1);
+		if (spriteMgr_.sprites().isEmpty() == false)
+		{
+			ImGui::SameLine();
+			if (ImGui::Button(Labels::Remove))
+			{
+				if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
+					spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
+				if (selectedSpriteIndex_ > 0)
+					selectedSpriteIndex_--;
+			}
+
+			comboString_.clear();
+			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+			{
+				Sprite &sprite = *spriteMgr_.sprites()[i];
+				comboString_.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+				comboString_.setLength(comboString_.length() + 1);
+			}
+			comboString_.setLength(comboString_.length() + 1);
+			// Append a second '\0' to signal the end of the combo item list
+			comboString_[comboString_.length() - 1] = '\0';
+
+			ImGui::Combo("Selected Sprite", &selectedSpriteIndex_, comboString_.data());
+
+			Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+
+			Texture &tex = sprite.texture();
+			ImGui::Text("Texture: %s (%dx%d)", tex.name().data(), tex.width(), tex.height());
+
+			ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
+							 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &sprite.name);
+
+			nc::Vector2f position(sprite.x, sprite.y);
+			ImGui::SliderFloat2("Position", position.data(), 0.0f, canvas_.texWidth());
+			sprite.x = roundf(position.x);
+			sprite.y = roundf(position.y);
+
+			ImGui::SliderFloat("Rotation", &sprite.rotation, 0.0f, 360.0f);
+
+			const float texWidth = static_cast<float>(tex.width());
+			const float texHeight = static_cast<float>(tex.height());
+			ImVec2 size(texWidth * 4, texHeight * 4);
+			ImVec2 uv0(0.0f, 0.0f);
+			ImVec2 uv1(1.0, 1.0f);
+			ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
+		}
 
 #if 0
 		Texture &tex = sprite_.texture();
@@ -759,7 +817,7 @@ void UserInterface::createRenderGui()
 
 void UserInterface::createRecursiveAnimationsGui(IAnimation &anim)
 {
-	ImGui::PushID(&anim);
+	ImGui::PushID(reinterpret_cast<const void*>(&anim));
 	switch (anim.type())
 	{
 		case IAnimation::Type::PROPERTY:
@@ -824,11 +882,19 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
 					animGroup.anims().pushBack(nctl::makeUnique<PropertyAnimation>());
 					break;
 				}
+				case AnimationTypesEnum::GRID:
+				{
+					animGroup.anims().pushBack(nctl::makeUnique<GridAnimation>());
+					break;
+				}
 			}
 		}
 		ImGui::SameLine();
-		if (ImGui::Button(Labels::RemoveAll))
+		if (ImGui::Button(Labels::Clear))
+		{
+			animGroup.stop();
 			animGroup.anims().clear();
+		}
 
 		ImGui::Text("State: %s", animStateToString(animGroup.state()));
 		if (ImGui::Button(Labels::Stop))
@@ -846,7 +912,10 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
 			createRecursiveAnimationsGui(*animGroup.anims()[i].get());
 			auxString_.format("%s##%u", Labels::Remove, i);
 			if (ImGui::Button(auxString_.data()))
+			{
+				animGroup.anims()[i]->stop();
 				animGroup.anims().removeAt(i);
+			}
 		}
 
 		ImGui::TreePop();
@@ -859,36 +928,57 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 
 	if (ImGui::TreeNodeEx("Property Animation", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		static int currentComboProperty = -1;
-		const nctl::String &propertyName = anim.propertyName();
-		currentComboProperty = PropertyTypesEnum::NONE;
-		if (anim.property() != nullptr)
+		static int spriteIndex = 0;
+		if (spriteMgr_.sprites().isEmpty() == false)
 		{
-			for (unsigned int i = 0; i < IM_ARRAYSIZE(propertyTypes); i++)
+			comboString_.clear();
+			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
 			{
-				if (propertyName == propertyTypes[i])
+				Sprite &sprite = *spriteMgr_.sprites()[i];
+				comboString_.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+				comboString_.setLength(comboString_.length() + 1);
+			}
+			comboString_.setLength(comboString_.length() + 1);
+			// Append a second '\0' to signal the end of the combo item list
+			comboString_[comboString_.length() - 1] = '\0';
+
+			ImGui::Combo("Sprites", &spriteIndex, comboString_.data());
+
+			Sprite &sprite = *spriteMgr_.sprites()[spriteIndex];
+
+			static int currentComboProperty = -1;
+			const nctl::String &propertyName = anim.propertyName();
+			currentComboProperty = PropertyTypesEnum::NONE;
+			if (anim.property() != nullptr)
+			{
+				for (unsigned int i = 0; i < IM_ARRAYSIZE(propertyTypes); i++)
 				{
-					currentComboProperty = static_cast<PropertyTypesEnum>(i);
-					break;
+					if (propertyName == propertyTypes[i])
+					{
+						currentComboProperty = static_cast<PropertyTypesEnum>(i);
+						break;
+					}
 				}
 			}
+			ImGui::Combo("Property", &currentComboProperty, propertyTypes, IM_ARRAYSIZE(propertyTypes));
+			anim.setPropertyName(propertyTypes[currentComboProperty]);
+			switch (currentComboProperty)
+			{
+				case PropertyTypesEnum::NONE:
+					break;
+				case PropertyTypesEnum::POSITION_X:
+					anim.setProperty(&sprite.x);
+					break;
+				case PropertyTypesEnum::POSITION_Y:
+					anim.setProperty(&sprite.y);
+					break;
+				case PropertyTypesEnum::ROTATION:
+					anim.setProperty(&sprite.rotation);
+					break;
+			}
 		}
-		ImGui::Combo("Property", &currentComboProperty, propertyTypes, IM_ARRAYSIZE(propertyTypes));
-		anim.setPropertyName(propertyTypes[currentComboProperty]);
-		switch (currentComboProperty)
-		{
-			case PropertyTypesEnum::NONE:
-				break;
-			case PropertyTypesEnum::POSITION_X:
-				anim.setProperty(&sprite_.x);
-				break;
-			case PropertyTypesEnum::POSITION_Y:
-				anim.setProperty(&sprite_.y);
-				break;
-			case PropertyTypesEnum::ROTATION:
-				anim.setProperty(&sprite_.rotation);
-				break;
-		}
+		else
+			ImGui::TextDisabled("No sprite currently loaded");
 
 		int currentComboCurveType = static_cast<int>(anim.curve().type());
 		ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
@@ -911,6 +1001,10 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 
 		ImGui::Separator();
 		ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
+		ImGui::SameLine();
+		auxString_.format("%s##Speed", Labels::Reset);
+		if (ImGui::Button(auxString_.data()))
+			anim.speed() = 1.0f;
 		ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
 		ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
 		ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
@@ -945,6 +1039,29 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 
 	if (ImGui::TreeNodeEx("Grid Animation", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
+		if (spriteMgr_.sprites().isEmpty() == false)
+		{
+			if (spriteIndex < 0)
+				spriteIndex = 0;
+
+			comboString_.clear();
+			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+			{
+				Sprite &sprite = *spriteMgr_.sprites()[i];
+				comboString_.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+				comboString_.setLength(comboString_.length() + 1);
+			}
+			comboString_.setLength(comboString_.length() + 1);
+			// Append a second '\0' to signal the end of the combo item list
+			comboString_[comboString_.length() - 1] = '\0';
+
+			ImGui::Combo("Sprites", &spriteIndex, comboString_.data());
+			anim.setSprite(spriteMgr_.sprites()[spriteIndex].get());
+		}
+		else
+			ImGui::TextDisabled("No sprite currently loaded");
+
 		static int currentComboType = -1;
 		currentComboType = static_cast<int>(anim.gridAnimationType());
 		ImGui::Combo("Type", &currentComboType, gridAnimTypes, IM_ARRAYSIZE(gridAnimTypes));
@@ -971,6 +1088,10 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 
 		ImGui::Separator();
 		ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
+		ImGui::SameLine();
+		auxString_.format("%s##Speed", Labels::Reset);
+		if (ImGui::Button(auxString_.data()))
+			anim.speed() = 1.0f;
 		ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
 		ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
 		ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
@@ -998,4 +1119,3 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		ImGui::TreePop();
 	}
 }
-

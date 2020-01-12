@@ -2,6 +2,7 @@
 #define CLASS_SPRITE
 
 #include <nctl/Array.h>
+#include <nctl/String.h>
 #include <ncine/Rect.h>
 #include <ncine/Matrix4x4.h>
 #include <ncine/Colorf.h>
@@ -33,6 +34,9 @@ class Sprite
 	{
 		float x, y;
 	};
+
+	static const unsigned int MaxNameLength = 64;
+	nctl::String name;
 
 	float x, y;
 	float rotation;
