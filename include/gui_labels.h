@@ -9,6 +9,7 @@
 #define TEXT_MENU_FILE_OPEN "Open"
 #define TEXT_MENU_FILE_SAVE "Save"
 #define TEXT_MENU_FILE_QUIT "Quit"
+#define TEXT_MENU_ABOUT "About"
 
 #define TEXT_HEADER_CANVAS "Canvas"
 #define TEXT_HEADER_SPRITES "Sprites"
@@ -37,6 +38,7 @@ static const char *New = TEXT_MENU_FILE_NEW;
 static const char *Open = TEXT_MENU_FILE_OPEN;
 static const char *Save = TEXT_MENU_FILE_SAVE;
 static const char *Quit = TEXT_MENU_FILE_QUIT;
+static const char *About = TEXT_MENU_ABOUT;
 
 static const char *Canvas = TEXT_HEADER_CANVAS;
 static const char *Sprites = TEXT_HEADER_SPRITES;
@@ -68,6 +70,7 @@ static const char *New = ICON_FA_FILE FA5_SPACING TEXT_MENU_FILE_NEW;
 static const char *Open = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_MENU_FILE_OPEN;
 static const char *Save = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVE;
 static const char *Quit = ICON_FA_POWER_OFF FA5_SPACING TEXT_MENU_FILE_QUIT;
+static const char *About = ICON_FA_INFO_CIRCLE FA5_SPACING TEXT_MENU_ABOUT;
 
 static const char *Canvas = ICON_FA_PAINT_ROLLER FA5_SPACING TEXT_HEADER_CANVAS;
 static const char *Sprites = ICON_FA_GHOST FA5_SPACING TEXT_HEADER_SPRITES;

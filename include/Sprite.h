@@ -48,6 +48,7 @@ class Sprite
 	void transform();
 	void updateRender();
 	void render();
+	void resetGrid();
 
 	inline int width() const { return width_; }
 	inline int height() const { return height_; }
@@ -70,8 +71,6 @@ class Sprite
 	inline const nctl::Array<VertexPosition> &vertexRestPositions() const { return restPositions_; }
 	inline const nctl::Array<Vertex> &interleavedVertices() const { return interleavedVertices_; }
 	inline nctl::Array<Vertex> &interleavedVertices() { return interleavedVertices_; }
-
-	void testAnim(float value); // DELETE
 
 	void *imguiTexId();
 

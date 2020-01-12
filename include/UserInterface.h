@@ -38,6 +38,7 @@ class UserInterface
 	void pushStatusInfoMessage(const char *message);
 	void pushStatusErrorMessage(const char *message);
 
+	void closeAboutWindow();
 	void createGui();
 
   private:

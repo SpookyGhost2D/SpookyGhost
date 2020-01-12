@@ -22,6 +22,7 @@ void SpriteManager::update()
 		sprites_[i]->transform();
 		sprites_[i]->updateRender();
 		sprites_[i]->render();
+		sprites_[i]->resetGrid();
 	}
 }
 

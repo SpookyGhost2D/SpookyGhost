@@ -19,6 +19,7 @@ set(PACKAGE_SOURCES
 	include/RenderingResources.h
 	include/EasingCurve.h
 	include/IAnimation.h
+	include/CurveAnimation.h
 	include/PropertyAnimation.h
 	include/GridAnimation.h
 	include/AnimationGroup.h
@@ -35,6 +36,7 @@ set(PACKAGE_SOURCES
 	src/UserInterface.cpp
 	src/RenderingResources.cpp
 	src/EasingCurve.cpp
+	src/CurveAnimation.cpp
 	src/PropertyAnimation.cpp
 	src/GridAnimation.cpp
 	src/AnimationGroup.cpp

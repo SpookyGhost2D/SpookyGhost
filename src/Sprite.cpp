@@ -109,6 +109,15 @@ void Sprite::render()
 #endif
 }
 
+void Sprite::resetGrid()
+{
+	for (unsigned int i = 0; i < restPositions_.size(); i++)
+	{
+		interleavedVertices_[i].x = restPositions_[i].x;
+		interleavedVertices_[i].y = restPositions_[i].y;
+	}
+}
+
 void Sprite::setTexture(Texture *texture)
 {
 	FATAL_ASSERT(texture);
@@ -162,28 +171,9 @@ void Sprite::setFlippedY(bool flippedY)
 	}
 }
 
-void Sprite::testAnim(float value)
-{
-	const int width = texture_->width();
-	const int height = texture_->height();
-	const float deltaX = 1.0f / static_cast<float>(width);
-	const float deltaY = 1.0f / static_cast<float>(height);
-
-	for (int y = 0; y < height + 1; y++)
-	{
-		for (int x = 0; x < width + 1; x++)
-		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
-			Vertex &v = interleavedVertices_[index];
-			v.x = -0.5f + static_cast<float>(x) * deltaX;
-			v.y = -0.5f + static_cast<float>(y) * deltaY + 0.25f * sinf(value + 2 * x * deltaX);
-		}
-	}
-}
-
 void *Sprite::imguiTexId()
 {
-	return reinterpret_cast<void *>(texture_->glTexture_.get());
+	return reinterpret_cast<void *>(texture_->imguiTexId());
 }
 
 ///////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@
 #include <nctl/Array.h>
 #include "IAnimation.h"
 
-/// The animation group class
+/// The animation group abstract class
 class AnimationGroup : public IAnimation
 {
   public:

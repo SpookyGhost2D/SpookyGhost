@@ -15,6 +15,9 @@
 #include "Sprite.h"
 #include "Texture.h"
 
+#include "version.h"
+#include <ncine/version.h>
+
 namespace {
 
 const char *easingCurveTypes[] = { "Linear", "Quadratic", "Cubic", "Quartic", "Quintic", "Sine", "Exponential", "Circular" };
@@ -26,11 +29,12 @@ enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 const char *propertyTypes[] = { "None", "Position X", "Position Y", "Rotation" };
 enum PropertyTypesEnum { NONE, POSITION_X, POSITION_Y, ROTATION };
 
-const char *gridAnimTypes[] = { "Wobble" };
-enum GridAnimTypesEnum { WOBBLE };
+const char *gridAnimTypes[] = { "Wobble X", "Wooble Y", "Zoom" };
 
 const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
+
+static bool showAboutWindow = false;
 
 int inputTextCallback(ImGuiInputTextCallbackData *data)
 {
@@ -385,6 +389,11 @@ void UserInterface::pushStatusErrorMessage(const char *message)
 	lastStatus_ = nc::TimeStamp::now();
 }
 
+void UserInterface::closeAboutWindow()
+{
+	showAboutWindow = false;
+}
+
 void UserInterface::createGui()
 {
 	createDockingSpace();
@@ -408,6 +417,28 @@ void UserInterface::createGui()
 	ImGui::Begin("Status");
 	ImGui::Text("%s", statusMessage_.data());
 	ImGui::End();
+
+	if (showAboutWindow)
+	{
+		ImGui::Begin("About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
+#if 0
+		ImVec2 cursorPos = ImGui::GetCursorPos();
+		cursorPos.x = (ImGui::GetWindowSize().x - 100.0f) * 0.5f;
+		ImGui::SetCursorPos(cursorPos);
+		ImGui::Image(spriteMgr_.textures()[0]->imguiTexId(), ImVec2(100, 100));
+		ImGui::Spacing();
+#endif
+#ifdef WITH_GIT_VERSION
+		ImGui::Text("SpookyGhost %s (%s)", VersionStrings::Version, VersionStrings::GitBranch);
+#endif
+		ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::Text("Based on nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
+		ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
+		ImGui::End();
+	}
 }
 
 ///////////////////////////////////////////////////////////
@@ -477,6 +508,13 @@ void UserInterface::createMenuBar()
 			if (ImGui::MenuItem(Labels::Open)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
 			if (ImGui::MenuItem(Labels::Save)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
 			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q")) { nc::theApplication().quit(); }
+			ImGui::EndMenu();
+		}
+		else if (ImGui::BeginMenu("?"))
+		{
+			if (ImGui::MenuItem(Labels::About))
+				showAboutWindow = true;
+
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();

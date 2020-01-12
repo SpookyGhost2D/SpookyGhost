@@ -27,6 +27,11 @@ void Texture::bind()
 	glTexture_->bind();
 }
 
+void *Texture::imguiTexId()
+{
+	return reinterpret_cast<void *>(glTexture_.get());
+}
+
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////

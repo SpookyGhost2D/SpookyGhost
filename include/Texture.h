@@ -34,6 +34,8 @@ class Texture
 
 	void bind();
 
+	void *imguiTexId();
+
   private:
 	nctl::UniquePtr<nc::GLTexture> glTexture_;
 	nctl::String name_;

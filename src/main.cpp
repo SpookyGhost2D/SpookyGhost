@@ -108,6 +108,7 @@ void MyEventHandler::onInit()
 	nctl::UniquePtr<GridAnimation> gridAnim = nctl::makeUnique<GridAnimation>(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::PING_PONG);
 	gridAnim->curve().setScale(20.0f);
 	gridAnim->setSprite(sprite.get());
+	gridAnim->setGridAnimationType(GridAnimation::AnimationType::WOBBLE_Y);
 	animGroup->anims().pushBack(nctl::move(gridAnim));
 
 	animGroup->play();
@@ -163,7 +164,6 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 
 void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 {
-	// TEMPORARY
 	if (event.sym == nc::KeySym::ESCAPE)
-		nc::theApplication().quit();
+		ui_->closeAboutWindow();
 }

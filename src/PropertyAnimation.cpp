@@ -10,7 +10,7 @@ PropertyAnimation::PropertyAnimation()
 }
 
 PropertyAnimation::PropertyAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : curve_(type, loopMode), speed_(1.0f), property_(nullptr), propertyName_(64)
+    : CurveAnimation(type, loopMode), property_(nullptr), propertyName_(64)
 {
 }
 
@@ -20,17 +20,9 @@ PropertyAnimation::PropertyAnimation(EasingCurve::Type type, EasingCurve::LoopMo
 
 void PropertyAnimation::stop()
 {
-	curve_.reset();
-	state_ = State::STOPPED;
+	CurveAnimation::play();
 	if (property_)
 		*property_ = curve().value();
-}
-
-void PropertyAnimation::play()
-{
-	if (state_ == State::STOPPED)
-		curve_.reset();
-	state_ = State::PLAYING;
 }
 
 void PropertyAnimation::update(float deltaTime)
@@ -49,7 +41,5 @@ void PropertyAnimation::update(float deltaTime)
 			break;
 	}
 
-	if (curve_.time() >= 1.0f && state_ == State::PLAYING &&
-	    curve_.loopMode() == EasingCurve::LoopMode::DISABLED)
-		state_ = State::STOPPED;
+	CurveAnimation::update(deltaTime);
 }
