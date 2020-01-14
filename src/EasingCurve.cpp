@@ -6,7 +6,7 @@
 ///////////////////////////////////////////////////////////
 
 EasingCurve::EasingCurve(Type type, LoopMode loopMode)
-    : type_(type), loopMode_(loopMode), forward_(true),
+    : type_(type), direction_(Direction::FORWARD), loopMode_(loopMode), forward_(true),
       time_(0.0f), start_(0.0f), end_(1.0f), scale_(1.0f), shift_(0.0f)
 {
 }
@@ -27,7 +27,10 @@ void EasingCurve::setTime(float time)
 
 void EasingCurve::reset()
 {
-	time_ = start_;
+	if (direction_ == Direction::FORWARD)
+		time_ = start_;
+	else if (direction_ == Direction::BACKWARD)
+		time_ = end_;
 }
 
 float EasingCurve::value()
@@ -57,26 +60,50 @@ float EasingCurve::value()
 
 float EasingCurve::next(float deltaTime)
 {
-	if (forward_)
+	if ((forward_ && direction_ == Direction::FORWARD) ||
+	    (!forward_ && direction_ == Direction::BACKWARD))
 		time_ += deltaTime;
 	else
 		time_ -= deltaTime;
 
 	if (time_ < start_)
 	{
-		time_ = 2.0f * start_ - time_;
-		forward_ = true;
+		if (direction_ == Direction::BACKWARD)
+		{
+			if (loopMode_ == LoopMode::DISABLED)
+				time_ = start_;
+			else if (loopMode_ == LoopMode::REWIND)
+				time_ = end_ + time_;
+			else if (loopMode_ == LoopMode::PING_PONG)
+			{
+				time_ = 2.0f * start_ - time_;
+				forward_ = false;
+			}
+		}
+		else
+		{
+			time_ = 2.0f * start_ - time_;
+			forward_ = true;
+		}
 	}
 	else if (time_ > end_)
 	{
-		if (loopMode_ == LoopMode::DISABLED)
-			time_ = end_;
-		else if (loopMode_ == LoopMode::REWIND)
-			time_ = time_ - end_;
-		else if (loopMode_ == LoopMode::PING_PONG)
+		if (direction_ == Direction::FORWARD)
+		{
+			if (loopMode_ == LoopMode::DISABLED)
+				time_ = end_;
+			else if (loopMode_ == LoopMode::REWIND)
+				time_ = time_ - end_;
+			else if (loopMode_ == LoopMode::PING_PONG)
+			{
+				time_ = 2.0f * end_ - time_;
+				forward_ = false;
+			}
+		}
+		else
 		{
 			time_ = 2.0f * end_ - time_;
-			forward_ = false;
+			forward_ = true;
 		}
 	}
 

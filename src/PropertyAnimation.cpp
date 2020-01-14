@@ -10,7 +10,7 @@ PropertyAnimation::PropertyAnimation()
 }
 
 PropertyAnimation::PropertyAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : CurveAnimation(type, loopMode), property_(nullptr), propertyName_(64)
+    : CurveAnimation(type, loopMode), property_(nullptr), propertyName_(64), sprite_(nullptr)
 {
 }
 
@@ -20,7 +20,7 @@ PropertyAnimation::PropertyAnimation(EasingCurve::Type type, EasingCurve::LoopMo
 
 void PropertyAnimation::stop()
 {
-	CurveAnimation::play();
+	CurveAnimation::stop();
 	if (property_)
 		*property_ = curve().value();
 }

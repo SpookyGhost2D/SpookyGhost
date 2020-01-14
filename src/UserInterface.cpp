@@ -20,16 +20,21 @@
 
 namespace {
 
+const char *anchorPointItems[] = { "Center", "Bottom Left", "Top Left", "Bottom Right", "Top Right" };
+enum AnchorPointsEnum { CENTER, BOTTOM_LEFT, TOP_LEFT, BOTTOM_RIGHT, TOP_RIGHT };
+const char *blendingPresets[] = { "Disabled", "Alpha", "Pre-multiplied Alpha", "Additive", "Multiply" };
+
 const char *easingCurveTypes[] = { "Linear", "Quadratic", "Cubic", "Quartic", "Quintic", "Sine", "Exponential", "Circular" };
+const char *easingCurveDirections[] = { "Forward", "Backward" };
 const char *easingCurveLoopModes[] = { "Disabled", "Rewind", "Ping Pong" };
 
 const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid" };
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 
-const char *propertyTypes[] = { "None", "Position X", "Position Y", "Rotation" };
-enum PropertyTypesEnum { NONE, POSITION_X, POSITION_Y, ROTATION };
+const char *propertyTypes[] = { "None", "Position X", "Position Y", "Rotation", "Scale X", "Scale Y", "AnchorPoint X", "AnchorPoint Y", "Opacity", "Red Channel", "Green Channel", "Blue Channel" };
+enum PropertyTypesEnum { NONE, POSITION_X, POSITION_Y, ROTATION, SCALE_X, SCALE_Y, ANCHOR_X, ANCHOR_Y, OPACITY, COLOR_R, COLOR_G, COLOR_B };
 
-const char *gridAnimTypes[] = { "Wobble X", "Wooble Y", "Zoom" };
+const char *gridAnimTypes[] = { "Wobble X", "Wooble Y", "Skew X", "Skew Y", "Zoom" };
 
 const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
@@ -185,7 +190,7 @@ inline void applyDarkStyle()
 
 	/// 0 = FLAT APPEARENCE
 	/// 1 = MORE "3D" LOOK
-	int is3D = 1;
+	float is3D = 1.0f;
 
 	colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 	colors[ImGuiCol_TextDisabled]           = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
@@ -357,6 +362,9 @@ UserInterface::UserInterface(Canvas &canvas, SpriteManager &spriteMgr, Animation
 	//applyDarcula();
 	applyDarkStyle();
 	//applyYetAnotherDarkStyle();
+
+	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon48.png").data());
+	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine48.png").data());
 }
 
 ///////////////////////////////////////////////////////////
@@ -394,6 +402,14 @@ void UserInterface::closeAboutWindow()
 	showAboutWindow = false;
 }
 
+void UserInterface::menuNew()
+{
+	// Always clear animations before sprites
+	animMgr_.clear();
+	spriteMgr_.sprites().clear();
+	spriteMgr_.textures().clear();
+}
+
 void UserInterface::createGui()
 {
 	createDockingSpace();
@@ -421,22 +437,33 @@ void UserInterface::createGui()
 	if (showAboutWindow)
 	{
 		ImGui::Begin("About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
-#if 0
 		ImVec2 cursorPos = ImGui::GetCursorPos();
-		cursorPos.x = (ImGui::GetWindowSize().x - 100.0f) * 0.5f;
+		const ImVec2 spookySize(spookyLogo_->width() * 2.0f, spookyLogo_->height() * 2.0f);
+		cursorPos.x = (ImGui::GetWindowSize().x - spookySize.x) * 0.5f;
 		ImGui::SetCursorPos(cursorPos);
-		ImGui::Image(spriteMgr_.textures()[0]->imguiTexId(), ImVec2(100, 100));
+		ImGui::Image(spookyLogo_->imguiTexId(), spookySize);
 		ImGui::Spacing();
-#endif
 #ifdef WITH_GIT_VERSION
 		ImGui::Text("SpookyGhost %s (%s)", VersionStrings::Version, VersionStrings::GitBranch);
 #endif
 		ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
-		ImGui::Spacing();
+		for (unsigned int i = 0; i < 4; i++)
+			ImGui::Spacing();
+
 		ImGui::Separator();
+
+		for (unsigned int i = 0; i < 4; i++)
+			ImGui::Spacing();
+		cursorPos = ImGui::GetCursorPos();
+		const ImVec2 ncineSize(ncineLogo_->width() * 2.0f, ncineLogo_->height() * 2.0f);
+		cursorPos.x = (ImGui::GetWindowSize().x - ncineSize.x) * 0.5f;
+		ImGui::SetCursorPos(cursorPos);
+		ImGui::Image(ncineLogo_->imguiTexId(), spookySize);
 		ImGui::Spacing();
 		ImGui::Text("Based on nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
 		ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
+		ImGui::Spacing();
+		ImGui::Text("https://ncine.github.io/");
 		ImGui::End();
 	}
 }
@@ -448,7 +475,7 @@ void UserInterface::createGui()
 void UserInterface::createDockingSpace()
 {
 	ImGuiIO &io = ImGui::GetIO();
-	if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable == 0)
+	if ((io.ConfigFlags & ImGuiConfigFlags_DockingEnable) == 0)
 		return;
 
 	const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
@@ -504,13 +531,13 @@ void UserInterface::createMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem(Labels::New, "CTRL + N")) { animMgr_.clear(); }
+			if (ImGui::MenuItem(Labels::New, "CTRL + N")) { menuNew(); }
 			if (ImGui::MenuItem(Labels::Open)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
 			if (ImGui::MenuItem(Labels::Save)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
 			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q")) { nc::theApplication().quit(); }
 			ImGui::EndMenu();
 		}
-		else if (ImGui::BeginMenu("?"))
+		if (ImGui::BeginMenu("?"))
 		{
 			if (ImGui::MenuItem(Labels::About))
 				showAboutWindow = true;
@@ -594,10 +621,6 @@ void UserInterface::createCanvasGui()
 
 void UserInterface::createSpritesGui()
 {
-	// TODO: Load image
-	// TODO: Set texrect
-	// TODO: Show current info like position, rotation, frame, etc...
-
 	static int selectedTextureIndex = 0;
 	if (ImGui::CollapsingHeader(Labels::Sprites))
 	{
@@ -625,6 +648,7 @@ void UserInterface::createSpritesGui()
 			{
 				spriteMgr_.textures().pushBack(nctl::makeUnique<Texture>(texFilename_.data()));
 				auxString_.format("Loaded texture \"%s\"", texFilename_.data());
+				selectedTextureIndex = spriteMgr_.textures().size() - 1;
 			}
 			else
 				auxString_.format("Cannot load texture \"%s\"", texFilename_.data());
@@ -632,26 +656,48 @@ void UserInterface::createSpritesGui()
 			pushStatusInfoMessage(auxString_.data());
 		}
 
+		ImGui::Spacing();
 		ImGui::Separator();
+		ImGui::Spacing();
 
-		if (ImGui::Button(Labels::New))
+		if (ImGui::Button(Labels::Add))
 		{
 			if (selectedTextureIndex >= 0 && selectedTextureIndex < spriteMgr_.textures().size())
 			{
 				Texture &tex = *spriteMgr_.textures()[selectedTextureIndex];
 				spriteMgr_.sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
+				selectedSpriteIndex_ = spriteMgr_.sprites().size() - 1;
 			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Remove) && spriteMgr_.sprites().isEmpty() == false)
+		{
+			animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
+			if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
+				spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
+			if (selectedSpriteIndex_ > 0)
+				selectedSpriteIndex_--;
 		}
 
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::Remove))
+			if (selectedSpriteIndex_ > 0)
 			{
-				if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
-					spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
-				if (selectedSpriteIndex_ > 0)
+				ImGui::SameLine();
+				if (ImGui::Button(Labels::MoveUp))
+				{
+					nctl::swap(spriteMgr_.sprites()[selectedSpriteIndex_], spriteMgr_.sprites()[selectedSpriteIndex_ - 1]);
 					selectedSpriteIndex_--;
+				}
+			}
+			if (selectedSpriteIndex_ < spriteMgr_.sprites().size() - 1)
+			{
+				ImGui::SameLine();
+				if (ImGui::Button(Labels::MoveDown))
+				{
+					nctl::swap(spriteMgr_.sprites()[selectedSpriteIndex_], spriteMgr_.sprites()[selectedSpriteIndex_ + 1]);
+					selectedSpriteIndex_++;
+				}
 			}
 
 			comboString_.clear();
@@ -676,106 +722,96 @@ void UserInterface::createSpritesGui()
 							 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &sprite.name);
 
 			nc::Vector2f position(sprite.x, sprite.y);
-			ImGui::SliderFloat2("Position", position.data(), 0.0f, canvas_.texWidth());
+			ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(canvas_.texWidth()));
 			sprite.x = roundf(position.x);
 			sprite.y = roundf(position.y);
-
 			ImGui::SliderFloat("Rotation", &sprite.rotation, 0.0f, 360.0f);
+			ImGui::SliderFloat2("Scale", sprite.scaleFactor.data(), 0.0f, 8.0f);
+			ImGui::SameLine();
+			auxString_.format("%s##Scale", Labels::Reset);
+			if (ImGui::Button(auxString_.data()))
+				sprite.scaleFactor.set(1.0f, 1.0f);
 
+			const float halfBiggerDimension = sprite.width() > sprite.height() ? sprite.width() * 0.5f : sprite.height() * 0.5f;
+			ImGui::SliderFloat2("Anchor Point", sprite.anchorPoint.data(), -halfBiggerDimension, halfBiggerDimension);
+			static int currentAnchorSelection = 0;
+			if (ImGui::Combo("Anchor Presets", &currentAnchorSelection, anchorPointItems, IM_ARRAYSIZE(anchorPointItems)))
+			{
+				switch (currentAnchorSelection)
+				{
+					case AnchorPointsEnum::CENTER:
+						sprite.anchorPoint.set(0.0f, 0.0f);
+						break;
+					case AnchorPointsEnum::BOTTOM_LEFT:
+						sprite.anchorPoint.set(-sprite.width() * 0.5f, sprite.height() * 0.5f);
+						break;
+					case AnchorPointsEnum::TOP_LEFT:
+						sprite.anchorPoint.set(-sprite.width() * 0.5f, -sprite.height() * 0.5f);
+						break;
+					case AnchorPointsEnum::BOTTOM_RIGHT:
+						sprite.anchorPoint.set(sprite.width() * 0.5f, sprite.height() * 0.5f);
+						break;
+					case AnchorPointsEnum::TOP_RIGHT:
+						sprite.anchorPoint.set(sprite.width() * 0.5f, -sprite.height() * 0.5f);
+						break;
+				}
+			}
+
+			ImGui::Separator();
 			const float texWidth = static_cast<float>(tex.width());
 			const float texHeight = static_cast<float>(tex.height());
-			ImVec2 size(texWidth * 4, texHeight * 4);
+			nc::Recti texRect = sprite.texRect();
+			ImVec2 size = ImVec2(sprite.width() * canvasZoom_, sprite.height() * canvasZoom_);
 			ImVec2 uv0(0.0f, 0.0f);
 			ImVec2 uv1(1.0, 1.0f);
+			uv0.x = texRect.x / texWidth;
+			uv0.y = texRect.y / texHeight;
+			uv1.x = (texRect.x + texRect.w) / texWidth;
+			uv1.y = (texRect.y + texRect.h) / texHeight;
 			ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
+
+			int minX = texRect.x;
+			int maxX = minX + texRect.w;
+			ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
+			int minY = texRect.y;
+			int maxY = minY + texRect.h;
+			ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, tex.height());
+			texRect.x = minX;
+			texRect.w = maxX - minX;
+			texRect.y = minY;
+			texRect.h = maxY - minY;
+			ImGui::SameLine();
+			auxString_.format("%s##Rect", Labels::Reset);
+			if (ImGui::Button(auxString_.data()))
+				texRect = nc::Recti(0, 0, tex.width(), tex.height());
+
+			const nc::Recti currentTexRect = sprite.texRect();
+			if (texRect.x != currentTexRect.x || texRect.y != currentTexRect.y ||
+			    texRect.w != currentTexRect.w || texRect.h != currentTexRect.h)
+				sprite.setTexRect(texRect);
+
+			bool isFlippedX = sprite.isFlippedX();
+			ImGui::Checkbox("Flipped X", &isFlippedX);
+			ImGui::SameLine();
+			bool isFlippedY = sprite.isFlippedY();
+			ImGui::Checkbox("Flipped Y", &isFlippedY);
+
+			if (isFlippedX != sprite.isFlippedX())
+				sprite.setFlippedX(isFlippedX);
+			if (isFlippedY != sprite.isFlippedY())
+				sprite.setFlippedY(isFlippedY);
+
+			ImGui::Separator();
+			int selectedBlendingPreset = static_cast<int>(sprite.blendingPreset());
+			ImGui::Combo("Blending", &selectedBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
+			sprite.setBlendingPreset(static_cast<Sprite::BlendingPreset>(selectedBlendingPreset));
+
+			ImGui::ColorEdit4("Color", sprite.color.data(), ImGuiColorEditFlags_AlphaBar);
+			ImGui::SameLine();
+			auxString_.format("%s##Color", Labels::Reset);
+			if (ImGui::Button(auxString_.data()))
+				sprite.color = nc::Colorf::White;
 		}
-
-#if 0
-		Texture &tex = sprite_.texture();
-		const float texWidth = static_cast<float>(tex.width());
-		const float texHeight = static_cast<float>(tex.height());
-		ImVec2 size(texWidth, texHeight);
-		ImVec2 uv0(0.0f, 0.0f);
-		ImVec2 uv1(1.0, 1.0f);
-
-		nc::Recti texRect = sprite_.texRect();
-		size = ImVec2(texRect.w, texRect.h);
-		uv0.x = texRect.x / texWidth;
-		uv0.y = texRect.y / texHeight;
-		uv1.x = (texRect.x + texRect.w) / texWidth;
-		uv1.y = (texRect.y + texRect.h) / texHeight;
-
-		bool isFlippedX = sprite_.isFlippedX();
-		if (isFlippedX)
-			nctl::swap(uv0.x, uv1.x);
-		bool isFlippedY = sprite_.isFlippedY();
-		if (isFlippedY)
-			nctl::swap(uv0.y, uv1.y);
-
-
-		ImGui::Image(sprite_.imguiTexId(), size, uv0, uv1);
-
-		int minX = texRect.x;
-		int maxX = minX + texRect.w;
-		ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
-		int minY = texRect.y;
-		int maxY = minY + texRect.h;
-		ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, tex.height());
-		texRect.x = minX;
-		texRect.w = maxX - minX;
-		texRect.y = minY;
-		texRect.h = maxY - minY;
-		ImGui::SameLine();
-
-		if (ImGui::Button("Reset"))
-			texRect = nc::Recti(0, 0, tex.width(), tex.height());
-
-		if (s.texRect.x != spriteState_.texRect.x || s.texRect.y != spriteState_.texRect.y ||
-		    s.texRect.w != spriteState_.texRect.w || s.texRect.h != spriteState_.texRect.h)
-		{
-			particleSystem->setTexRect(spriteState_.texRect);
-			s.texRect = spriteState_.texRect;
-		}
-
-		ImGui::Checkbox("Flipped X", &isFlippedX);
-		ImGui::SameLine();
-		ImGui::Checkbox("Flipped Y", &isFlippedY);
-
-		if (sprite_.isFlippedX() != isFlippedX)
-			sprite_.setFlippedX(isFlippedX);
-		if (sprite_.isFlippedY() != isFlippedY)
-			sprite_.setFlippedY(isFlippedY);
-
-		ImGui::SliderFloat2("Anchor Point", spriteState_.anchorPoint.data(), 0.0f, 1.0f);
-		static int currentAnchorSelection = 0;
-		if (ImGui::Combo("Anchor Presets", &currentAnchorSelection, anchorPointItems, IM_ARRAYSIZE(anchorPointItems)))
-		{
-			switch (currentAnchorSelection)
-			{
-				case 0:
-					spriteState_.anchorPoint = nc::BaseSprite::AnchorCenter;
-					break;
-				case 1:
-					spriteState_.anchorPoint = nc::BaseSprite::AnchorBottomLeft;
-					break;
-				case 2:
-					spriteState_.anchorPoint = nc::BaseSprite::AnchorTopLeft;
-					break;
-				case 3:
-					spriteState_.anchorPoint = nc::BaseSprite::AnchorBottomRight;
-					break;
-				case 4:
-					spriteState_.anchorPoint = nc::BaseSprite::AnchorTopRight;
-					break;
-			}
-		}
-		if (s.anchorPoint.x != spriteState_.anchorPoint.x ||
-		    s.anchorPoint.y != spriteState_.anchorPoint.y)
-		{
-			particleSystem->setAnchorPoint(spriteState_.anchorPoint);
-			s.anchorPoint = spriteState_.anchorPoint;
-		}
-#endif
 	}
 }
 
@@ -822,14 +858,12 @@ void UserInterface::createRenderGui()
 		ImGui::InputText("Filename prefix", animFilename_.data(), MaxStringLength,
 		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &animFilename_);
 
-		int fps = static_cast<int>(saveAnimStatus_.fps);
-		ImGui::InputInt("FPS", &fps);
-		saveAnimStatus_.fps = static_cast<float>(fps);
+		ImGui::InputInt("FPS", &saveAnimStatus_.fps);
 		ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, 10 * saveAnimStatus_.fps); // Hard-coded limit
 		float duration = saveAnimStatus_.numFrames * saveAnimStatus_.inverseFps();
 		ImGui::SliderFloat("Duration", &duration, 0.0f, 10.0f, "%.3fs"); // Hard-coded limit
 
-		saveAnimStatus_.numFrames = duration * saveAnimStatus_.fps;
+		saveAnimStatus_.numFrames = static_cast<int>(duration * saveAnimStatus_.fps);
 		if (saveAnimStatus_.numFrames < 1)
 			saveAnimStatus_.numFrames = 1;
 
@@ -840,7 +874,7 @@ void UserInterface::createRenderGui()
 			auxString_.format("Frame: %d/%d", numSavedFrames, saveAnimStatus_.numFrames);
 			ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), auxString_.data());
 		}
-		else if (ImGui::Button("Save to PNG") && shouldSaveAnim_ == false)
+		else if (ImGui::Button(Labels::savePngs) && shouldSaveAnim_ == false)
 		{
 			if (animFilename_.isEmpty())
 				pushStatusErrorMessage("Set a filename prefix before saving an animation");
@@ -855,7 +889,7 @@ void UserInterface::createRenderGui()
 
 void UserInterface::createRecursiveAnimationsGui(IAnimation &anim)
 {
-	ImGui::PushID(reinterpret_cast<const void*>(&anim));
+	ImGui::PushID(reinterpret_cast<const void *>(&anim));
 	switch (anim.type())
 	{
 		case IAnimation::Type::PROPERTY:
@@ -948,12 +982,13 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
 		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
 		{
 			createRecursiveAnimationsGui(*animGroup.anims()[i].get());
-			auxString_.format("%s##%u", Labels::Remove, i);
-			if (ImGui::Button(auxString_.data()))
+			ImGui::PushID(reinterpret_cast<const void *>(animGroup.anims()[i].get()));
+			if (ImGui::Button(Labels::Remove))
 			{
 				animGroup.anims()[i]->stop();
 				animGroup.anims().removeAt(i);
 			}
+			ImGui::PopID();
 		}
 
 		ImGui::TreePop();
@@ -966,9 +1001,12 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 
 	if (ImGui::TreeNodeEx("Property Animation", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		static int spriteIndex = 0;
+		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
+			if (spriteIndex < 0)
+				spriteIndex = 0;
+
 			comboString_.clear();
 			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
 			{
@@ -981,6 +1019,7 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 			comboString_[comboString_.length() - 1] = '\0';
 
 			ImGui::Combo("Sprites", &spriteIndex, comboString_.data());
+			anim.setSprite(spriteMgr_.sprites()[spriteIndex].get());
 
 			Sprite &sprite = *spriteMgr_.sprites()[spriteIndex];
 
@@ -1013,6 +1052,30 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 				case PropertyTypesEnum::ROTATION:
 					anim.setProperty(&sprite.rotation);
 					break;
+				case PropertyTypesEnum::SCALE_X:
+					anim.setProperty(&sprite.scaleFactor.x);
+					break;
+				case PropertyTypesEnum::SCALE_Y:
+					anim.setProperty(&sprite.scaleFactor.y);
+					break;
+				case PropertyTypesEnum::ANCHOR_X:
+					anim.setProperty(&sprite.anchorPoint.x);
+					break;
+				case PropertyTypesEnum::ANCHOR_Y:
+					anim.setProperty(&sprite.anchorPoint.y);
+					break;
+				case PropertyTypesEnum::OPACITY:
+					anim.setProperty(&sprite.color.data()[3]);
+					break;
+				case PropertyTypesEnum::COLOR_R:
+					anim.setProperty(&sprite.color.data()[0]);
+					break;
+				case PropertyTypesEnum::COLOR_G:
+					anim.setProperty(&sprite.color.data()[1]);
+					break;
+				case PropertyTypesEnum::COLOR_B:
+					anim.setProperty(&sprite.color.data()[2]);
+					break;
 			}
 		}
 		else
@@ -1021,6 +1084,10 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		int currentComboCurveType = static_cast<int>(anim.curve().type());
 		ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
 		anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
+
+		int currentDirectionMode = static_cast<int>(anim.curve().direction());
+		ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
+		anim.curve().setDirection(static_cast<EasingCurve::Direction>(currentDirectionMode));
 
 		int currentComboLoopMode = static_cast<int>(anim.curve().loopMode());
 		ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
@@ -1057,6 +1124,9 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		else if (anim.curve().time() > anim.curve().end())
 			anim.curve().time() = anim.curve().end();
 
+		ImGui::Text("Value: %f", anim.curve().value());
+
+		ImGui::Separator();
 		ImGui::Text("State: %s", animStateToString(anim.state()));
 		if (ImGui::Button(Labels::Stop))
 			anim.stop();
@@ -1109,6 +1179,10 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
 		anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
 
+		int currentDirectionMode = static_cast<int>(anim.curve().direction());
+		ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
+		anim.curve().setDirection(static_cast<EasingCurve::Direction>(currentDirectionMode));
+
 		int currentComboLoopMode = static_cast<int>(anim.curve().loopMode());
 		ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
 		anim.curve().setLoopMode(static_cast<EasingCurve::LoopMode>(currentComboLoopMode));
@@ -1144,6 +1218,9 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		else if (anim.curve().time() > anim.curve().end())
 			anim.curve().time() = anim.curve().end();
 
+		ImGui::Text("Value: %f", anim.curve().value());
+
+		ImGui::Separator();
 		ImGui::Text("State: %s", animStateToString(anim.state()));
 		if (ImGui::Button(Labels::Stop))
 			anim.stop();

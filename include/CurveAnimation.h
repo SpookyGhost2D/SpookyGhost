@@ -8,13 +8,6 @@
 class CurveAnimation : public IAnimation
 {
   public:
-	enum class LoopMode
-	{
-		DISABLED,
-		REWIND,
-		PING_PONG
-	};
-
 	CurveAnimation();
 	CurveAnimation(EasingCurve::Type curveType, EasingCurve::LoopMode loopMode);
 

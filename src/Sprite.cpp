@@ -25,9 +25,11 @@ struct VertexFormat
 ///////////////////////////////////////////////////////////
 
 Sprite::Sprite(Texture *texture)
-    : name(MaxNameLength), rotation(0.0f), anchorPoint(0.0f, 0.0f), scaleFactor(1.0f, 1.0f),
+    : name(MaxNameLength), rotation(0.0f), scaleFactor(1.0f, 1.0f),
+      anchorPoint(0.0f, 0.0f), color(nc::Colorf::White),
       width_(0), height_(0), modelView_(nc::Matrix4x4f::Identity),
-      texture_(nullptr), texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false), //color_(nc::Colorf::White)
+      texture_(nullptr), texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false),
+      blendingPreset_(BlendingPreset::ALPHA),
       interleavedVertices_(0), restPositions_(0), indices_(0)
 {
 	spriteShaderProgram_ = RenderingResources::spriteShaderProgram();
@@ -74,12 +76,14 @@ void Sprite::updateRender()
 	const float texScaleY = texRect_.h / float(texSize.y);
 	const float texBiasY = texRect_.y / float(texSize.y);
 
+	spriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
 	spriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
 	spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texSize.x, texSize.y);
 	spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
 	spriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
 	spriteShaderUniforms_->commitUniforms();
 
+	meshSpriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
 	meshSpriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
 	meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texSize.x, texSize.y);
 	meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
@@ -129,7 +133,7 @@ void Sprite::setTexture(Texture *texture)
 void Sprite::setTexRect(const nc::Recti &rect)
 {
 	texRect_ = rect;
-	setSize(static_cast<float>(rect.w), static_cast<float>(rect.h));
+	setSize(abs(rect.w), abs(rect.h));
 
 	if (flippedX_)
 	{
@@ -183,14 +187,8 @@ void *Sprite::imguiTexId()
 void Sprite::setSize(int width, int height)
 {
 	ASSERT(width > 0 && height > 0);
-
-#if 0
-	// Update anchor points when size changes
-	if (anchorPoint_.x != 0.0f)
-		anchorPoint_.x = (anchorPoint_.x / width_) * width;
-	if (anchorPoint_.y != 0.0f)
-		anchorPoint_.y = (anchorPoint_.y / height_) * height;
-#endif
+	if (width == width_ && height == height_)
+		return;
 
 	width_ = width;
 	height_ = height;

@@ -4,6 +4,8 @@
 #include <nctl/UniquePtr.h>
 #include "AnimationGroup.h"
 
+class Sprite;
+
 /// The animation manager class
 class AnimationManager
 {
@@ -16,6 +18,8 @@ class AnimationManager
 	void update(float deltaTime);
 	void reset();
 	void clear();
+
+	void removeSprite(Sprite *sprite);
 
   private:
 	nctl::UniquePtr<AnimationGroup> animGroup_;

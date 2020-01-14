@@ -16,7 +16,6 @@ namespace nc = ncine;
 class RenderingResources
 {
   public:
-	static inline nc::GLShaderProgram *textureShaderProgram() { return spriteShaderProgram_.get(); }
 	static inline nc::GLShaderProgram *spriteShaderProgram() { return spriteShaderProgram_.get(); }
 	static inline nc::GLShaderProgram *meshSpriteShaderProgram() { return meshSpriteShaderProgram_.get(); }
 	static inline const nc::Matrix4x4f &projectionMatrix() { return projectionMatrix_; }
@@ -28,7 +27,6 @@ class RenderingResources
 	static void dispose();
 
   private:
-	static nctl::UniquePtr<nc::GLShaderProgram> textureShaderProgram_;
 	static nctl::UniquePtr<nc::GLShaderProgram> spriteShaderProgram_;
 	static nctl::UniquePtr<nc::GLShaderProgram> meshSpriteShaderProgram_;
 

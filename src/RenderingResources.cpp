@@ -10,7 +10,6 @@
 // STATIC DEFINITIONS
 ///////////////////////////////////////////////////////////
 
-nctl::UniquePtr<nc::GLShaderProgram> RenderingResources::textureShaderProgram_;
 nctl::UniquePtr<nc::GLShaderProgram> RenderingResources::spriteShaderProgram_;
 nctl::UniquePtr<nc::GLShaderProgram> RenderingResources::meshSpriteShaderProgram_;
 
@@ -46,7 +45,6 @@ void RenderingResources::create()
 	const nc::AppConfiguration &appCfg = nc::theApplication().appConfiguration();
 
 	ShaderLoad shadersToLoad[] = {
-		{ RenderingResources::textureShaderProgram_, ShaderStrings::texture_vs, ShaderStrings::texture_fs, nc::GLShaderProgram::Introspection::ENABLED },
 		{ RenderingResources::spriteShaderProgram_, ShaderStrings::sprite_vs, ShaderStrings::sprite_fs, nc::GLShaderProgram::Introspection::ENABLED },
 		{ RenderingResources::meshSpriteShaderProgram_, ShaderStrings::meshsprite_vs, ShaderStrings::sprite_fs, nc::GLShaderProgram::Introspection::ENABLED },
 	};
@@ -71,7 +69,6 @@ void RenderingResources::dispose()
 {
 	meshSpriteShaderProgram_.reset(nullptr);
 	spriteShaderProgram_.reset(nullptr);
-	textureShaderProgram_.reset(nullptr);
 
 	LOGI("Rendering resources disposed");
 }

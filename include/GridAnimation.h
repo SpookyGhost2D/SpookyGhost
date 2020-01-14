@@ -13,6 +13,8 @@ class GridAnimation : public CurveAnimation
 	{
 		WOBBLE_X,
 		WOBBLE_Y,
+		SKEW_X,
+		SKEW_Y,
 		ZOOM
 	};
 

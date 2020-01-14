@@ -22,7 +22,8 @@ GridAnimation::GridAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopM
 void GridAnimation::stop()
 {
 	CurveAnimation::stop();
-	deform(curve_.value());
+	if (sprite_)
+		deform(curve_.value());
 }
 
 void GridAnimation::update(float deltaTime)
@@ -54,6 +55,8 @@ void wobbleX(Sprite *sprite, float value)
 {
 	const int width = sprite->width();
 	const int height = sprite->height();
+	const int halfHeight = height / 2;
+	const float invWidth = 1.0f / static_cast<float>(width);
 	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
 
 	for (int y = 0; y < height + 1; y++)
@@ -62,7 +65,9 @@ void wobbleX(Sprite *sprite, float value)
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Sprite::Vertex &v = interleavedVertices[index];
-			v.x += 0.15f * sinf(value * (y / static_cast<float>(height + 1))) * (y / static_cast<float>(height + 1));
+			//v.x += 0.15f * sinf(value * (y / static_cast<float>(height + 1))) * (y / static_cast<float>(height + 1));
+			const int distCenterY = halfHeight - y;
+			v.x += invWidth * sinf(value + distCenterY * 0.25f);
 		}
 	}
 }
@@ -71,6 +76,8 @@ void wobbleY(Sprite *sprite, float value)
 {
 	const int width = sprite->width();
 	const int height = sprite->height();
+	const int halfWidth = width / 2;
+	const float invHeight = 1.0f / static_cast<float>(height);
 	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
 
 	for (int y = 0; y < height + 1; y++)
@@ -79,7 +86,49 @@ void wobbleY(Sprite *sprite, float value)
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Sprite::Vertex &v = interleavedVertices[index];
-			v.y += 0.15f * sinf(value * (x / static_cast<float>(width + 1))) * (x / static_cast<float>(width + 1));
+			//v.y += 0.15f * sinf(value * (x / static_cast<float>(width + 1))) * (x / static_cast<float>(width + 1));
+			const int distCenterX = halfWidth - x;
+			v.y += invHeight * sinf(value + distCenterX * 0.25f);
+		}
+	}
+}
+
+void skewX(Sprite *sprite, float value)
+{
+	const int width = sprite->width();
+	const int height = sprite->height();
+	const int halfHeight = height / 2;
+	const float invWidth = 1.0f / float(width);
+	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
+
+	for (int y = 0; y < height + 1; y++)
+	{
+		for (int x = 0; x < width + 1; x++)
+		{
+			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
+			Sprite::Vertex &v = interleavedVertices[index];
+			const int distCenterY = halfHeight - y;
+			v.x += -distCenterY * value * invWidth;
+		}
+	}
+}
+
+void skewY(Sprite *sprite, float value)
+{
+	const int width = sprite->width();
+	const int height = sprite->height();
+	const int halfWidth = width / 2;
+	const float invHeight = 1.0f / float(height);
+	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
+
+	for (int y = 0; y < height + 1; y++)
+	{
+		for (int x = 0; x < width + 1; x++)
+		{
+			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
+			Sprite::Vertex &v = interleavedVertices[index];
+			const int distCenterX = halfWidth - x;
+			v.y += -distCenterX * value * invHeight;
 		}
 	}
 }
@@ -121,6 +170,12 @@ void GridAnimation::deform(float value)
 			break;
 		case AnimationType::WOBBLE_Y:
 			wobbleY(sprite_, value);
+			break;
+		case AnimationType::SKEW_X:
+			skewX(sprite_, value);
+			break;
+		case AnimationType::SKEW_Y:
+			skewY(sprite_, value);
 			break;
 		case AnimationType::ZOOM:
 			zoom(sprite_, value);

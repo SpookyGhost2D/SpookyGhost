@@ -23,10 +23,14 @@
 
 #define TEXT_ADD "Add"
 #define TEXT_REMOVE "Remove"
+#define TEXT_MOVE_UP "Move Up"
+#define TEXT_MOVE_DOWN "Move Down"
 
 #define TEXT_STOP "Stop"
 #define TEXT_PAUSE "Pause"
 #define TEXT_PLAY "Play"
+
+#define TEXT_SAVE_PNGS "Save PNGs"
 
 #ifndef WITH_FONTAWESOME
 namespace Labels {
@@ -52,10 +56,14 @@ static const char *Apply = TEXT_APPLY;
 
 static const char *Add = TEXT_ADD;
 static const char *Remove = TEXT_REMOVE;
+static const char *MoveUp = TEXT_MOVE_UP;
+static const char *MoveDown = TEXT_MOVE_DOWN;
 
 static const char *Stop = TEXT_STOP;
 static const char *Pause = TEXT_PAUSE;
 static const char *Play = TEXT_PLAY;
+
+static const char *savePngs = TEXT_SAVE_PNGS;
 
 }
 #else
@@ -84,10 +92,14 @@ static const char *Apply = ICON_FA_CHECK_CIRCLE FA5_SPACING TEXT_APPLY;
 
 static const char *Add = ICON_FA_PLUS FA5_SPACING TEXT_ADD;
 static const char *Remove = ICON_FA_MINUS FA5_SPACING TEXT_REMOVE;
+static const char *MoveUp = ICON_FA_ANGLE_UP FA5_SPACING TEXT_MOVE_UP;
+static const char *MoveDown = ICON_FA_ANGLE_DOWN FA5_SPACING TEXT_MOVE_DOWN;
 
 static const char *Stop = ICON_FA_STOP FA5_SPACING TEXT_STOP;
 static const char *Pause = ICON_FA_PAUSE FA5_SPACING TEXT_PAUSE;
 static const char *Play = ICON_FA_PLAY FA5_SPACING TEXT_PLAY;
+
+static const char *savePngs = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_PNGS;
 
 }
 #endif

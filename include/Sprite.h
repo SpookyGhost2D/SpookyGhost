@@ -35,13 +35,23 @@ class Sprite
 		float x, y;
 	};
 
+	enum class BlendingPreset
+	{
+		DISABLED, ///< uses `GL_ONE` and `GL_ZERO`
+		ALPHA, ///< uses `GL_SRC_ALPHA` and `GL_ONE_MINUS_SRC_ALPHA`
+		PREMULTIPLIED_ALPHA, ///< uses `GL_ONE` and `GL_ONE_MINUS_SRC_ALPHA`
+		ADDITIVE, ///< uses `GL_SRC_ALPHA` and `GL_ONE`
+		MULTIPLY ///< uses `GL_DST_COLOR` and `GL_ZERO`
+	};
+
 	static const unsigned int MaxNameLength = 64;
 	nctl::String name;
 
 	float x, y;
 	float rotation;
-	nc::Vector2f anchorPoint;
 	nc::Vector2f scaleFactor;
+	nc::Vector2f anchorPoint;
+	nc::Colorf color;
 
 	Sprite(Texture *texture);
 
@@ -68,6 +78,9 @@ class Sprite
 	inline bool isFlippedY() const { return flippedY_; }
 	void setFlippedY(bool flippedY);
 
+	inline BlendingPreset blendingPreset() const { return blendingPreset_; }
+	inline void setBlendingPreset(BlendingPreset blendingPreset) { blendingPreset_ = blendingPreset; }
+
 	inline const nctl::Array<VertexPosition> &vertexRestPositions() const { return restPositions_; }
 	inline const nctl::Array<Vertex> &interleavedVertices() const { return interleavedVertices_; }
 	inline nctl::Array<Vertex> &interleavedVertices() { return interleavedVertices_; }
@@ -82,10 +95,10 @@ class Sprite
 	Texture *texture_;
 	nc::Recti texRect_;
 
-	//nc::Colorf color_;
-
 	bool flippedX_;
 	bool flippedY_;
+
+	BlendingPreset blendingPreset_;
 
 	nctl::Array<Vertex> interleavedVertices_;
 	nctl::Array<VertexPosition> restPositions_;

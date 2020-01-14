@@ -19,7 +19,6 @@ class SpriteManager
 	inline const nctl::Array<nctl::UniquePtr<Sprite>> &sprites() const { return sprites_; }
 
 	void update();
-	void clear();
 
 	int textureIndex(const Texture *texture) const;
 	int spriteIndex(const Sprite *sprite) const;

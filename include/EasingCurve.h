@@ -17,6 +17,12 @@ class EasingCurve
 		CIRC,
 	};
 
+	enum class Direction
+	{
+		FORWARD,
+		BACKWARD
+	};
+
 	enum class LoopMode
 	{
 		DISABLED,
@@ -28,6 +34,9 @@ class EasingCurve
 
 	inline Type type() const { return type_; }
 	inline void setType(Type type) { type_ = type; }
+
+	inline Direction direction() const { return direction_; }
+	inline void setDirection(Direction direction) { direction_ = direction; }
 
 	inline LoopMode loopMode() const { return loopMode_; }
 	inline void setLoopMode(LoopMode loopMode) { loopMode_ = loopMode; }
@@ -61,6 +70,7 @@ class EasingCurve
 
   private:
 	Type type_;
+	Direction direction_;
 	LoopMode loopMode_;
 	bool forward_;
 

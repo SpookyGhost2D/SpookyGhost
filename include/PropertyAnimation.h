@@ -4,6 +4,8 @@
 #include <nctl/String.h>
 #include "CurveAnimation.h"
 
+class Sprite;
+
 /// The property animation class
 class PropertyAnimation : public CurveAnimation
 {
@@ -16,6 +18,9 @@ class PropertyAnimation : public CurveAnimation
 	void stop() override;
 	void update(float deltaTime) override;
 
+	inline const Sprite *sprite() const { return sprite_; }
+	inline void setSprite(Sprite *sprite) { sprite_ = sprite; }
+
 	inline const float *property() const { return property_; }
 	inline float *property() { return property_; }
 	inline void setProperty(float *property) { property_ = property; }
@@ -26,6 +31,7 @@ class PropertyAnimation : public CurveAnimation
   private:
 	float *property_;
 	nctl::String propertyName_;
+	Sprite *sprite_;
 };
 
 #endif

@@ -1,6 +1,33 @@
 #include "SpriteManager.h"
 #include "Texture.h"
 #include "Sprite.h"
+#include <ncine/GLBlending.h>
+
+namespace {
+
+void setBlendingFactors(Sprite::BlendingPreset blendingPreset)
+{
+	switch (blendingPreset)
+	{
+		case Sprite::BlendingPreset::DISABLED:
+			nc::GLBlending::blendFunc(GL_ONE, GL_ZERO);
+			break;
+		case Sprite::BlendingPreset::ALPHA:
+			nc::GLBlending::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			break;
+		case Sprite::BlendingPreset::PREMULTIPLIED_ALPHA:
+			nc::GLBlending::blendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+			break;
+		case Sprite::BlendingPreset::ADDITIVE:
+			nc::GLBlending::blendFunc(GL_SRC_ALPHA, GL_ONE);
+			break;
+		case Sprite::BlendingPreset::MULTIPLY:
+			nc::GLBlending::blendFunc(GL_DST_COLOR, GL_ZERO);
+			break;
+	}
+}
+
+}
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -9,6 +36,7 @@
 SpriteManager::SpriteManager()
     : textures_(4), sprites_(4)
 {
+	nc::GLBlending::enable();
 }
 
 ///////////////////////////////////////////////////////////
@@ -21,14 +49,10 @@ void SpriteManager::update()
 	{
 		sprites_[i]->transform();
 		sprites_[i]->updateRender();
+		setBlendingFactors(sprites_[i]->blendingPreset());
 		sprites_[i]->render();
 		sprites_[i]->resetGrid();
 	}
-}
-
-void SpriteManager::clear()
-{
-	sprites_.clear();
 }
 
 // TODO: Get rid of this function

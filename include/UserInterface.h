@@ -12,6 +12,7 @@ class IAnimation;
 class AnimationGroup;
 class PropertyAnimation;
 class GridAnimation;
+class Texture;
 class Sprite;
 
 namespace nc = ncine;
@@ -22,12 +23,12 @@ class UserInterface
   public:
 	struct SaveAnim
 	{
-		inline float inverseFps() const { return 1.0f / fps; }
+		inline float inverseFps() const { return 1.0f / static_cast<float>(fps); }
 
 		nctl::String filename = nctl::String(MaxStringLength);
 		unsigned int numSavedFrames = 0;
 		int numFrames = 60;
-		float fps = 60.0f;
+		int fps = 60;
 	};
 
 	UserInterface(Canvas &canvas, SpriteManager &spriteMgr, AnimationManager &animMgr);
@@ -39,6 +40,7 @@ class UserInterface
 	void pushStatusErrorMessage(const char *message);
 
 	void closeAboutWindow();
+	void menuNew();
 	void createGui();
 
   private:
@@ -61,6 +63,9 @@ class UserInterface
 
 	nctl::String statusMessage_ = nctl::String(MaxStringLength);
 	nc::TimeStamp lastStatus_;
+
+	nctl::UniquePtr<Texture> spookyLogo_;
+	nctl::UniquePtr<Texture> ncineLogo_;
 
 	void createDockingSpace();
 	void createInitialDocking(unsigned int dockspaceId);

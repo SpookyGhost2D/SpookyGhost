@@ -1,5 +1,5 @@
 set(PACKAGE_NAME "ncSpookyGhost")
-set(PACKAGE_EXE_NAME "ncspookyghost")
+set(PACKAGE_EXE_NAME "spookyghost")
 set(PACKAGE_VENDOR "Angelo Theodorou")
 set(PACKAGE_COPYRIGHT "Copyright ©2020 ${PACKAGE_VENDOR}")
 set(PACKAGE_DESCRIPTION "A procedural sprite animation tool")
@@ -54,6 +54,11 @@ function(callback_before_target)
 endfunction()
 
 function(callback_after_target)
+	if(MSVC)
+		target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "WITH_GLEW")
+		target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${EXTERNAL_MSVC_DIR}/include)
+	endif()
+
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND IS_DIRECTORY ${PACKAGE_DATA_DIR})
 		include(custom_fontawesome)
 		include(custom_iconfontcppheaders)
