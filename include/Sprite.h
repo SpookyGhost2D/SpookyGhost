@@ -119,9 +119,8 @@ class Sprite
 	nctl::UniquePtr<nc::GLBufferObject> ibo_;
 
 	void setSize(int width, int height);
-	void changeSize(int widht, int height);
-	void resetVertices(int widht, int height);
-	void resetIndices(int widht, int height);
+	void resetVertices();
+	void resetIndices();
 };
 
 #endif

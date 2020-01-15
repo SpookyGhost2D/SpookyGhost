@@ -424,7 +424,7 @@ void UserInterface::createGui()
 	ImGui::End();
 
 	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);// | ImGuiWindowFlags_NoBackground);
+	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 	ImGui::End();
 
@@ -637,10 +637,28 @@ void UserInterface::createSpritesGui()
 			// Append a second '\0' to signal the end of the combo item list
 			comboString_[comboString_.length() - 1] = '\0';
 
-			ImGui::Combo("Selected Texture", &selectedTextureIndex, comboString_.data());
+			ImGui::Combo("Texture", &selectedTextureIndex, comboString_.data());
+
+			ImGui::SameLine();
+			auxString_.format("%s##Texture", Labels::Remove);
+			if (ImGui::Button(auxString_.data()))
+			{
+				for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+				{
+					Sprite &sprite = *spriteMgr_.sprites()[i];
+					if (&sprite.texture() == spriteMgr_.textures()[selectedTextureIndex].get())
+					{
+						animMgr_.removeSprite(&sprite);
+						spriteMgr_.sprites().removeAt(i);
+					}
+				}
+				spriteMgr_.textures().removeAt(selectedTextureIndex);
+				if (selectedTextureIndex > 0)
+					selectedTextureIndex--;
+			}
 		}
 		ImGui::InputText("Filename", texFilename_.data(), MaxStringLength,
-						 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &texFilename_);
+		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &texFilename_);
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
 		{
@@ -660,24 +678,29 @@ void UserInterface::createSpritesGui()
 		ImGui::Separator();
 		ImGui::Spacing();
 
-		if (ImGui::Button(Labels::Add))
+		if (spriteMgr_.textures().isEmpty() == false)
 		{
-			if (selectedTextureIndex >= 0 && selectedTextureIndex < spriteMgr_.textures().size())
+			if (ImGui::Button(Labels::Add))
 			{
-				Texture &tex = *spriteMgr_.textures()[selectedTextureIndex];
-				spriteMgr_.sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
-				selectedSpriteIndex_ = spriteMgr_.sprites().size() - 1;
+				if (selectedTextureIndex >= 0 && selectedTextureIndex < spriteMgr_.textures().size())
+				{
+					Texture &tex = *spriteMgr_.textures()[selectedTextureIndex];
+					spriteMgr_.sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
+					selectedSpriteIndex_ = spriteMgr_.sprites().size() - 1;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button(Labels::Remove) && spriteMgr_.sprites().isEmpty() == false)
+			{
+				animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
+				if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
+					spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
+				if (selectedSpriteIndex_ > 0)
+					selectedSpriteIndex_--;
 			}
 		}
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Remove) && spriteMgr_.sprites().isEmpty() == false)
-		{
-			animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
-			if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
-				spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
-			if (selectedSpriteIndex_ > 0)
-				selectedSpriteIndex_--;
-		}
+		else
+			ImGui::Text("Load at least one texture in order to add sprites");
 
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
@@ -711,7 +734,7 @@ void UserInterface::createSpritesGui()
 			// Append a second '\0' to signal the end of the combo item list
 			comboString_[comboString_.length() - 1] = '\0';
 
-			ImGui::Combo("Selected Sprite", &selectedSpriteIndex_, comboString_.data());
+			ImGui::Combo("Sprite", &selectedSpriteIndex_, comboString_.data());
 
 			Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
 
@@ -719,7 +742,7 @@ void UserInterface::createSpritesGui()
 			ImGui::Text("Texture: %s (%dx%d)", tex.name().data(), tex.width(), tex.height());
 
 			ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
-							 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &sprite.name);
+			                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &sprite.name);
 
 			nc::Vector2f position(sprite.x, sprite.y);
 			ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(canvas_.texWidth()));
@@ -880,6 +903,7 @@ void UserInterface::createRenderGui()
 				pushStatusErrorMessage("Set a filename prefix before saving an animation");
 			else
 			{
+				animMgr_.play();
 				saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
 				shouldSaveAnim_ = true;
 			}

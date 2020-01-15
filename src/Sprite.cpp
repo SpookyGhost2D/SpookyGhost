@@ -70,22 +70,23 @@ void Sprite::transform()
 
 void Sprite::updateRender()
 {
-	const nc::Vector2i texSize = texture_->size();
-	const float texScaleX = texRect_.w / float(texSize.x);
-	const float texBiasX = texRect_.x / float(texSize.x);
-	const float texScaleY = texRect_.h / float(texSize.y);
-	const float texBiasY = texRect_.y / float(texSize.y);
+	const float texWidth = static_cast<float>(texture_->width());
+	const float texHeight = static_cast<float>(texture_->height());
+	const float texScaleX = texRect_.w / texWidth;
+	const float texBiasX = texRect_.x / texWidth;
+	const float texScaleY = texRect_.h / texHeight;
+	const float texBiasY = texRect_.y / texHeight;
 
 	spriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
 	spriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
-	spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texSize.x, texSize.y);
+	spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texRect_.w, texRect_.h);
 	spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
 	spriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
 	spriteShaderUniforms_->commitUniforms();
 
 	meshSpriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
 	meshSpriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
-	meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texSize.x, texSize.y);
+	meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texRect_.w, texRect_.h);
 	meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
 	meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
 	meshSpriteShaderUniforms_->commitUniforms();
@@ -194,33 +195,38 @@ void Sprite::setSize(int width, int height)
 	height_ = height;
 
 	const unsigned int verticesCapacity = (width + 1) * (height + 1);
-	interleavedVertices_.setCapacity(verticesCapacity);
-	restPositions_.setCapacity(verticesCapacity);
+	if (interleavedVertices_.capacity() < verticesCapacity)
+	{
+		interleavedVertices_.setCapacity(verticesCapacity);
+		restPositions_.setCapacity(verticesCapacity);
+		const long int vboBytes = interleavedVertices_.capacity() * sizeof(Vertex);
+		vbo_->bufferData(vboBytes, nullptr, GL_STATIC_DRAW);
+	}
 	const unsigned int indicesCapacity = (width + 1) * (height + 1) * 2;
-	indices_.setCapacity(indicesCapacity);
+	if (indices_.capacity() < indicesCapacity)
+	{
+		indices_.setCapacity(indicesCapacity);
+		const long int iboBytes = indices_.capacity() * sizeof(unsigned short);
+		ibo_->bufferData(iboBytes, nullptr, GL_STATIC_DRAW);
+	}
 
-	const long int vboBytes = interleavedVertices_.capacity() * sizeof(Vertex);
-	vbo_->bufferData(vboBytes, nullptr, GL_STATIC_DRAW);
-	const long int iboBytes = indices_.capacity() * sizeof(unsigned short);
-	ibo_->bufferData(iboBytes, nullptr, GL_STATIC_DRAW);
-
-	resetVertices(width, height);
+	resetVertices();
 	ASSERT(interleavedVertices_.capacity() == verticesCapacity);
-	resetIndices(width, height);
+	resetIndices();
 	ASSERT(indices_.capacity() == indicesCapacity);
 }
 
-void Sprite::resetVertices(int width, int height)
+void Sprite::resetVertices()
 {
 	interleavedVertices_.clear();
-	const float deltaX = 1.0f / static_cast<float>(width);
-	const float deltaY = 1.0f / static_cast<float>(height);
+	const float deltaX = 1.0f / static_cast<float>(width_);
+	const float deltaY = 1.0f / static_cast<float>(height_);
 
-	for (int y = 0; y < height + 1; y++)
+	for (int y = 0; y < height_ + 1; y++)
 	{
-		for (int x = 0; x < width + 1; x++)
+		for (int x = 0; x < width_ + 1; x++)
 		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
+			const unsigned int index = static_cast<unsigned int>(x + y * (width_ + 1));
 			Vertex &v = interleavedVertices_[index];
 			VertexPosition &restPos = restPositions_[index];
 			v.x = -0.5f + static_cast<float>(x) * deltaX;
@@ -240,11 +246,11 @@ void Sprite::resetVertices(int width, int height)
 #endif
 }
 
-void Sprite::resetIndices(int width, int height)
+void Sprite::resetIndices()
 {
 	indices_.clear();
-	const int gridWidth = width + 1;
-	const int gridHeight = height + 1;
+	const int gridWidth = width_ + 1;
+	const int gridHeight = height_ + 1;
 
 	unsigned short vertexIndex = gridWidth;
 	unsigned int arrayIndex = 0;
