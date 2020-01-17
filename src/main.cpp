@@ -171,5 +171,8 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 {
 	if (event.sym == nc::KeySym::ESCAPE)
+	{
 		ui_->closeAboutWindow();
+		ui_->cancelRender();
+	}
 }

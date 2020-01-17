@@ -31,6 +31,7 @@
 #define TEXT_PLAY "Play"
 
 #define TEXT_SAVE_PNGS "Save PNGs"
+#define TEXT_CANCEL "Cancel"
 
 #ifndef WITH_FONTAWESOME
 namespace Labels {
@@ -63,7 +64,8 @@ static const char *Stop = TEXT_STOP;
 static const char *Pause = TEXT_PAUSE;
 static const char *Play = TEXT_PLAY;
 
-static const char *savePngs = TEXT_SAVE_PNGS;
+static const char *SavePngs = TEXT_SAVE_PNGS;
+static const char *Cancel = TEXT_CANCEL;
 
 }
 #else
@@ -99,7 +101,8 @@ static const char *Stop = ICON_FA_STOP FA5_SPACING TEXT_STOP;
 static const char *Pause = ICON_FA_PAUSE FA5_SPACING TEXT_PAUSE;
 static const char *Play = ICON_FA_PLAY FA5_SPACING TEXT_PLAY;
 
-static const char *savePngs = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_PNGS;
+static const char *SavePngs = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_PNGS;
+static const char *Cancel = ICON_FA_TIMES_CIRCLE FA5_SPACING TEXT_CANCEL;
 
 }
 #endif

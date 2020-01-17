@@ -402,6 +402,17 @@ void UserInterface::closeAboutWindow()
 	showAboutWindow = false;
 }
 
+void UserInterface::cancelRender()
+{
+	if (shouldSaveAnim_)
+	{
+		auxString_.format("Render cancelled, saved %d out of %d frames", saveAnimStatus_.numSavedFrames, saveAnimStatus_.numFrames);
+		pushStatusInfoMessage(auxString_.data());
+		saveAnimStatus_.numSavedFrames = 0;
+		shouldSaveAnim_ = false;
+	}
+}
+
 void UserInterface::menuNew()
 {
 	// Always clear animations before sprites
@@ -435,37 +446,7 @@ void UserInterface::createGui()
 	ImGui::End();
 
 	if (showAboutWindow)
-	{
-		ImGui::Begin("About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
-		ImVec2 cursorPos = ImGui::GetCursorPos();
-		const ImVec2 spookySize(spookyLogo_->width() * 2.0f, spookyLogo_->height() * 2.0f);
-		cursorPos.x = (ImGui::GetWindowSize().x - spookySize.x) * 0.5f;
-		ImGui::SetCursorPos(cursorPos);
-		ImGui::Image(spookyLogo_->imguiTexId(), spookySize);
-		ImGui::Spacing();
-#ifdef WITH_GIT_VERSION
-		ImGui::Text("SpookyGhost %s (%s)", VersionStrings::Version, VersionStrings::GitBranch);
-#endif
-		ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
-		for (unsigned int i = 0; i < 4; i++)
-			ImGui::Spacing();
-
-		ImGui::Separator();
-
-		for (unsigned int i = 0; i < 4; i++)
-			ImGui::Spacing();
-		cursorPos = ImGui::GetCursorPos();
-		const ImVec2 ncineSize(ncineLogo_->width() * 2.0f, ncineLogo_->height() * 2.0f);
-		cursorPos.x = (ImGui::GetWindowSize().x - ncineSize.x) * 0.5f;
-		ImGui::SetCursorPos(cursorPos);
-		ImGui::Image(ncineLogo_->imguiTexId(), spookySize);
-		ImGui::Spacing();
-		ImGui::Text("Based on nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
-		ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
-		ImGui::Spacing();
-		ImGui::Text("https://ncine.github.io/");
-		ImGui::End();
-	}
+		createAboutWindow();
 }
 
 ///////////////////////////////////////////////////////////
@@ -851,6 +832,7 @@ void UserInterface::createSpritesGui()
 
 void UserInterface::createAnimationStateGui(IAnimation &anim)
 {
+	ImGui::Separator();
 	ImGui::Text("State: %s", animStateToString(anim.state()));
 	if (ImGui::Button(Labels::Stop))
 		anim.stop();
@@ -860,7 +842,6 @@ void UserInterface::createAnimationStateGui(IAnimation &anim)
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Play))
 		anim.play();
-	ImGui::Separator();
 }
 
 void UserInterface::createCurveAnimationGui(CurveAnimation &anim)
@@ -911,6 +892,15 @@ void UserInterface::createCurveAnimationGui(CurveAnimation &anim)
 	ImGui::Text("Value: %f", anim.curve().value());
 }
 
+void UserInterface::createAnimationRemoveButton(AnimationGroup &parentGroup, unsigned int index)
+{
+	if (ImGui::Button(Labels::Remove))
+	{
+		parentGroup.anims()[index]->stop();
+		parentGroup.anims().removeAt(index);
+	}
+}
+
 void UserInterface::createAnimationsGui()
 {
 	if (ImGui::CollapsingHeader(Labels::Animations))
@@ -945,7 +935,7 @@ void UserInterface::createAnimationsGui()
 		ImGui::Separator();
 
 		for (unsigned int i = 0; i < animMgr_.anims().size(); i++)
-			createRecursiveAnimationsGui(*animMgr_.anims()[i].get());
+			createRecursiveAnimationsGui(animMgr_.animGroup(), i);
 	}
 }
 
@@ -971,8 +961,10 @@ void UserInterface::createRenderGui()
 			const float fraction = numSavedFrames / static_cast<float>(saveAnimStatus_.numFrames);
 			auxString_.format("Frame: %d/%d", numSavedFrames, saveAnimStatus_.numFrames);
 			ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), auxString_.data());
+			if (ImGui::Button(Labels::Cancel))
+				cancelRender();
 		}
-		else if (ImGui::Button(Labels::savePngs) && shouldSaveAnim_ == false)
+		else if (ImGui::Button(Labels::SavePngs) && shouldSaveAnim_ == false)
 		{
 			if (animFilename_.isEmpty())
 				pushStatusErrorMessage("Set a filename prefix before saving an animation");
@@ -986,50 +978,52 @@ void UserInterface::createRenderGui()
 	}
 }
 
-void UserInterface::createRecursiveAnimationsGui(IAnimation &anim)
+void UserInterface::createRecursiveAnimationsGui(AnimationGroup &parentGroup, unsigned int index)
 {
+	IAnimation &anim = *parentGroup.anims()[index];
+
 	ImGui::PushID(reinterpret_cast<const void *>(&anim));
 	switch (anim.type())
 	{
 		case IAnimation::Type::PROPERTY:
 		{
-			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
-			createPropertyAnimationGui(propertyAnim);
+			createPropertyAnimationGui(parentGroup, index);
 			break;
 		}
 		case IAnimation::Type::GRID:
 		{
-			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
-			createGridAnimationGui(gridAnim);
+			createGridAnimationGui(parentGroup, index);
 			break;
 		}
 		case IAnimation::Type::PARALLEL_GROUP:
 		{
-			AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
-			createAnimationGroupGui(animGroup);
+			createAnimationGroupGui(parentGroup, index);
 			break;
 		}
 		case IAnimation::Type::SEQUENTIAL_GROUP:
 		{
-			AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
-			createAnimationGroupGui(animGroup);
+			createAnimationGroupGui(parentGroup, index);
 			break;
 		}
 	}
 	ImGui::PopID();
 }
 
-void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
+void UserInterface::createAnimationGroupGui(AnimationGroup &parentGroup, unsigned int index)
 {
+	AnimationGroup &animGroup = static_cast<AnimationGroup &>(*parentGroup.anims()[index]);
 	ASSERT(animGroup.type() == IAnimation::Type::PARALLEL_GROUP ||
 	       animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP);
 
-	if (animGroup.type() == IAnimation::Type::PARALLEL_GROUP)
-		auxString_ = "Parallel Animation";
-	else if (animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP)
-		auxString_ = "Sequential Animation";
+	auxString_.format("#%u: ", index);
 	if (animGroup.name.isEmpty() == false)
-		auxString_.formatAppend(": \"%s\"", animGroup.name.data());
+		auxString_.formatAppend("\"%s\" (", animGroup.name.data());
+	if (animGroup.type() == IAnimation::Type::PARALLEL_GROUP)
+		auxString_.append("Parallel Animation");
+	else if (animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP)
+		auxString_.append("Sequential Animation");
+	if (animGroup.name.isEmpty() == false)
+		auxString_.append(")");
 	auxString_.append("###AnimationGroup");
 
 	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
@@ -1074,35 +1068,35 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
 		}
 
 		createAnimationStateGui(animGroup);
+		createAnimationRemoveButton(parentGroup, index);
 
 		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
-		{
-			createRecursiveAnimationsGui(*animGroup.anims()[i].get());
-			ImGui::PushID(reinterpret_cast<const void *>(animGroup.anims()[i].get()));
-			if (ImGui::Button(Labels::Remove))
-			{
-				animGroup.anims()[i]->stop();
-				animGroup.anims().removeAt(i);
-			}
-			ImGui::PopID();
-		}
+			createRecursiveAnimationsGui(animGroup, i);
 
 		ImGui::TreePop();
 	}
 }
 
-void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
+void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsigned int index)
 {
+	PropertyAnimation &anim = static_cast<PropertyAnimation &>(*parentGroup.anims()[index]);
 	ASSERT(anim.type() == IAnimation::Type::PROPERTY);
 
-	auxString_ = "Property Animation";
+	auxString_.format("#%u: ", index);
 	if (anim.name.isEmpty() == false)
-		auxString_.formatAppend(": \"%s\"", anim.name.data());
+		auxString_.formatAppend("\"%s\" (", anim.name.data());
+	auxString_.formatAppend("%s property", anim.propertyName().data());
+	if (anim.sprite() != nullptr && anim.sprite()->name.isEmpty() == false)
+		auxString_.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
+	if (anim.name.isEmpty() == false)
+		auxString_.append(")");
 	auxString_.append("###PropertyAnimation");
+
 	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
 		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &anim.name);
+		ImGui::Separator();
 
 		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
 		if (spriteMgr_.sprites().isEmpty() == false)
@@ -1121,7 +1115,7 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 			// Append a second '\0' to signal the end of the combo item list
 			comboString_[comboString_.length() - 1] = '\0';
 
-			ImGui::Combo("Sprites", &spriteIndex, comboString_.data());
+			ImGui::Combo("Sprite", &spriteIndex, comboString_.data());
 			anim.setSprite(spriteMgr_.sprites()[spriteIndex].get());
 
 			Sprite &sprite = *spriteMgr_.sprites()[spriteIndex];
@@ -1186,23 +1180,32 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 
 		createCurveAnimationGui(anim);
 		createAnimationStateGui(anim);
+		createAnimationRemoveButton(parentGroup, index);
 
 		ImGui::TreePop();
 	}
 }
 
-void UserInterface::createGridAnimationGui(GridAnimation &anim)
+void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned int index)
 {
+	GridAnimation &anim = static_cast<GridAnimation &>(*parentGroup.anims()[index]);
 	ASSERT(anim.type() == IAnimation::Type::GRID);
 
-	auxString_ = "Grid Animation";
+	auxString_.format("#%u: ", index);
 	if (anim.name.isEmpty() == false)
-		auxString_.formatAppend(": \"%s\"", anim.name.data());
+		auxString_.formatAppend("\"%s\" (", anim.name.data());
+	auxString_.formatAppend("%s grid", gridAnimTypes[static_cast<int>(anim.gridAnimationType())]);
+	if (anim.sprite() != nullptr && anim.sprite()->name.isEmpty() == false)
+		auxString_.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
+	if (anim.name.isEmpty() == false)
+		auxString_.append(")");
 	auxString_.append("###GridAnimation");
+
 	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
 		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &anim.name);
+		ImGui::Separator();
 
 		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
 		if (spriteMgr_.sprites().isEmpty() == false)
@@ -1221,7 +1224,7 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 			// Append a second '\0' to signal the end of the combo item list
 			comboString_[comboString_.length() - 1] = '\0';
 
-			ImGui::Combo("Sprites", &spriteIndex, comboString_.data());
+			ImGui::Combo("Sprite", &spriteIndex, comboString_.data());
 			anim.setSprite(spriteMgr_.sprites()[spriteIndex].get());
 		}
 		else
@@ -1234,7 +1237,41 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 
 		createCurveAnimationGui(anim);
 		createAnimationStateGui(anim);
+		createAnimationRemoveButton(parentGroup, index);
 
 		ImGui::TreePop();
 	}
+}
+
+void UserInterface::createAboutWindow()
+{
+	ImGui::Begin("About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
+	ImVec2 cursorPos = ImGui::GetCursorPos();
+	const ImVec2 spookySize(spookyLogo_->width() * 2.0f, spookyLogo_->height() * 2.0f);
+	cursorPos.x = (ImGui::GetWindowSize().x - spookySize.x) * 0.5f;
+	ImGui::SetCursorPos(cursorPos);
+	ImGui::Image(spookyLogo_->imguiTexId(), spookySize);
+	ImGui::Spacing();
+#ifdef WITH_GIT_VERSION
+	ImGui::Text("SpookyGhost %s (%s)", VersionStrings::Version, VersionStrings::GitBranch);
+#endif
+	ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
+	for (unsigned int i = 0; i < 4; i++)
+		ImGui::Spacing();
+
+	ImGui::Separator();
+
+	for (unsigned int i = 0; i < 4; i++)
+		ImGui::Spacing();
+	cursorPos = ImGui::GetCursorPos();
+	const ImVec2 ncineSize(ncineLogo_->width() * 2.0f, ncineLogo_->height() * 2.0f);
+	cursorPos.x = (ImGui::GetWindowSize().x - ncineSize.x) * 0.5f;
+	ImGui::SetCursorPos(cursorPos);
+	ImGui::Image(ncineLogo_->imguiTexId(), spookySize);
+	ImGui::Spacing();
+	ImGui::Text("Based on nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
+	ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
+	ImGui::Spacing();
+	ImGui::Text("https://ncine.github.io/");
+	ImGui::End();
 }

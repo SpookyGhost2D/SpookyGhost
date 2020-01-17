@@ -41,6 +41,7 @@ class UserInterface
 	void pushStatusErrorMessage(const char *message);
 
 	void closeAboutWindow();
+	void cancelRender();
 	void menuNew();
 	void createGui();
 
@@ -79,11 +80,14 @@ class UserInterface
 
 	void createAnimationStateGui(IAnimation &anim);
 	void createCurveAnimationGui(CurveAnimation &anim);
+	void createAnimationRemoveButton(AnimationGroup &parentGroup, unsigned int index);
 
-	void createRecursiveAnimationsGui(IAnimation &anim);
-	void createAnimationGroupGui(AnimationGroup &animGroup);
-	void createPropertyAnimationGui(PropertyAnimation &anim);
-	void createGridAnimationGui(GridAnimation &anim);
+	void createRecursiveAnimationsGui(AnimationGroup &parentGroup, unsigned int index);
+	void createAnimationGroupGui(AnimationGroup &parentGroup, unsigned int index);
+	void createPropertyAnimationGui(AnimationGroup &parentGroup, unsigned int index);
+	void createGridAnimationGui(AnimationGroup &parentGroup, unsigned int index);
+
+	void createAboutWindow();
 };
 
 #endif

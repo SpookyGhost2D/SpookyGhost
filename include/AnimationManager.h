@@ -12,6 +12,9 @@ class AnimationManager
   public:
 	AnimationManager();
 
+	inline AnimationGroup &animGroup() { return *animGroup_; }
+	inline const AnimationGroup &animGroup() const { return *animGroup_; }
+
 	inline nctl::Array<nctl::UniquePtr<IAnimation>> &anims() { return (*animGroup_).anims(); }
 	inline const nctl::Array<nctl::UniquePtr<IAnimation>> &anims() const { return (*animGroup_).anims(); }
 
