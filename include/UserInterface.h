@@ -10,6 +10,7 @@ class SpriteManager;
 class AnimationManager;
 class IAnimation;
 class AnimationGroup;
+class CurveAnimation;
 class PropertyAnimation;
 class GridAnimation;
 class Texture;
@@ -75,6 +76,9 @@ class UserInterface
 	void createSpritesGui();
 	void createAnimationsGui();
 	void createRenderGui();
+
+	void createAnimationStateGui(IAnimation &anim);
+	void createCurveAnimationGui(CurveAnimation &anim);
 
 	void createRecursiveAnimationsGui(IAnimation &anim);
 	void createAnimationGroupGui(AnimationGroup &animGroup);

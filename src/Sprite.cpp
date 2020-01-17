@@ -30,7 +30,7 @@ Sprite::Sprite(Texture *texture)
       width_(0), height_(0), modelView_(nc::Matrix4x4f::Identity),
       texture_(nullptr), texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false),
       blendingPreset_(BlendingPreset::ALPHA),
-      interleavedVertices_(0), restPositions_(0), indices_(0)
+      interleavedVertices_(0), restPositions_(0), indices_(0), shortIndices_(0)
 {
 	spriteShaderProgram_ = RenderingResources::spriteShaderProgram();
 	spriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(spriteShaderProgram_);
@@ -79,22 +79,20 @@ void Sprite::updateRender()
 
 	spriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
 	spriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
-	spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texRect_.w, texRect_.h);
+	spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
 	spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
 	spriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
 	spriteShaderUniforms_->commitUniforms();
 
 	meshSpriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
 	meshSpriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
-	meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(texRect_.w, texRect_.h);
+	meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
 	meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
 	meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
 	meshSpriteShaderUniforms_->commitUniforms();
 
 	const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
 	vbo_->bufferData(vboBytes, interleavedVertices_.data(), GL_STATIC_DRAW);
-	const long int iboBytes = indices_.size() * sizeof(GLushort);
-	ibo_->bufferData(iboBytes, indices_.data(), GL_STATIC_DRAW);
 }
 
 void Sprite::render()
@@ -105,7 +103,12 @@ void Sprite::render()
 	vbo_->bind();
 	ibo_->bind();
 	meshSpriteShaderAttributes_->defineVertexFormat(vbo_.get(), ibo_.get());
-	glDrawElements(GL_TRIANGLE_STRIP, indices_.size(), GL_UNSIGNED_SHORT, nullptr);
+
+	if (shortIndices_.isEmpty() == false)
+		glDrawElements(GL_TRIANGLE_STRIP, shortIndices_.size(), GL_UNSIGNED_SHORT, nullptr);
+	else
+		glDrawElements(GL_TRIANGLE_STRIP, indices_.size(), GL_UNSIGNED_INT, nullptr);
+
 	vbo_->unbind();
 	ibo_->unbind();
 #else
@@ -197,16 +200,22 @@ void Sprite::setSize(int width, int height)
 	const unsigned int verticesCapacity = (width + 1) * (height + 1);
 	if (interleavedVertices_.capacity() < verticesCapacity)
 	{
+		interleavedVertices_.clear();
 		interleavedVertices_.setCapacity(verticesCapacity);
+		restPositions_.clear();
 		restPositions_.setCapacity(verticesCapacity);
 		const long int vboBytes = interleavedVertices_.capacity() * sizeof(Vertex);
 		vbo_->bufferData(vboBytes, nullptr, GL_STATIC_DRAW);
 	}
+
 	const unsigned int indicesCapacity = (width + 1) * (height + 1) * 2;
+	const long int iboBytes = (indicesCapacity < 65536)
+	        ? indicesCapacity * sizeof(unsigned short)
+	        : indicesCapacity * sizeof(unsigned int);
 	if (indices_.capacity() < indicesCapacity)
 	{
+		indices_.clear();
 		indices_.setCapacity(indicesCapacity);
-		const long int iboBytes = indices_.capacity() * sizeof(unsigned short);
 		ibo_->bufferData(iboBytes, nullptr, GL_STATIC_DRAW);
 	}
 
@@ -214,6 +223,18 @@ void Sprite::setSize(int width, int height)
 	ASSERT(interleavedVertices_.capacity() == verticesCapacity);
 	resetIndices();
 	ASSERT(indices_.capacity() == indicesCapacity);
+
+	if (indicesCapacity < 65536)
+	{
+		shortIndices_.clear();
+		if (shortIndices_.capacity() < indicesCapacity)
+			shortIndices_.setCapacity(indicesCapacity);
+		for (unsigned int i = 0; i < indices_.size(); i++)
+			shortIndices_[i] = static_cast<unsigned short>(indices_[i]);
+		ibo_->bufferData(iboBytes, shortIndices_.data(), GL_STATIC_DRAW);
+	}
+	else
+		ibo_->bufferData(iboBytes, indices_.data(), GL_STATIC_DRAW);
 }
 
 void Sprite::resetVertices()
@@ -249,14 +270,14 @@ void Sprite::resetVertices()
 void Sprite::resetIndices()
 {
 	indices_.clear();
-	const int gridWidth = width_ + 1;
-	const int gridHeight = height_ + 1;
+	const unsigned int gridWidth = static_cast<unsigned int>(width_ + 1);
+	const unsigned int gridHeight = static_cast<unsigned int>(height_ + 1);
 
-	unsigned short vertexIndex = gridWidth;
+	unsigned int vertexIndex = gridWidth;
 	unsigned int arrayIndex = 0;
-	for (unsigned short i = 0; i < gridHeight - 1; i++)
+	for (unsigned int i = 0; i < gridHeight - 1; i++)
 	{
-		for (unsigned short j = 0; j < gridWidth; j++)
+		for (unsigned int j = 0; j < gridWidth; j++)
 		{
 			indices_[arrayIndex++] = vertexIndex + j;
 			if (j == 0 && i != 0) // degenerate vertex

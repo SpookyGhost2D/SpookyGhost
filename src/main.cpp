@@ -76,9 +76,9 @@ void MyEventHandler::onInit()
 	sprite->x = 100.0f;
 	sprite->y = 100.0f;
 
-	nctl::UniquePtr<Texture> texture2 = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "dog.png").data());
+	nctl::UniquePtr<Texture> texture2 = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine48.png").data());
 	nctl::UniquePtr<Sprite> sprite2 = nctl::makeUnique<Sprite>(texture2.get());
-	sprite2->name = "Dog";
+	sprite2->name = "nCine";
 	sprite2->x = 100.0f;
 	sprite2->y = 100.0f;
 

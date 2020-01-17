@@ -26,6 +26,9 @@ class IAnimation
 	    : state_(State::PAUSED) {}
 	virtual ~IAnimation() {}
 
+	static const unsigned int MaxNameLength = 64;
+	nctl::String name;
+
 	virtual Type type() const = 0;
 	inline State state() const { return state_; }
 

@@ -621,6 +621,7 @@ void UserInterface::createCanvasGui()
 
 void UserInterface::createSpritesGui()
 {
+	static bool showRectPreview = false;
 	static int selectedTextureIndex = 0;
 	if (ImGui::CollapsingHeader(Labels::Sprites))
 	{
@@ -630,7 +631,7 @@ void UserInterface::createSpritesGui()
 			for (unsigned int i = 0; i < spriteMgr_.textures().size(); i++)
 			{
 				Texture &texture = *spriteMgr_.textures()[i];
-				comboString_.formatAppend("#%u: %s (%d x %d)", i, texture.name().data(), texture.width(), texture.height());
+				comboString_.formatAppend("#%u: \"%s\" (%d x %d)", i, texture.name().data(), texture.width(), texture.height());
 				comboString_.setLength(comboString_.length() + 1);
 			}
 			comboString_.setLength(comboString_.length() + 1);
@@ -727,7 +728,7 @@ void UserInterface::createSpritesGui()
 			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
 			{
 				Sprite &sprite = *spriteMgr_.sprites()[i];
-				comboString_.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+				comboString_.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
 				comboString_.setLength(comboString_.length() + 1);
 			}
 			comboString_.setLength(comboString_.length() + 1);
@@ -791,14 +792,24 @@ void UserInterface::createSpritesGui()
 			uv0.y = texRect.y / texHeight;
 			uv1.x = (texRect.x + texRect.w) / texWidth;
 			uv1.y = (texRect.y + texRect.h) / texHeight;
-			ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
+			if (showRectPreview)
+				ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
 
 			int minX = texRect.x;
 			int maxX = minX + texRect.w;
+			if (sprite.isFlippedX())
+				nctl::swap(minX, maxX);
 			ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
+
+			ImGui::SameLine();
+			ImGui::Checkbox("Show Preview", &showRectPreview);
+
 			int minY = texRect.y;
 			int maxY = minY + texRect.h;
+			if (sprite.isFlippedY())
+				nctl::swap(minY, maxY);
 			ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, tex.height());
+
 			texRect.x = minX;
 			texRect.w = maxX - minX;
 			texRect.y = minY;
@@ -838,6 +849,68 @@ void UserInterface::createSpritesGui()
 	}
 }
 
+void UserInterface::createAnimationStateGui(IAnimation &anim)
+{
+	ImGui::Text("State: %s", animStateToString(anim.state()));
+	if (ImGui::Button(Labels::Stop))
+		anim.stop();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Pause))
+		anim.pause();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Play))
+		anim.play();
+	ImGui::Separator();
+}
+
+void UserInterface::createCurveAnimationGui(CurveAnimation &anim)
+{
+	int currentComboCurveType = static_cast<int>(anim.curve().type());
+	ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
+	anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
+
+	int currentDirectionMode = static_cast<int>(anim.curve().direction());
+	ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
+	anim.curve().setDirection(static_cast<EasingCurve::Direction>(currentDirectionMode));
+
+	int currentComboLoopMode = static_cast<int>(anim.curve().loopMode());
+	ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
+	anim.curve().setLoopMode(static_cast<EasingCurve::LoopMode>(currentComboLoopMode));
+
+	ImGui::SliderFloat("Shift", &anim.curve().shift(), -500.0f, 500.0f);
+	ImGui::SameLine();
+	auxString_.format("%s##Shift", Labels::Reset);
+	if (ImGui::Button(auxString_.data()))
+		anim.curve().shift() = 0.0f;
+	ImGui::SliderFloat("Scale", &anim.curve().scale(), -500.0f, 500.0f);
+	ImGui::SameLine();
+	auxString_.format("%s##Scale", Labels::Reset);
+	if (ImGui::Button(auxString_.data()))
+		anim.curve().scale() = 1.0f;
+
+	ImGui::Separator();
+	ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
+	ImGui::SameLine();
+	auxString_.format("%s##Speed", Labels::Reset);
+	if (ImGui::Button(auxString_.data()))
+		anim.speed() = 1.0f;
+	ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
+	ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
+	ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
+
+	if (anim.curve().start() > anim.curve().end() ||
+	    anim.curve().end() < anim.curve().start())
+	{
+		anim.curve().start() = anim.curve().end();
+	}
+	if (anim.curve().time() < anim.curve().start())
+		anim.curve().time() = anim.curve().start();
+	else if (anim.curve().time() > anim.curve().end())
+		anim.curve().time() = anim.curve().end();
+
+	ImGui::Text("Value: %f", anim.curve().value());
+}
+
 void UserInterface::createAnimationsGui()
 {
 	if (ImGui::CollapsingHeader(Labels::Animations))
@@ -845,7 +918,8 @@ void UserInterface::createAnimationsGui()
 		static int currentComboAnimType = 0;
 		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
 		ImGui::SameLine();
-		if (ImGui::Button(Labels::Add))
+		auxString_.format("%s##Animations", Labels::Add);
+		if (ImGui::Button(auxString_.data()))
 		{
 			switch (currentComboAnimType)
 			{
@@ -865,7 +939,8 @@ void UserInterface::createAnimationsGui()
 		}
 
 		ImGui::SameLine();
-		if (ImGui::Button(Labels::Clear))
+		auxString_.format("%s##Animations", Labels::Clear);
+		if (ImGui::Button(auxString_.data()))
 			animMgr_.clear();
 		ImGui::Separator();
 
@@ -953,9 +1028,15 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
 		auxString_ = "Parallel Animation";
 	else if (animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP)
 		auxString_ = "Sequential Animation";
+	if (animGroup.name.isEmpty() == false)
+		auxString_.formatAppend(": \"%s\"", animGroup.name.data());
+	auxString_.append("###AnimationGroup");
 
 	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		ImGui::InputText("Name", animGroup.name.data(), IAnimation::MaxNameLength,
+		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &animGroup.name);
+
 		static int currentComboAnimType = 0;
 		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
 		ImGui::SameLine();
@@ -992,16 +1073,7 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &animGroup)
 			animGroup.anims().clear();
 		}
 
-		ImGui::Text("State: %s", animStateToString(animGroup.state()));
-		if (ImGui::Button(Labels::Stop))
-			animGroup.stop();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Pause))
-			animGroup.pause();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Play))
-			animGroup.play();
-		ImGui::Separator();
+		createAnimationStateGui(animGroup);
 
 		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
 		{
@@ -1023,8 +1095,15 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 {
 	ASSERT(anim.type() == IAnimation::Type::PROPERTY);
 
-	if (ImGui::TreeNodeEx("Property Animation", ImGuiTreeNodeFlags_DefaultOpen))
+	auxString_ = "Property Animation";
+	if (anim.name.isEmpty() == false)
+		auxString_.formatAppend(": \"%s\"", anim.name.data());
+	auxString_.append("###PropertyAnimation");
+	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
+		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &anim.name);
+
 		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
@@ -1105,61 +1184,8 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		else
 			ImGui::TextDisabled("No sprite currently loaded");
 
-		int currentComboCurveType = static_cast<int>(anim.curve().type());
-		ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
-		anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
-
-		int currentDirectionMode = static_cast<int>(anim.curve().direction());
-		ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
-		anim.curve().setDirection(static_cast<EasingCurve::Direction>(currentDirectionMode));
-
-		int currentComboLoopMode = static_cast<int>(anim.curve().loopMode());
-		ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
-		anim.curve().setLoopMode(static_cast<EasingCurve::LoopMode>(currentComboLoopMode));
-
-		ImGui::SliderFloat("Shift", &anim.curve().shift(), -500.0f, 500.0f);
-		ImGui::SameLine();
-		auxString_.format("%s##Shift", Labels::Reset);
-		if (ImGui::Button(auxString_.data()))
-			anim.curve().shift() = 0.0f;
-		ImGui::SliderFloat("Scale", &anim.curve().scale(), -500.0f, 500.0f);
-		ImGui::SameLine();
-		auxString_.format("%s##Scale", Labels::Reset);
-		if (ImGui::Button(auxString_.data()))
-			anim.curve().scale() = 1.0f;
-
-		ImGui::Separator();
-		ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
-		ImGui::SameLine();
-		auxString_.format("%s##Speed", Labels::Reset);
-		if (ImGui::Button(auxString_.data()))
-			anim.speed() = 1.0f;
-		ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
-		ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
-		ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
-
-		if (anim.curve().start() > anim.curve().end() ||
-		    anim.curve().end() < anim.curve().start())
-		{
-			anim.curve().start() = anim.curve().end();
-		}
-		if (anim.curve().time() < anim.curve().start())
-			anim.curve().time() = anim.curve().start();
-		else if (anim.curve().time() > anim.curve().end())
-			anim.curve().time() = anim.curve().end();
-
-		ImGui::Text("Value: %f", anim.curve().value());
-
-		ImGui::Separator();
-		ImGui::Text("State: %s", animStateToString(anim.state()));
-		if (ImGui::Button(Labels::Stop))
-			anim.stop();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Pause))
-			anim.pause();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Play))
-			anim.play();
+		createCurveAnimationGui(anim);
+		createAnimationStateGui(anim);
 
 		ImGui::TreePop();
 	}
@@ -1169,8 +1195,15 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 {
 	ASSERT(anim.type() == IAnimation::Type::GRID);
 
-	if (ImGui::TreeNodeEx("Grid Animation", ImGuiTreeNodeFlags_DefaultOpen))
+	auxString_ = "Grid Animation";
+	if (anim.name.isEmpty() == false)
+		auxString_.formatAppend(": \"%s\"", anim.name.data());
+	auxString_.append("###GridAnimation");
+	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
+		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &anim.name);
+
 		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
@@ -1199,61 +1232,8 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		ImGui::Combo("Type", &currentComboType, gridAnimTypes, IM_ARRAYSIZE(gridAnimTypes));
 		anim.setGridAnimationType(static_cast<GridAnimation::AnimationType>(currentComboType));
 
-		int currentComboCurveType = static_cast<int>(anim.curve().type());
-		ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
-		anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
-
-		int currentDirectionMode = static_cast<int>(anim.curve().direction());
-		ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
-		anim.curve().setDirection(static_cast<EasingCurve::Direction>(currentDirectionMode));
-
-		int currentComboLoopMode = static_cast<int>(anim.curve().loopMode());
-		ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
-		anim.curve().setLoopMode(static_cast<EasingCurve::LoopMode>(currentComboLoopMode));
-
-		ImGui::SliderFloat("Shift", &anim.curve().shift(), -500.0f, 500.0f);
-		ImGui::SameLine();
-		auxString_.format("%s##Shift", Labels::Reset);
-		if (ImGui::Button(auxString_.data()))
-			anim.curve().shift() = 0.0f;
-		ImGui::SliderFloat("Scale", &anim.curve().scale(), -500.0f, 500.0f);
-		ImGui::SameLine();
-		auxString_.format("%s##Scale", Labels::Reset);
-		if (ImGui::Button(auxString_.data()))
-			anim.curve().scale() = 1.0f;
-
-		ImGui::Separator();
-		ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
-		ImGui::SameLine();
-		auxString_.format("%s##Speed", Labels::Reset);
-		if (ImGui::Button(auxString_.data()))
-			anim.speed() = 1.0f;
-		ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
-		ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
-		ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
-
-		if (anim.curve().start() > anim.curve().end() ||
-		    anim.curve().end() < anim.curve().start())
-		{
-			anim.curve().start() = anim.curve().end();
-		}
-		if (anim.curve().time() < anim.curve().start())
-			anim.curve().time() = anim.curve().start();
-		else if (anim.curve().time() > anim.curve().end())
-			anim.curve().time() = anim.curve().end();
-
-		ImGui::Text("Value: %f", anim.curve().value());
-
-		ImGui::Separator();
-		ImGui::Text("State: %s", animStateToString(anim.state()));
-		if (ImGui::Button(Labels::Stop))
-			anim.stop();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Pause))
-			anim.pause();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Play))
-			anim.play();
+		createCurveAnimationGui(anim);
+		createAnimationStateGui(anim);
 
 		ImGui::TreePop();
 	}

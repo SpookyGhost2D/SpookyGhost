@@ -102,7 +102,8 @@ class Sprite
 
 	nctl::Array<Vertex> interleavedVertices_;
 	nctl::Array<VertexPosition> restPositions_;
-	nctl::Array<unsigned short> indices_;
+	nctl::Array<unsigned int> indices_;
+	nctl::Array<unsigned short> shortIndices_;
 
 	static const int UniformsBufferSize = 256;
 	unsigned char uniformsBuffer_[UniformsBufferSize];
