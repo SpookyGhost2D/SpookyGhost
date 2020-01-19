@@ -34,6 +34,7 @@ class MyEventHandler :
 
   private:
 	nctl::UniquePtr<Canvas> canvas_;
+	nctl::UniquePtr<Canvas> resizedCanvas_;
 	nctl::UniquePtr<Canvas> spritesheet_;
 	nctl::UniquePtr<SpriteManager> spriteMgr_;
 	nctl::UniquePtr<AnimationManager> animMgr_;

@@ -39,7 +39,10 @@ const char *gridAnimTypes[] = { "Wobble X", "Wooble Y", "Skew X", "Skew Y", "Zoo
 const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
 
+enum CanvasResizeEnum {X1_8, X1_4, X1_2, X1, X2, X4, X8 };
+
 static bool showAboutWindow = false;
+static bool showTexrectWindow = false;
 
 int inputTextCallback(ImGuiInputTextCallbackData *data)
 {
@@ -65,132 +68,14 @@ const char *animStateToString(IAnimation::State state)
 	return "Unknown";
 }
 
-void applyDefaultStyle()
+void applyDarkStyle()
 {
-	ImGuiStyle *style = &ImGui::GetStyle();
-	ImVec4 *colors = style->Colors;
-
-	colors[ImGuiCol_Text]                   = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
-	colors[ImGuiCol_TextDisabled]           = ImVec4(0.500f, 0.500f, 0.500f, 1.000f);
-	colors[ImGuiCol_WindowBg]               = ImVec4(0.180f, 0.180f, 0.180f, 1.000f);
-	colors[ImGuiCol_ChildBg]                = ImVec4(0.280f, 0.280f, 0.280f, 0.000f);
-	colors[ImGuiCol_PopupBg]                = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
-	colors[ImGuiCol_Border]                 = ImVec4(0.266f, 0.266f, 0.266f, 1.000f);
-	colors[ImGuiCol_BorderShadow]           = ImVec4(0.000f, 0.000f, 0.000f, 0.000f);
-	colors[ImGuiCol_FrameBg]                = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
-	colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.200f, 0.200f, 0.200f, 1.000f);
-	colors[ImGuiCol_FrameBgActive]          = ImVec4(0.280f, 0.280f, 0.280f, 1.000f);
-	colors[ImGuiCol_TitleBg]                = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-	colors[ImGuiCol_TitleBgActive]          = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-	colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.148f, 0.148f, 0.148f, 1.000f);
-	colors[ImGuiCol_MenuBarBg]              = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
-	colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
-	colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.277f, 0.277f, 0.277f, 1.000f);
-	colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.300f, 0.300f, 0.300f, 1.000f);
-	colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_CheckMark]              = ImVec4(1.000f, 1.000f, 1.000f, 1.000f);
-	colors[ImGuiCol_SliderGrab]             = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
-	colors[ImGuiCol_SliderGrabActive]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_Button]                 = ImVec4(1.000f, 1.000f, 1.000f, 0.000f);
-	colors[ImGuiCol_ButtonHovered]          = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
-	colors[ImGuiCol_ButtonActive]           = ImVec4(1.000f, 1.000f, 1.000f, 0.391f);
-	colors[ImGuiCol_Header]                 = ImVec4(0.313f, 0.313f, 0.313f, 1.000f);
-	colors[ImGuiCol_HeaderHovered]          = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
-	colors[ImGuiCol_HeaderActive]           = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
-	colors[ImGuiCol_Separator]              = colors[ImGuiCol_Border];
-	colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
-	colors[ImGuiCol_SeparatorActive]        = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_ResizeGrip]             = ImVec4(1.000f, 1.000f, 1.000f, 0.250f);
-	colors[ImGuiCol_ResizeGripHovered]      = ImVec4(1.000f, 1.000f, 1.000f, 0.670f);
-	colors[ImGuiCol_ResizeGripActive]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_Tab]                    = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
-	colors[ImGuiCol_TabHovered]             = ImVec4(0.352f, 0.352f, 0.352f, 1.000f);
-	colors[ImGuiCol_TabActive]              = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
-	colors[ImGuiCol_TabUnfocused]           = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
-	colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
-	colors[ImGuiCol_DockingPreview]         = ImVec4(1.000f, 0.391f, 0.000f, 0.781f);
-	colors[ImGuiCol_DockingEmptyBg]         = ImVec4(0.180f, 0.180f, 0.180f, 1.000f);
-	colors[ImGuiCol_PlotLines]              = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
-	colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_PlotHistogram]          = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
-	colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_TextSelectedBg]         = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
-	colors[ImGuiCol_DragDropTarget]         = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_NavHighlight]           = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-	colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
-	colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
-
-	style->ChildRounding = 4.0f;
-	style->FrameBorderSize = 1.0f;
-	style->FrameRounding = 2.0f;
-	style->GrabMinSize = 7.0f;
-	style->PopupRounding = 2.0f;
-	style->ScrollbarRounding = 12.0f;
-	style->ScrollbarSize = 13.0f;
-	style->TabBorderSize = 1.0f;
-	style->TabRounding = 0.0f;
-	style->WindowRounding = 4.0f;
-}
-
-void applyDarcula()
-{
-	ImGuiStyle *style = &ImGui::GetStyle();
-	style->WindowRounding = 5.3f;
-	style->GrabRounding = style->FrameRounding = 2.3f;
-	style->ScrollbarRounding = 5.0f;
-	style->FrameBorderSize = 1.0f;
-	style->ItemSpacing.y = 6.5f;
-
-	style->Colors[ImGuiCol_Text]                  = {0.73333335f, 0.73333335f, 0.73333335f, 1.00f};
-	style->Colors[ImGuiCol_TextDisabled]          = {0.34509805f, 0.34509805f, 0.34509805f, 1.00f};
-	style->Colors[ImGuiCol_WindowBg]              = {0.23529413f, 0.24705884f, 0.25490198f, 0.94f};
-	style->Colors[ImGuiCol_ChildBg]               = {0.23529413f, 0.24705884f, 0.25490198f, 0.00f};
-	style->Colors[ImGuiCol_PopupBg]               = {0.23529413f, 0.24705884f, 0.25490198f, 0.94f};
-	style->Colors[ImGuiCol_Border]                = {0.33333334f, 0.33333334f, 0.33333334f, 0.50f};
-	style->Colors[ImGuiCol_BorderShadow]          = {0.15686275f, 0.15686275f, 0.15686275f, 0.00f};
-	style->Colors[ImGuiCol_FrameBg]               = {0.16862746f, 0.16862746f, 0.16862746f, 0.54f};
-	style->Colors[ImGuiCol_FrameBgHovered]        = {0.453125f, 0.67578125f, 0.99609375f, 0.67f};
-	style->Colors[ImGuiCol_FrameBgActive]         = {0.47058827f, 0.47058827f, 0.47058827f, 0.67f};
-	style->Colors[ImGuiCol_TitleBg]               = {0.04f, 0.04f, 0.04f, 1.00f};
-	style->Colors[ImGuiCol_TitleBgCollapsed]      = {0.16f, 0.29f, 0.48f, 1.00f};
-	style->Colors[ImGuiCol_TitleBgActive]         = {0.00f, 0.00f, 0.00f, 0.51f};
-	style->Colors[ImGuiCol_MenuBarBg]             = {0.27058825f, 0.28627452f, 0.2901961f, 0.80f};
-	style->Colors[ImGuiCol_ScrollbarBg]           = {0.27058825f, 0.28627452f, 0.2901961f, 0.60f};
-	style->Colors[ImGuiCol_ScrollbarGrab]         = {0.21960786f, 0.30980393f, 0.41960788f, 0.51f};
-	style->Colors[ImGuiCol_ScrollbarGrabHovered]  = {0.21960786f, 0.30980393f, 0.41960788f, 1.00f};
-	style->Colors[ImGuiCol_ScrollbarGrabActive]   = {0.13725491f, 0.19215688f, 0.2627451f, 0.91f};
-	// style->Colors[ImGuiCol_ComboBg]               = {0.1f, 0.1f, 0.1f, 0.99f};
-	style->Colors[ImGuiCol_CheckMark]             = {0.90f, 0.90f, 0.90f, 0.83f};
-	style->Colors[ImGuiCol_SliderGrab]            = {0.70f, 0.70f, 0.70f, 0.62f};
-	style->Colors[ImGuiCol_SliderGrabActive]      = {0.30f, 0.30f, 0.30f, 0.84f};
-	style->Colors[ImGuiCol_Button]                = {0.33333334f, 0.3529412f, 0.36078432f, 0.49f};
-	style->Colors[ImGuiCol_ButtonHovered]         = {0.21960786f, 0.30980393f, 0.41960788f, 1.00f};
-	style->Colors[ImGuiCol_ButtonActive]          = {0.13725491f, 0.19215688f, 0.2627451f, 1.00f};
-	style->Colors[ImGuiCol_Header]                = {0.33333334f, 0.3529412f, 0.36078432f, 0.53f};
-	style->Colors[ImGuiCol_HeaderHovered]         = {0.453125f, 0.67578125f, 0.99609375f, 0.67f};
-	style->Colors[ImGuiCol_HeaderActive]          = {0.47058827f, 0.47058827f, 0.47058827f, 0.67f};
-	style->Colors[ImGuiCol_Separator]             = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
-	style->Colors[ImGuiCol_SeparatorHovered]      = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
-	style->Colors[ImGuiCol_SeparatorActive]       = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
-	style->Colors[ImGuiCol_ResizeGrip]            = {1.00f, 1.00f, 1.00f, 0.85f};
-	style->Colors[ImGuiCol_ResizeGripHovered]     = {1.00f, 1.00f, 1.00f, 0.60f};
-	style->Colors[ImGuiCol_ResizeGripActive]      = {1.00f, 1.00f, 1.00f, 0.90f};
-	style->Colors[ImGuiCol_PlotLines]             = {0.61f, 0.61f, 0.61f, 1.00f};
-	style->Colors[ImGuiCol_PlotLinesHovered]      = {1.00f, 0.43f, 0.35f, 1.00f};
-	style->Colors[ImGuiCol_PlotHistogram]         = {0.90f, 0.70f, 0.00f, 1.00f};
-	style->Colors[ImGuiCol_PlotHistogramHovered]  = {1.00f, 0.60f, 0.00f, 1.00f};
-	style->Colors[ImGuiCol_TextSelectedBg]        = {0.18431373f, 0.39607847f, 0.79215693f, 0.90f};
-}
-
-inline void applyDarkStyle()
-{
-	ImGuiStyle & style = ImGui::GetStyle();
+	ImGuiStyle &style = ImGui::GetStyle();
 	ImVec4 *colors = style.Colors;
 
 	/// 0 = FLAT APPEARENCE
 	/// 1 = MORE "3D" LOOK
-	float is3D = 1.0f;
+	const float is3D = 1.0f;
 
 	colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 	colors[ImGuiCol_TextDisabled]           = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
@@ -275,71 +160,14 @@ inline void applyDarkStyle()
 	#endif
 }
 
-void applyYetAnotherDarkStyle()
-{
-	//imGuiIO.Fonts->AddFontFromFileTTF("../data/Fonts/Ruda-Bold.ttf", 15.0f, &config);
-	ImGui::GetStyle().FrameRounding = 4.0f;
-	ImGui::GetStyle().GrabRounding = 4.0f;
-
-	ImVec4 *colors = ImGui::GetStyle().Colors;
-	colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
-	colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
-	colors[ImGuiCol_WindowBg] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-	colors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
-	colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
-	colors[ImGuiCol_Border] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
-	colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-	colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-	colors[ImGuiCol_FrameBgHovered] = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
-	colors[ImGuiCol_FrameBgActive] = ImVec4(0.09f, 0.12f, 0.14f, 1.00f);
-	colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.12f, 0.14f, 0.65f);
-	colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
-	colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
-	colors[ImGuiCol_MenuBarBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
-	colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.39f);
-	colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
-	colors[ImGuiCol_CheckMark] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
-	colors[ImGuiCol_SliderGrab] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
-	colors[ImGuiCol_SliderGrabActive] = ImVec4(0.37f, 0.61f, 1.00f, 1.00f);
-	colors[ImGuiCol_Button] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-	colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
-	colors[ImGuiCol_ButtonActive] = ImVec4(0.06f, 0.53f, 0.98f, 1.00f);
-	colors[ImGuiCol_Header] = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
-	colors[ImGuiCol_HeaderHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-	colors[ImGuiCol_HeaderActive] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_Separator] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-	colors[ImGuiCol_SeparatorHovered] = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
-	colors[ImGuiCol_SeparatorActive] = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
-	colors[ImGuiCol_ResizeGrip] = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
-	colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
-	colors[ImGuiCol_ResizeGripActive] = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-	colors[ImGuiCol_Tab] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-	colors[ImGuiCol_TabHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-	colors[ImGuiCol_TabActive] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-	colors[ImGuiCol_TabUnfocused] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-	colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-	colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-	colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-	colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
-	colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-	colors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
-	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
-}
-
 }
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-UserInterface::UserInterface(Canvas &canvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr)
-    : canvas_(canvas), spritesheet_(spritesheet), spriteMgr_(spriteMgr), animMgr_(animMgr)
+UserInterface::UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr)
+    : canvas_(canvas), resizedCanvas_(resizedCanvas), spritesheet_(spritesheet), spriteMgr_(spriteMgr), animMgr_(animMgr)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -358,13 +186,10 @@ UserInterface::UserInterface(Canvas &canvas, Canvas &spritesheet, SpriteManager 
 	io.Fonts->AddFontFromFileTTF((nc::IFile::dataPath() + "fonts/" FONT_ICON_FILE_NAME_FAS).data(), 12.0f, &icons_config, icons_ranges);
 #endif
 
-	//applyDefaultStyle();
-	//applyDarcula();
 	applyDarkStyle();
-	//applyYetAnotherDarkStyle();
 
-	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon48.png").data());
-	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine48.png").data());
+	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon84.png").data());
+	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine84.png").data());
 }
 
 ///////////////////////////////////////////////////////////
@@ -380,11 +205,12 @@ void UserInterface::signalFrameSaved()
 		saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
 	else if (shouldSaveSpritesheet_)
 	{
-		saveAnimStatus_.sheetDestPos.x += canvas_.texWidth();
-		if (saveAnimStatus_.sheetDestPos.x + canvas_.texWidth() > spritesheet_.texWidth())
+		Canvas &sourceCanvas = (saveAnimStatus_.canvasResize != 1.0f) ? resizedCanvas_ : canvas_;
+		saveAnimStatus_.sheetDestPos.x += sourceCanvas.texWidth();
+		if (saveAnimStatus_.sheetDestPos.x + sourceCanvas.texWidth() > spritesheet_.texWidth())
 		{
 			saveAnimStatus_.sheetDestPos.x = 0;
-			saveAnimStatus_.sheetDestPos.y += canvas_.texHeight();
+			saveAnimStatus_.sheetDestPos.y += sourceCanvas.texHeight();
 		}
 	}
 	if (saveAnimStatus_.numSavedFrames == saveAnimStatus_.numFrames)
@@ -441,18 +267,30 @@ void UserInterface::createGui()
 	createDockingSpace();
 
 	ImGui::Begin("SpookyGhost");
-
 	createCanvasGui();
 	createSpritesGui();
 	createAnimationsGui();
 	createRenderGui();
-
 	ImGui::End();
 
-	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImGuiCond_Once);
 	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || (ImGui::IsItemHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)))
+	{
+		const ImVec2 mousePos = ImGui::GetMousePos();
+		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
+		if (spriteMgr_.sprites().isEmpty() == false)
+		{
+			spriteMgr_.sprites()[selectedSpriteIndex_]->x = relativePos.x / canvasZoom_;
+			spriteMgr_.sprites()[selectedSpriteIndex_]->y = relativePos.y / canvasZoom_;
+		}
+	}
 	ImGui::End();
+
+	if (spriteMgr_.sprites().isEmpty() == false && showTexrectWindow)
+		createTexRectWindow();
 
 	if (lastStatus_.secondsSince() >= 2.0f)
 		statusMessage_.clear();
@@ -490,34 +328,34 @@ void UserInterface::createDockingSpace()
 
 	ImGui::PopStyleVar(3);
 
-	const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
-	//const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode |
-	//                                          ImGuiDockNodeFlags_AutoHideTabBar;
-	ImGuiID dockspaceId = ImGui::GetID("TheDockSpace");
-	ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockspaceFlags);
-
-	//createInitialDocking(dockspaceId);
+	createInitialDocking();
 	createMenuBar();
 
 	ImGui::End();
 }
 
-void UserInterface::createInitialDocking(ImGuiID dockspaceId)
+void UserInterface::createInitialDocking()
 {
-	//if (ImGui::DockBuilderGetNode(dockspaceId) != nullptr)
-	//	return;
+	const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_AutoHideTabBar;
+	const ImGuiID dockspaceId = ImGui::GetID("TheDockSpace");
 
-	//ImGui::DockBuilderRemoveNode(dockspaceId);
-	ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_None); //ImGuiDockNodeFlags_Dockspace
-	ImGuiViewport *viewport = ImGui::GetMainViewport();
-	//ImGui::DockBuilderSetNodeSize(dockspaceId, ImVec2(1.0f, 1.0f));
+	if (ImGui::DockBuilderGetNode(dockspaceId) != nullptr)
+	{
+		ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), dockspaceFlags);
+		return;
+	}
+
+	ImGui::DockBuilderRemoveNode(dockspaceId);
+	ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
 
 	ImGuiID dockMainId = dockspaceId;
-	ImGuiID dockIdLeft = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.20f, nullptr, &dockMainId);
-	ImGuiID dockIdRight = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Right, 0.20f, nullptr, &dockMainId);
+	ImGuiID dockIdLeft = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.3f, nullptr, &dockMainId);
+	ImGuiID dockIdDown = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Down, 0.3f, nullptr, &dockMainId);
 
 	ImGui::DockBuilderDockWindow("SpookyGhost", dockIdLeft);
-	ImGui::DockBuilderDockWindow("Canvas", dockIdRight);
+	ImGui::DockBuilderDockWindow("Canvas", dockMainId);
+	ImGui::DockBuilderDockWindow("TexRect", dockMainId);
+	ImGui::DockBuilderDockWindow("Status", dockIdDown);
 	ImGui::DockBuilderFinish(dockspaceId);
 }
 
@@ -548,19 +386,36 @@ void UserInterface::createCanvasGui()
 {
 	if (ImGui::CollapsingHeader(Labels::Canvas))
 	{
+		ImGui::PushID("Canvas");
+		static int canvasZoomRadio = CanvasResizeEnum::X1;
 		ImGui::Text("Zoom:");
 		ImGui::SameLine();
-		if (ImGui::Button("1X"))
-			canvasZoom_ = 1.0f;
+		ImGui::RadioButton("1/8x", &canvasZoomRadio, CanvasResizeEnum::X1_8);
 		ImGui::SameLine();
-		if (ImGui::Button("2X"))
-			canvasZoom_ = 2.0f;
+		ImGui::RadioButton("1/4x", &canvasZoomRadio, CanvasResizeEnum::X1_4);
 		ImGui::SameLine();
-		if (ImGui::Button("4X"))
-			canvasZoom_ = 4.0f;
+		ImGui::RadioButton("1/2x", &canvasZoomRadio, CanvasResizeEnum::X1_2);
 		ImGui::SameLine();
-		if (ImGui::Button("8X"))
-			canvasZoom_ = 8.0f;
+		ImGui::RadioButton("1x", &canvasZoomRadio, CanvasResizeEnum::X1);
+		ImGui::SameLine();
+		ImGui::RadioButton("2x", &canvasZoomRadio, CanvasResizeEnum::X2);
+		ImGui::SameLine();
+		ImGui::RadioButton("4x", &canvasZoomRadio, CanvasResizeEnum::X4);
+		ImGui::SameLine();
+		ImGui::RadioButton("8x", &canvasZoomRadio, CanvasResizeEnum::X8);
+		ImGui::PopID();
+
+		switch (canvasZoomRadio)
+		{
+			case CanvasResizeEnum::X1_8: canvasZoom_ = 0.125f; break;
+			case CanvasResizeEnum::X1_4: canvasZoom_ = 0.25f; break;
+			case CanvasResizeEnum::X1_2: canvasZoom_ = 0.5f; break;
+			case CanvasResizeEnum::X1: canvasZoom_ = 1.0f; break;
+			case CanvasResizeEnum::X2: canvasZoom_ = 2.0f; break;
+			case CanvasResizeEnum::X4: canvasZoom_ = 4.0f; break;
+			case CanvasResizeEnum::X8: canvasZoom_ = 8.0f; break;
+			default: canvasZoom_ = 1.0f; break;
+		}
 
 		nc::Vector2i desiredCanvasSize;
 		static int currentComboResize = static_cast<int>(ResizePresetsEnum::SIZE256); // TOD: hard-coded initial state
@@ -617,7 +472,6 @@ void UserInterface::createCanvasGui()
 
 void UserInterface::createSpritesGui()
 {
-	static bool showRectPreview = false;
 	static int selectedTextureIndex = 0;
 	if (ImGui::CollapsingHeader(Labels::Sprites))
 	{
@@ -780,19 +634,7 @@ void UserInterface::createSpritesGui()
 			}
 
 			ImGui::Separator();
-			const float texWidth = static_cast<float>(tex.width());
-			const float texHeight = static_cast<float>(tex.height());
 			nc::Recti texRect = sprite.texRect();
-			ImVec2 size = ImVec2(sprite.width() * canvasZoom_, sprite.height() * canvasZoom_);
-			ImVec2 uv0(0.0f, 0.0f);
-			ImVec2 uv1(1.0, 1.0f);
-			uv0.x = texRect.x / texWidth;
-			uv0.y = texRect.y / texHeight;
-			uv1.x = (texRect.x + texRect.w) / texWidth;
-			uv1.y = (texRect.y + texRect.h) / texHeight;
-			if (showRectPreview)
-				ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
-
 			int minX = texRect.x;
 			int maxX = minX + texRect.w;
 			if (sprite.isFlippedX())
@@ -800,7 +642,7 @@ void UserInterface::createSpritesGui()
 			ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
 
 			ImGui::SameLine();
-			ImGui::Checkbox("Show Preview", &showRectPreview);
+			ImGui::Checkbox("Show Preview", &showTexrectWindow);
 
 			int minY = texRect.y;
 			int maxY = minY + texRect.h;
@@ -963,10 +805,71 @@ void UserInterface::createRenderGui()
 		ImGui::InputText("Filename prefix", animFilename_.data(), MaxStringLength,
 		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &animFilename_);
 
+		ImGui::PushID("Render");
+		static int canvasResizeRadio = CanvasResizeEnum::X1;
+		ImGui::Text("Resize:");
+		ImGui::SameLine();
+		ImGui::RadioButton("1/8x", &canvasResizeRadio, CanvasResizeEnum::X1_8);
+		ImGui::SameLine();
+		ImGui::RadioButton("1/4x", &canvasResizeRadio, CanvasResizeEnum::X1_4);
+		ImGui::SameLine();
+		ImGui::RadioButton("1/2x", &canvasResizeRadio, CanvasResizeEnum::X1_2);
+		ImGui::SameLine();
+		ImGui::RadioButton("1x", &canvasResizeRadio, CanvasResizeEnum::X1);
+		ImGui::SameLine();
+		ImGui::RadioButton("2x", &canvasResizeRadio, CanvasResizeEnum::X2);
+		ImGui::SameLine();
+		ImGui::RadioButton("4x", &canvasResizeRadio, CanvasResizeEnum::X4);
+		ImGui::SameLine();
+		ImGui::RadioButton("8x", &canvasResizeRadio, CanvasResizeEnum::X8);
+		ImGui::PopID();
+
+		switch (canvasResizeRadio)
+		{
+			case CanvasResizeEnum::X1_8: saveAnimStatus_.canvasResize = 0.125f; break;
+			case CanvasResizeEnum::X1_4: saveAnimStatus_.canvasResize = 0.25f; break;
+			case CanvasResizeEnum::X1_2: saveAnimStatus_.canvasResize = 0.5f; break;
+			case CanvasResizeEnum::X1: saveAnimStatus_.canvasResize = 1.0f; break;
+			case CanvasResizeEnum::X2: saveAnimStatus_.canvasResize = 2.0f; break;
+			case CanvasResizeEnum::X4: saveAnimStatus_.canvasResize = 4.0f; break;
+			case CanvasResizeEnum::X8: saveAnimStatus_.canvasResize = 8.0f; break;
+			default: saveAnimStatus_.canvasResize = 1.0f; break;
+		}
+
 		ImGui::InputInt("FPS", &saveAnimStatus_.fps);
 		ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, 10 * saveAnimStatus_.fps); // Hard-coded limit
 		float duration = saveAnimStatus_.numFrames * saveAnimStatus_.inverseFps();
 		ImGui::SliderFloat("Duration", &duration, 0.0f, 10.0f, "%.3fs"); // Hard-coded limit
+
+		const nc::Vector2i uncappedFrameSize(canvas_.texWidth() * saveAnimStatus_.canvasResize, canvas_.texHeight() * saveAnimStatus_.canvasResize);
+		// Immediately-invoked function expression for const initialization
+		const nc::Vector2i frameSize = [&] {
+			nc::Vector2i size = uncappedFrameSize;
+			size.x = (size.x > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.x;
+			size.y = (size.y > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.y;
+			return size;
+		}();
+
+		auxString_.format("%d x %d", frameSize.x, frameSize.y);
+		if (uncappedFrameSize.x > frameSize.x || uncappedFrameSize.y > frameSize.y)
+			auxString_.formatAppend(" (capped from %d x %d)", uncappedFrameSize.x, uncappedFrameSize.y);
+		ImGui::Text("Frame size: %s", auxString_.data());
+
+		const int sideX = static_cast<int>(ceil(sqrt(saveAnimStatus_.numFrames)));
+		const int sideY = (sideX * (sideX - 1) > saveAnimStatus_.numFrames) ? sideX - 1 : sideX;
+		const nc::Vector2i uncappedSpritesheetSize(sideX * frameSize.x,sideY * frameSize.y);
+		// Immediately-invoked function expression for const initialization
+		const nc::Vector2i spritesheetSize = [&] {
+			nc::Vector2i size = uncappedSpritesheetSize;
+			size.x = (size.x > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.x;
+			size.y = (size.y > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.y;
+			return size;
+		}();
+
+		auxString_.format("%d x %d", spritesheetSize.x, spritesheetSize.y);
+		if (uncappedSpritesheetSize.x > spritesheetSize.x || uncappedSpritesheetSize.y > spritesheetSize.y)
+			auxString_.formatAppend(" (capped from %d x %d)", uncappedSpritesheetSize.x, uncappedSpritesheetSize.y);
+		ImGui::Text("Spritesheet size: %s", auxString_.data());
 
 		saveAnimStatus_.numFrames = static_cast<int>(duration * saveAnimStatus_.fps);
 		if (saveAnimStatus_.numFrames < 1)
@@ -992,6 +895,7 @@ void UserInterface::createRenderGui()
 					animMgr_.play();
 					saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveFrames_ = true;
+					resizedCanvas_.resizeTexture(frameSize);
 				}
 			}
 			ImGui::SameLine();
@@ -1005,10 +909,8 @@ void UserInterface::createRenderGui()
 					saveAnimStatus_.filename.format("%s.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveSpritesheet_ = true;
 					saveAnimStatus_.sheetDestPos.set(0, 0);
-
-					const unsigned int sideX = static_cast<unsigned int>(ceil(sqrt(saveAnimStatus_.numFrames)));
-					const unsigned int sideY = (sideX * (sideX - 1) > saveAnimStatus_.numFrames) ? sideX - 1 : sideX;
-					spritesheet_.resizeTexture(sideX * canvas_.texWidth(), sideY * canvas_.texHeight());
+					resizedCanvas_.resizeTexture(canvas_.size() * saveAnimStatus_.canvasResize);
+					spritesheet_.resizeTexture(spritesheetSize);
 				}
 			}
 		}
@@ -1286,6 +1188,27 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 	}
 }
 
+void UserInterface::createTexRectWindow()
+{
+	Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+
+	const float texWidth = static_cast<float>(sprite.texture().width());
+	const float texHeight = static_cast<float>(sprite.texture().height());
+	nc::Recti texRect = sprite.texRect();
+	ImVec2 size = ImVec2(sprite.width() * canvasZoom_, sprite.height() * canvasZoom_);
+	ImVec2 uv0(0.0f, 0.0f);
+	ImVec2 uv1(1.0, 1.0f);
+	uv0.x = texRect.x / texWidth;
+	uv0.y = texRect.y / texHeight;
+	uv1.x = (texRect.x + texRect.w) / texWidth;
+	uv1.y = (texRect.y + texRect.h) / texHeight;
+
+	ImGui::SetNextWindowSize(size, ImGuiCond_Once);
+	ImGui::Begin("TexRect", &showTexrectWindow, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
+	ImGui::End();
+}
+
 void UserInterface::createAboutWindow()
 {
 	ImGui::Begin("About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
@@ -1299,6 +1222,8 @@ void UserInterface::createAboutWindow()
 	ImGui::Text("SpookyGhost %s (%s)", VersionStrings::Version, VersionStrings::GitBranch);
 #endif
 	ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
+	ImGui::Spacing();
+	ImGui::Text("https://encelo.itch.io/spookyghost");
 	for (unsigned int i = 0; i < 4; i++)
 		ImGui::Spacing();
 

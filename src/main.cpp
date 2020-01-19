@@ -57,7 +57,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	config.vaoPoolSize = 1; // TODO: FIX size > 1
 
 	config.windowTitle = "SpookyGhost";
-	config.windowIconFilename = "icon48.png";
+	config.windowIconFilename = "icon84.png";
 
 	config.consoleLogLevel = nc::ILogger::LogLevel::WARN;
 }
@@ -67,23 +67,24 @@ void MyEventHandler::onInit()
 	RenderingResources::create();
 
 	canvas_ = nctl::makeUnique<Canvas>(imageWidth, imageHeight);
+	resizedCanvas_ = nctl::makeUnique<Canvas>();
 	spritesheet_ = nctl::makeUnique<Canvas>();
 	spriteMgr_ = nctl::makeUnique<SpriteManager>();
 	animMgr_ = nctl::makeUnique<AnimationManager>();
 
-	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon48.png").data());
+	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon84.png").data());
 	nctl::UniquePtr<Sprite> sprite = nctl::makeUnique<Sprite>(texture.get());
 	sprite->name = "Ghost";
 	sprite->x = 100.0f;
 	sprite->y = 100.0f;
 
-	nctl::UniquePtr<Texture> texture2 = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine48.png").data());
+	nctl::UniquePtr<Texture> texture2 = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine84.png").data());
 	nctl::UniquePtr<Sprite> sprite2 = nctl::makeUnique<Sprite>(texture2.get());
 	sprite2->name = "nCine";
 	sprite2->x = 100.0f;
 	sprite2->y = 100.0f;
 
-	ui_ = nctl::makeUnique<UserInterface>(*canvas_, *spritesheet_, *spriteMgr_, *animMgr_);
+	ui_ = nctl::makeUnique<UserInterface>(*canvas_, *resizedCanvas_, *spritesheet_, *spriteMgr_, *animMgr_);
 
 	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
 
@@ -155,14 +156,24 @@ void MyEventHandler::onFrameStart()
 
 	if (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet())
 	{
-		if (ui_->shouldSaveFrames())
-			canvas_->save(saveAnimStatus.filename.data());
-		else if (ui_->shouldSaveSpritesheet())
+		Canvas *sourceCanvas = (saveAnimStatus.canvasResize != 1.0f) ? resizedCanvas_.get() : canvas_.get();
+		if (saveAnimStatus.canvasResize != 1.0f)
 		{
 			canvas_->bindRead();
-			spritesheet_->bindTexture();
-			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, saveAnimStatus.sheetDestPos.x, saveAnimStatus.sheetDestPos.y, 0, 0, canvas_->texWidth(), canvas_->texHeight());
+			resizedCanvas_->bindDraw();
+			glBlitFramebuffer(0, 0, canvas_->texWidth(), canvas_->texHeight(), 0, 0, resizedCanvas_->texWidth(), resizedCanvas_->texHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
 			canvas_->unbind();
+			resizedCanvas_->unbind();
+		}
+
+		if (ui_->shouldSaveFrames())
+			sourceCanvas->save(saveAnimStatus.filename.data());
+		else if (ui_->shouldSaveSpritesheet())
+		{
+			sourceCanvas->bindRead();
+			spritesheet_->bindTexture();
+			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, saveAnimStatus.sheetDestPos.x, saveAnimStatus.sheetDestPos.y, 0, 0, sourceCanvas->texWidth(), sourceCanvas->texHeight());
+			sourceCanvas->unbind();
 			spritesheet_->unbindTexture();
 		}
 

@@ -30,10 +30,11 @@ class UserInterface
 		unsigned int numSavedFrames = 0;
 		int numFrames = 60;
 		int fps = 60;
+		float canvasResize = 1.0f;
 		nc::Vector2i sheetDestPos;
 	};
 
-	UserInterface(Canvas &canvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr);
+	UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr);
 	const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
 	bool shouldSaveFrames() const { return shouldSaveFrames_; }
 	bool shouldSaveSpritesheet() const { return shouldSaveSpritesheet_; }
@@ -53,6 +54,7 @@ class UserInterface
 	nctl::String comboString_ = nctl::String(1024 * 2);
 	nctl::String auxString_ = nctl::String(MaxStringLength);
 	Canvas &canvas_;
+	Canvas &resizedCanvas_;
 	Canvas &spritesheet_;
 	SpriteManager &spriteMgr_;
 	AnimationManager &animMgr_;
@@ -74,7 +76,7 @@ class UserInterface
 	nctl::UniquePtr<Texture> ncineLogo_;
 
 	void createDockingSpace();
-	void createInitialDocking(unsigned int dockspaceId);
+	void createInitialDocking();
 	void createMenuBar();
 
 	void createCanvasGui();
@@ -91,6 +93,7 @@ class UserInterface
 	void createPropertyAnimationGui(AnimationGroup &parentGroup, unsigned int index);
 	void createGridAnimationGui(AnimationGroup &parentGroup, unsigned int index);
 
+	void createTexRectWindow();
 	void createAboutWindow();
 };
 
