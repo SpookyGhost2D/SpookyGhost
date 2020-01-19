@@ -20,13 +20,20 @@ class Canvas
   public:
 	nc::Colorf backgroundColor;
 
+	Canvas();
 	Canvas(int width, int height);
 
 	inline void resizeTexture(const nc::Vector2i &size) { resizeTexture(size.x, size.y); }
 	void resizeTexture(int width, int height);
 
+	void bindTexture();
+	void unbindTexture();
+
+	void bindRead();
+	void bindDraw();
 	void bind();
 	void unbind();
+
 	void save(const char *filename);
 
 	inline int maxTextureSize() const { return maxTextureSize_; }

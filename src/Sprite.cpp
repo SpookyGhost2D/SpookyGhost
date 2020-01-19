@@ -25,11 +25,10 @@ struct VertexFormat
 ///////////////////////////////////////////////////////////
 
 Sprite::Sprite(Texture *texture)
-    : name(MaxNameLength), rotation(0.0f), scaleFactor(1.0f, 1.0f),
-      anchorPoint(0.0f, 0.0f), color(nc::Colorf::White),
-      width_(0), height_(0), modelView_(nc::Matrix4x4f::Identity),
-      texture_(nullptr), texRect_(0, 0, 0, 0), flippedX_(false), flippedY_(false),
-      blendingPreset_(BlendingPreset::ALPHA),
+    : name(MaxNameLength), visible(true), x(0.0f), y(0.0f), rotation(0.0f), scaleFactor(1.0f, 1.0f),
+      anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), width_(0), height_(0),
+      modelView_(nc::Matrix4x4f::Identity), texture_(nullptr), texRect_(0, 0, 0, 0),
+      flippedX_(false), flippedY_(false), blendingPreset_(BlendingPreset::ALPHA),
       interleavedVertices_(0), restPositions_(0), indices_(0), shortIndices_(0)
 {
 	spriteShaderProgram_ = RenderingResources::spriteShaderProgram();
@@ -54,6 +53,9 @@ Sprite::Sprite(Texture *texture)
 	ibo_ = nctl::makeUnique<nc::GLBufferObject>(GL_ELEMENT_ARRAY_BUFFER);
 
 	setTexture(texture);
+	// Move the sprite in the top-left corner
+	x = texRect().w / 2;
+	y = texRect().h / 2;
 }
 
 ///////////////////////////////////////////////////////////

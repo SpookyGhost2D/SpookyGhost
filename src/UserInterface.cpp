@@ -338,8 +338,8 @@ void applyYetAnotherDarkStyle()
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-UserInterface::UserInterface(Canvas &canvas, SpriteManager &spriteMgr, AnimationManager &animMgr)
-    : canvas_(canvas), spriteMgr_(spriteMgr), animMgr_(animMgr)
+UserInterface::UserInterface(Canvas &canvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr)
+    : canvas_(canvas), spritesheet_(spritesheet), spriteMgr_(spriteMgr), animMgr_(animMgr)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -373,13 +373,24 @@ UserInterface::UserInterface(Canvas &canvas, SpriteManager &spriteMgr, Animation
 
 void UserInterface::signalFrameSaved()
 {
-	ASSERT(shouldSaveAnim_ == true);
+	ASSERT(shouldSaveFrames_ || shouldSaveSpritesheet_);
 
 	saveAnimStatus_.numSavedFrames++;
-	saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+	if (shouldSaveFrames_)
+		saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+	else if (shouldSaveSpritesheet_)
+	{
+		saveAnimStatus_.sheetDestPos.x += canvas_.texWidth();
+		if (saveAnimStatus_.sheetDestPos.x + canvas_.texWidth() > spritesheet_.texWidth())
+		{
+			saveAnimStatus_.sheetDestPos.x = 0;
+			saveAnimStatus_.sheetDestPos.y += canvas_.texHeight();
+		}
+	}
 	if (saveAnimStatus_.numSavedFrames == saveAnimStatus_.numFrames)
 	{
-		shouldSaveAnim_ = false;
+		shouldSaveFrames_ = false;
+		shouldSaveSpritesheet_ = false;
 		saveAnimStatus_.numSavedFrames = 0;
 		pushStatusInfoMessage("Animation saved");
 	}
@@ -404,12 +415,16 @@ void UserInterface::closeAboutWindow()
 
 void UserInterface::cancelRender()
 {
-	if (shouldSaveAnim_)
+	if (shouldSaveFrames_ || shouldSaveSpritesheet_)
 	{
-		auxString_.format("Render cancelled, saved %d out of %d frames", saveAnimStatus_.numSavedFrames, saveAnimStatus_.numFrames);
+		if (shouldSaveFrames_)
+			auxString_.format("Render cancelled, saved %d out of %d frames", saveAnimStatus_.numSavedFrames, saveAnimStatus_.numFrames);
+		else if (shouldSaveSpritesheet_)
+			auxString_ = "Render cancelled, the spritesheet has not been saved";
 		pushStatusInfoMessage(auxString_.data());
 		saveAnimStatus_.numSavedFrames = 0;
-		shouldSaveAnim_ = false;
+		shouldSaveFrames_ = false;
+		shouldSaveSpritesheet_ = false;
 	}
 }
 
@@ -725,6 +740,8 @@ void UserInterface::createSpritesGui()
 
 			ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
 			                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &sprite.name);
+			ImGui::SameLine();
+			ImGui::Checkbox("Visible", &sprite.visible);
 
 			nc::Vector2f position(sprite.x, sprite.y);
 			ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(canvas_.texWidth()));
@@ -955,7 +972,7 @@ void UserInterface::createRenderGui()
 		if (saveAnimStatus_.numFrames < 1)
 			saveAnimStatus_.numFrames = 1;
 
-		if (shouldSaveAnim_)
+		if (shouldSaveFrames_ || shouldSaveSpritesheet_)
 		{
 			const unsigned int numSavedFrames = saveAnimStatus_.numSavedFrames;
 			const float fraction = numSavedFrames / static_cast<float>(saveAnimStatus_.numFrames);
@@ -964,15 +981,35 @@ void UserInterface::createRenderGui()
 			if (ImGui::Button(Labels::Cancel))
 				cancelRender();
 		}
-		else if (ImGui::Button(Labels::SavePngs) && shouldSaveAnim_ == false)
+		else
 		{
-			if (animFilename_.isEmpty())
-				pushStatusErrorMessage("Set a filename prefix before saving an animation");
-			else
+			if (ImGui::Button(Labels::SaveFrames))
 			{
-				animMgr_.play();
-				saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
-				shouldSaveAnim_ = true;
+				if (animFilename_.isEmpty())
+					pushStatusErrorMessage("Set a filename prefix before saving an animation");
+				else
+				{
+					animMgr_.play();
+					saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+					shouldSaveFrames_ = true;
+				}
+			}
+			ImGui::SameLine();
+			if (ImGui::Button(Labels::SaveSpritesheet))
+			{
+				if (animFilename_.isEmpty())
+					pushStatusErrorMessage("Set a filename prefix before saving an animation");
+				else
+				{
+					animMgr_.play();
+					saveAnimStatus_.filename.format("%s.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+					shouldSaveSpritesheet_ = true;
+					saveAnimStatus_.sheetDestPos.set(0, 0);
+
+					const unsigned int sideX = static_cast<unsigned int>(ceil(sqrt(saveAnimStatus_.numFrames)));
+					const unsigned int sideY = (sideX * (sideX - 1) > saveAnimStatus_.numFrames) ? sideX - 1 : sideX;
+					spritesheet_.resizeTexture(sideX * canvas_.texWidth(), sideY * canvas_.texHeight());
+				}
 			}
 		}
 	}
@@ -1134,11 +1171,15 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 					}
 				}
 			}
-			ImGui::Combo("Property", &currentComboProperty, propertyTypes, IM_ARRAYSIZE(propertyTypes));
+
+			bool setCurveShift = false;
+			if (ImGui::Combo("Property", &currentComboProperty, propertyTypes, IM_ARRAYSIZE(propertyTypes)))
+				setCurveShift = true;
 			anim.setPropertyName(propertyTypes[currentComboProperty]);
 			switch (currentComboProperty)
 			{
 				case PropertyTypesEnum::NONE:
+					anim.setProperty(nullptr);
 					break;
 				case PropertyTypesEnum::POSITION_X:
 					anim.setProperty(&sprite.x);
@@ -1174,6 +1215,8 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 					anim.setProperty(&sprite.color.data()[2]);
 					break;
 			}
+			if (setCurveShift && anim.property())
+				anim.curve().setShift(*anim.property());
 		}
 		else
 			ImGui::TextDisabled("No sprite currently loaded");

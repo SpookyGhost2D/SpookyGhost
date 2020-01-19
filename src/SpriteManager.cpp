@@ -47,6 +47,8 @@ void SpriteManager::update()
 {
 	for (unsigned int i = 0; i < sprites_.size(); i++)
 	{
+		if (sprites_[i]->visible == false)
+			continue;
 		sprites_[i]->transform();
 		sprites_[i]->updateRender();
 		setBlendingFactors(sprites_[i]->blendingPreset());

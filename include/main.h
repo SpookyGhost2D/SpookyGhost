@@ -33,7 +33,8 @@ class MyEventHandler :
 	void onKeyReleased(const nc::KeyboardEvent &event) override;
 
   private:
-	nctl::UniquePtr<Canvas> ca_;
+	nctl::UniquePtr<Canvas> canvas_;
+	nctl::UniquePtr<Canvas> spritesheet_;
 	nctl::UniquePtr<SpriteManager> spriteMgr_;
 	nctl::UniquePtr<AnimationManager> animMgr_;
 	nctl::UniquePtr<UserInterface> ui_;

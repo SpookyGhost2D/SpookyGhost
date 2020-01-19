@@ -7,7 +7,8 @@ namespace {
 
 void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 {
-	for (unsigned int i = 0; i < animGroup.anims().size(); i++)
+	// Deleting backwards without iterators
+	for (int i = animGroup.anims().size() - 1; i >= 0; i--)
 	{
 		IAnimation &anim = *animGroup.anims()[i];
 
@@ -27,6 +28,7 @@ void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 				{
 					propertyAnim.setProperty(nullptr);
 					propertyAnim.stop();
+					animGroup.anims().removeAt(i);
 				}
 				break;
 			}
@@ -37,6 +39,7 @@ void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 				{
 					gridAnim.setSprite(nullptr);
 					gridAnim.stop();
+					animGroup.anims().removeAt(i);
 				}
 				break;
 			}

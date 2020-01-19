@@ -47,6 +47,7 @@ class Sprite
 	static const unsigned int MaxNameLength = 64;
 	nctl::String name;
 
+	bool visible;
 	float x, y;
 	float rotation;
 	nc::Vector2f scaleFactor;

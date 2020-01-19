@@ -30,11 +30,13 @@ class UserInterface
 		unsigned int numSavedFrames = 0;
 		int numFrames = 60;
 		int fps = 60;
+		nc::Vector2i sheetDestPos;
 	};
 
-	UserInterface(Canvas &canvas, SpriteManager &spriteMgr, AnimationManager &animMgr);
+	UserInterface(Canvas &canvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr);
 	const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
-	bool shouldSaveAnim() const { return shouldSaveAnim_; }
+	bool shouldSaveFrames() const { return shouldSaveFrames_; }
+	bool shouldSaveSpritesheet() const { return shouldSaveSpritesheet_; }
 	void signalFrameSaved();
 
 	void pushStatusInfoMessage(const char *message);
@@ -51,6 +53,7 @@ class UserInterface
 	nctl::String comboString_ = nctl::String(1024 * 2);
 	nctl::String auxString_ = nctl::String(MaxStringLength);
 	Canvas &canvas_;
+	Canvas &spritesheet_;
 	SpriteManager &spriteMgr_;
 	AnimationManager &animMgr_;
 	int selectedSpriteIndex_ = 0;
@@ -58,7 +61,8 @@ class UserInterface
 	nctl::String texFilename_ = nctl::String(MaxStringLength);
 	nctl::String animFilename_ = nctl::String(MaxStringLength);
 	SaveAnim saveAnimStatus_;
-	bool shouldSaveAnim_ = false;
+	bool shouldSaveFrames_ = false;
+	bool shouldSaveSpritesheet_ = false;
 
 	float canvasZoom_ = 1.0f;
 	nc::Vector2i customCanvasSize_;

@@ -30,7 +30,8 @@
 #define TEXT_PAUSE "Pause"
 #define TEXT_PLAY "Play"
 
-#define TEXT_SAVE_PNGS "Save PNGs"
+#define TEXT_SAVE_FRAMES "Save Frames"
+#define TEXT_SAVE_SPRITESHEET "Save Spritesheet"
 #define TEXT_CANCEL "Cancel"
 
 #ifndef WITH_FONTAWESOME
@@ -64,7 +65,8 @@ static const char *Stop = TEXT_STOP;
 static const char *Pause = TEXT_PAUSE;
 static const char *Play = TEXT_PLAY;
 
-static const char *SavePngs = TEXT_SAVE_PNGS;
+static const char *SaveFrames = TEXT_SAVE_FRAMES;
+static const char *SaveSpritesheet = TEXT_SAVE_SPRITESHEET;
 static const char *Cancel = TEXT_CANCEL;
 
 }
@@ -101,7 +103,8 @@ static const char *Stop = ICON_FA_STOP FA5_SPACING TEXT_STOP;
 static const char *Pause = ICON_FA_PAUSE FA5_SPACING TEXT_PAUSE;
 static const char *Play = ICON_FA_PLAY FA5_SPACING TEXT_PLAY;
 
-static const char *SavePngs = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_PNGS;
+static const char *SaveFrames = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_FRAMES;
+static const char *SaveSpritesheet = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_SPRITESHEET;
 static const char *Cancel = ICON_FA_TIMES_CIRCLE FA5_SPACING TEXT_CANCEL;
 
 }

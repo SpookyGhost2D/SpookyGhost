@@ -32,12 +32,12 @@ void GridAnimation::update(float deltaTime)
 	{
 		case State::STOPPED:
 		case State::PAUSED:
-			if (sprite_)
+			if (sprite_ && sprite_->visible)
 				deform(curve_.value());
 			break;
 		case State::PLAYING:
 			const float value = curve_.next(speed_ * deltaTime);
-			if (sprite_)
+			if (sprite_ && sprite_->visible)
 				deform(value);
 			break;
 	}

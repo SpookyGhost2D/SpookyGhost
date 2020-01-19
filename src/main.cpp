@@ -66,7 +66,8 @@ void MyEventHandler::onInit()
 {
 	RenderingResources::create();
 
-	ca_ = nctl::makeUnique<Canvas>(imageWidth, imageHeight);
+	canvas_ = nctl::makeUnique<Canvas>(imageWidth, imageHeight);
+	spritesheet_ = nctl::makeUnique<Canvas>();
 	spriteMgr_ = nctl::makeUnique<SpriteManager>();
 	animMgr_ = nctl::makeUnique<AnimationManager>();
 
@@ -82,7 +83,7 @@ void MyEventHandler::onInit()
 	sprite2->x = 100.0f;
 	sprite2->y = 100.0f;
 
-	ui_ = nctl::makeUnique<UserInterface>(*ca_, *spriteMgr_, *animMgr_);
+	ui_ = nctl::makeUnique<UserInterface>(*canvas_, *spritesheet_, *spriteMgr_, *animMgr_);
 
 	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
 
@@ -133,28 +134,47 @@ void MyEventHandler::onShutdown()
 void MyEventHandler::onFrameStart()
 {
 	const float interval = nc::theApplication().interval();
-	glClearColor(0.25f, 0.25f, 0.25f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	ca_->bind();
+	canvas_->bind();
 
-	if (ui_->shouldSaveAnim() == false)
+	const UserInterface::SaveAnim &saveAnimStatus = ui_->saveAnimStatus();
+	if (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet())
+	{
+		if (saveAnimStatus.numSavedFrames == 0)
+		{
+			animMgr_->reset();
+			animMgr_->update(0.0f);
+		}
+	}
+	else
 		animMgr_->update(interval);
 	spriteMgr_->update();
 
-	ca_->unbind();
+	canvas_->unbind();
 
-	ui_->createGui();
-	if (ui_->shouldSaveAnim())
+	if (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet())
 	{
-		const UserInterface::SaveAnim saveAnimStatus = ui_->saveAnimStatus();
-		if (saveAnimStatus.numSavedFrames == 0)
-			animMgr_->reset();
+		if (ui_->shouldSaveFrames())
+			canvas_->save(saveAnimStatus.filename.data());
+		else if (ui_->shouldSaveSpritesheet())
+		{
+			canvas_->bindRead();
+			spritesheet_->bindTexture();
+			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, saveAnimStatus.sheetDestPos.x, saveAnimStatus.sheetDestPos.y, 0, 0, canvas_->texWidth(), canvas_->texHeight());
+			canvas_->unbind();
+			spritesheet_->unbindTexture();
+		}
 
-		ca_->save(saveAnimStatus.filename.data());
+		const bool shouldSaveSpritesheet = ui_->shouldSaveSpritesheet();
 		ui_->signalFrameSaved();
+		// If this was the last frame to blit then we save the spritesheet
+		if (shouldSaveSpritesheet && ui_->shouldSaveSpritesheet() == false)
+			spritesheet_->save(saveAnimStatus.filename.data());
 		animMgr_->update(saveAnimStatus.inverseFps());
 	}
+
+	ui_->createGui();
 }
 
 void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)

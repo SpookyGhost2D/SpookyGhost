@@ -11,6 +11,14 @@
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
+Canvas::Canvas()
+    : backgroundColor(0.0f, 0.0f, 0.0f, 0.0f),
+      texWidth_(0), texHeight_(0), texSizeInBytes_(0)
+{
+	const nc::IGfxCapabilities &gfxCaps = nc::theServiceLocator().gfxCapabilities();
+	maxTextureSize_ = gfxCaps.value(nc::IGfxCapabilities::GLIntValues::MAX_TEXTURE_SIZE);
+}
+
 Canvas::Canvas(int texWidth, int texHeight)
     : backgroundColor(0.0f, 0.0f, 0.0f, 0.0f),
       texWidth_(texWidth), texHeight_(texHeight), texSizeInBytes_(0)
@@ -31,8 +39,8 @@ void Canvas::resizeTexture(int width, int height)
 	FATAL_ASSERT(height > 0);
 	if (pixels_ == nullptr || width != texWidth_ || height != texHeight_)
 	{
-		texWidth_ = width;
-		texHeight_ = height;
+		texWidth_ = (width <= maxTextureSize_) ? width : maxTextureSize_;
+		texHeight_ = (height <= maxTextureSize_) ? height : maxTextureSize_;
 		texSizeInBytes_ = static_cast<unsigned int>(texWidth_ * texHeight_ * 4);
 
 		pixels_ = nctl::makeUnique<unsigned char[]>(texSizeInBytes_);
@@ -44,10 +52,29 @@ void Canvas::resizeTexture(int width, int height)
 
 		fbo_ = nctl::makeUnique<nc::GLFramebufferObject>();
 		fbo_->attachTexture(*texture_, GL_COLOR_ATTACHMENT0);
-		fbo_->attachRenderbuffer(GL_DEPTH_COMPONENT16, width, height, GL_DEPTH_ATTACHMENT);
 		if (fbo_->isStatusComplete() == false)
 			LOGE("Framebuffer object status is not complete\n");
 	}
+}
+
+void Canvas::bindTexture()
+{
+	texture_->bind();
+}
+
+void Canvas::unbindTexture()
+{
+	texture_->unbind();
+}
+
+void Canvas::bindRead()
+{
+	fbo_->bind(GL_READ_FRAMEBUFFER);
+}
+
+void Canvas::bindDraw()
+{
+	fbo_->bind(GL_DRAW_FRAMEBUFFER);
 }
 
 void Canvas::bind()
@@ -61,8 +88,6 @@ void Canvas::bind()
 
 void Canvas::unbind()
 {
-	GLenum invalidAttachment = GL_DEPTH_ATTACHMENT;
-	fbo_->invalidate(1, &invalidAttachment);
 	fbo_->unbind();
 	glViewport(0, 0, nc::theApplication().widthInt(), nc::theApplication().heightInt());
 }
