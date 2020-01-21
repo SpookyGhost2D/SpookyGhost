@@ -27,7 +27,7 @@ class GridAnimation : public CurveAnimation
 	void update(float deltaTime) override;
 
 	inline const Sprite *sprite() const { return sprite_; }
-	inline void setSprite(Sprite *sprite) { sprite_ = sprite; }
+	void setSprite(Sprite *sprite);
 
 	inline AnimationType gridAnimationType() const { return type_; }
 	inline void setGridAnimationType(AnimationType type) { type_ = type; }

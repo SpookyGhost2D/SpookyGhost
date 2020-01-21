@@ -39,7 +39,7 @@ const char *gridAnimTypes[] = { "Wobble X", "Wooble Y", "Skew X", "Skew Y", "Zoo
 const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
 
-enum CanvasResizeEnum {X1_8, X1_4, X1_2, X1, X2, X4, X8 };
+enum CanvasZoomEnum {X1_8, X1_4, X1_2, X1, X2, X4, X8 };
 
 static bool showAboutWindow = false;
 static bool showTexrectWindow = false;
@@ -66,6 +66,46 @@ const char *animStateToString(IAnimation::State state)
 		case IAnimation::State::PLAYING: return "Playing";
 	}
 	return "Unknown";
+}
+
+CanvasZoomEnum CanvasZoomToEnum(float zoom)
+{
+	if (zoom <= 0.125f)
+		return CanvasZoomEnum::X1_8;
+	else if (zoom <= 0.25f)
+		return CanvasZoomEnum::X1_4;
+	else if (zoom <= 0.5f)
+		return CanvasZoomEnum::X1_2;
+	else if (zoom <= 1.0f)
+		return CanvasZoomEnum::X1;
+	else if (zoom <= 2.0f)
+		return CanvasZoomEnum::X2;
+	else if (zoom <= 4.0f)
+		return CanvasZoomEnum::X4;
+	else
+		return CanvasZoomEnum::X8;
+}
+
+float CanvasEnumToZoom(CanvasZoomEnum resizeEnum)
+{
+	switch (resizeEnum)
+	{
+		case CanvasZoomEnum::X1_8:
+			return 0.125f;
+		case CanvasZoomEnum::X1_4:
+			return 0.25f;
+		case CanvasZoomEnum::X1_2:
+			return 0.5f;
+		case CanvasZoomEnum::X1:
+			return 1.0f;
+		case CanvasZoomEnum::X2:
+			return 2.0f;
+		case CanvasZoomEnum::X4:
+			return 4.0f;
+		case CanvasZoomEnum::X8:
+			return 8.0f;
+	}
+	return 1.0f;
 }
 
 void applyDarkStyle()
@@ -273,22 +313,7 @@ void UserInterface::createGui()
 	createRenderGui();
 	ImGui::End();
 
-	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImGuiCond_Once);
-	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
-	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
-	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
-	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || (ImGui::IsItemHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)))
-	{
-		const ImVec2 mousePos = ImGui::GetMousePos();
-		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
-		if (spriteMgr_.sprites().isEmpty() == false)
-		{
-			spriteMgr_.sprites()[selectedSpriteIndex_]->x = relativePos.x / canvasZoom_;
-			spriteMgr_.sprites()[selectedSpriteIndex_]->y = relativePos.y / canvasZoom_;
-		}
-	}
-	ImGui::End();
-
+	createCanvasWindow();
 	if (spriteMgr_.sprites().isEmpty() == false && showTexrectWindow)
 		createTexRectWindow();
 
@@ -386,36 +411,26 @@ void UserInterface::createCanvasGui()
 {
 	if (ImGui::CollapsingHeader(Labels::Canvas))
 	{
+		static int canvasZoomRadio = CanvasZoomEnum::X1;
+		canvasZoomRadio = CanvasZoomToEnum(canvasZoom_);
 		ImGui::PushID("Canvas");
-		static int canvasZoomRadio = CanvasResizeEnum::X1;
 		ImGui::Text("Zoom:");
 		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasZoomRadio, CanvasResizeEnum::X1_8);
+		ImGui::RadioButton("1/8x", &canvasZoomRadio, CanvasZoomEnum::X1_8);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasZoomRadio, CanvasResizeEnum::X1_4);
+		ImGui::RadioButton("1/4x", &canvasZoomRadio, CanvasZoomEnum::X1_4);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasZoomRadio, CanvasResizeEnum::X1_2);
+		ImGui::RadioButton("1/2x", &canvasZoomRadio, CanvasZoomEnum::X1_2);
 		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasZoomRadio, CanvasResizeEnum::X1);
+		ImGui::RadioButton("1x", &canvasZoomRadio, CanvasZoomEnum::X1);
 		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasZoomRadio, CanvasResizeEnum::X2);
+		ImGui::RadioButton("2x", &canvasZoomRadio, CanvasZoomEnum::X2);
 		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasZoomRadio, CanvasResizeEnum::X4);
+		ImGui::RadioButton("4x", &canvasZoomRadio, CanvasZoomEnum::X4);
 		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasZoomRadio, CanvasResizeEnum::X8);
+		ImGui::RadioButton("8x", &canvasZoomRadio, CanvasZoomEnum::X8);
 		ImGui::PopID();
-
-		switch (canvasZoomRadio)
-		{
-			case CanvasResizeEnum::X1_8: canvasZoom_ = 0.125f; break;
-			case CanvasResizeEnum::X1_4: canvasZoom_ = 0.25f; break;
-			case CanvasResizeEnum::X1_2: canvasZoom_ = 0.5f; break;
-			case CanvasResizeEnum::X1: canvasZoom_ = 1.0f; break;
-			case CanvasResizeEnum::X2: canvasZoom_ = 2.0f; break;
-			case CanvasResizeEnum::X4: canvasZoom_ = 4.0f; break;
-			case CanvasResizeEnum::X8: canvasZoom_ = 8.0f; break;
-			default: canvasZoom_ = 1.0f; break;
-		}
+		canvasZoom_ = CanvasEnumToZoom(static_cast<CanvasZoomEnum>(canvasZoomRadio));
 
 		nc::Vector2i desiredCanvasSize;
 		static int currentComboResize = static_cast<int>(ResizePresetsEnum::SIZE256); // TOD: hard-coded initial state
@@ -805,36 +820,25 @@ void UserInterface::createRenderGui()
 		ImGui::InputText("Filename prefix", animFilename_.data(), MaxStringLength,
 		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &animFilename_);
 
+		static int canvasResizeRadio = CanvasZoomEnum::X1;
 		ImGui::PushID("Render");
-		static int canvasResizeRadio = CanvasResizeEnum::X1;
 		ImGui::Text("Resize:");
 		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasResizeRadio, CanvasResizeEnum::X1_8);
+		ImGui::RadioButton("1/8x", &canvasResizeRadio, CanvasZoomEnum::X1_8);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasResizeRadio, CanvasResizeEnum::X1_4);
+		ImGui::RadioButton("1/4x", &canvasResizeRadio, CanvasZoomEnum::X1_4);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasResizeRadio, CanvasResizeEnum::X1_2);
+		ImGui::RadioButton("1/2x", &canvasResizeRadio, CanvasZoomEnum::X1_2);
 		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasResizeRadio, CanvasResizeEnum::X1);
+		ImGui::RadioButton("1x", &canvasResizeRadio, CanvasZoomEnum::X1);
 		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasResizeRadio, CanvasResizeEnum::X2);
+		ImGui::RadioButton("2x", &canvasResizeRadio, CanvasZoomEnum::X2);
 		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasResizeRadio, CanvasResizeEnum::X4);
+		ImGui::RadioButton("4x", &canvasResizeRadio, CanvasZoomEnum::X4);
 		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasResizeRadio, CanvasResizeEnum::X8);
+		ImGui::RadioButton("8x", &canvasResizeRadio, CanvasZoomEnum::X8);
 		ImGui::PopID();
-
-		switch (canvasResizeRadio)
-		{
-			case CanvasResizeEnum::X1_8: saveAnimStatus_.canvasResize = 0.125f; break;
-			case CanvasResizeEnum::X1_4: saveAnimStatus_.canvasResize = 0.25f; break;
-			case CanvasResizeEnum::X1_2: saveAnimStatus_.canvasResize = 0.5f; break;
-			case CanvasResizeEnum::X1: saveAnimStatus_.canvasResize = 1.0f; break;
-			case CanvasResizeEnum::X2: saveAnimStatus_.canvasResize = 2.0f; break;
-			case CanvasResizeEnum::X4: saveAnimStatus_.canvasResize = 4.0f; break;
-			case CanvasResizeEnum::X8: saveAnimStatus_.canvasResize = 8.0f; break;
-			default: saveAnimStatus_.canvasResize = 1.0f; break;
-		}
+		saveAnimStatus_.canvasResize = CanvasEnumToZoom(static_cast<CanvasZoomEnum>(canvasResizeRadio));
 
 		ImGui::InputInt("FPS", &saveAnimStatus_.fps);
 		ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, 10 * saveAnimStatus_.fps); // Hard-coded limit
@@ -1041,7 +1045,7 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
 			if (spriteIndex < 0)
-				spriteIndex = 0;
+				spriteIndex = selectedSpriteIndex_;
 
 			comboString_.clear();
 			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
@@ -1156,7 +1160,7 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
 			if (spriteIndex < 0)
-				spriteIndex = 0;
+				spriteIndex = selectedSpriteIndex_;
 
 			comboString_.clear();
 			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
@@ -1188,6 +1192,27 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 	}
 }
 
+void UserInterface::createCanvasWindow()
+{
+	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImGuiCond_Once);
+	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
+	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || (ImGui::IsItemHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)))
+	{
+		const ImVec2 mousePos = ImGui::GetMousePos();
+		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
+		if (spriteMgr_.sprites().isEmpty() == false)
+		{
+			Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+			sprite.x = relativePos.x / canvasZoom_;
+			sprite.y = relativePos.y / canvasZoom_;
+		}
+	}
+	mouseWheelCanvasZoom();
+	ImGui::End();
+}
+
 void UserInterface::createTexRectWindow()
 {
 	Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
@@ -1206,6 +1231,7 @@ void UserInterface::createTexRectWindow()
 	ImGui::SetNextWindowSize(size, ImGuiCond_Once);
 	ImGui::Begin("TexRect", &showTexrectWindow, ImGuiWindowFlags_HorizontalScrollbar);
 	ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
+	mouseWheelCanvasZoom();
 	ImGui::End();
 }
 
@@ -1242,4 +1268,20 @@ void UserInterface::createAboutWindow()
 	ImGui::Spacing();
 	ImGui::Text("https://ncine.github.io/");
 	ImGui::End();
+}
+
+void UserInterface::mouseWheelCanvasZoom()
+{
+	if (ImGui::IsItemHovered() && ImGui::GetIO().KeyCtrl && ImGui::GetIO().MouseWheel != 0.0f)
+	{
+		const float wheel = ImGui::GetIO().MouseWheel;
+		if (wheel > 0.0f)
+			canvasZoom_ *= 2.0f;
+		else if (wheel < 0.0f)
+			canvasZoom_ *= 0.5f;
+		if (canvasZoom_ > 8.0f)
+			canvasZoom_ = 8.0f;
+		else if (canvasZoom_ < 0.125f)
+			canvasZoom_ = 0.125;
+	}
 }

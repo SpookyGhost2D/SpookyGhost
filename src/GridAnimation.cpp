@@ -45,6 +45,16 @@ void GridAnimation::update(float deltaTime)
 	CurveAnimation::update(deltaTime);
 }
 
+void GridAnimation::setSprite(Sprite *sprite)
+{
+	if (sprite_)
+		sprite_->decrementGridAnimCounter();
+	if (sprite)
+		sprite->incrementGridAnimCounter();
+
+	sprite_ = sprite;
+}
+
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////

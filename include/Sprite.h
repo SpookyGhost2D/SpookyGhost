@@ -88,6 +88,9 @@ class Sprite
 
 	void *imguiTexId();
 
+	void incrementGridAnimCounter();
+	void decrementGridAnimCounter();
+
   private:
 	int width_;
 	int height_;
@@ -100,6 +103,8 @@ class Sprite
 	bool flippedY_;
 
 	BlendingPreset blendingPreset_;
+
+	int gridAnimationsCounter_;
 
 	nctl::Array<Vertex> interleavedVertices_;
 	nctl::Array<VertexPosition> restPositions_;
@@ -121,6 +126,7 @@ class Sprite
 	nctl::UniquePtr<nc::GLBufferObject> ibo_;
 
 	void setSize(int width, int height);
+	void initGrid(int width, int height);
 	void resetVertices();
 	void resetIndices();
 };

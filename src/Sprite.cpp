@@ -29,7 +29,7 @@ Sprite::Sprite(Texture *texture)
       anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), width_(0), height_(0),
       modelView_(nc::Matrix4x4f::Identity), texture_(nullptr), texRect_(0, 0, 0, 0),
       flippedX_(false), flippedY_(false), blendingPreset_(BlendingPreset::ALPHA),
-      interleavedVertices_(0), restPositions_(0), indices_(0), shortIndices_(0)
+      gridAnimationsCounter_(0), interleavedVertices_(0), restPositions_(0), indices_(0), shortIndices_(0)
 {
 	spriteShaderProgram_ = RenderingResources::spriteShaderProgram();
 	spriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(spriteShaderProgram_);
@@ -79,44 +79,53 @@ void Sprite::updateRender()
 	const float texScaleY = texRect_.h / texHeight;
 	const float texBiasY = texRect_.y / texHeight;
 
-	spriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
-	spriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
-	spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
-	spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
-	spriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
-	spriteShaderUniforms_->commitUniforms();
+	if (gridAnimationsCounter_ == 0)
+	{
+		spriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
+		spriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
+		spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
+		spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
+		spriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
+		spriteShaderUniforms_->commitUniforms();
+	}
+	else
+	{
+		meshSpriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
+		meshSpriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
+		meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
+		meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
+		meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
+		meshSpriteShaderUniforms_->commitUniforms();
 
-	meshSpriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
-	meshSpriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
-	meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
-	meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
-	meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
-	meshSpriteShaderUniforms_->commitUniforms();
-
-	const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
-	vbo_->bufferData(vboBytes, interleavedVertices_.data(), GL_STATIC_DRAW);
+		const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
+		vbo_->bufferData(vboBytes, interleavedVertices_.data(), GL_STATIC_DRAW);
+	}
 }
 
 void Sprite::render()
 {
 	texture_->bind();
-#if 1
-	meshSpriteShaderProgram_->use();
-	vbo_->bind();
-	ibo_->bind();
-	meshSpriteShaderAttributes_->defineVertexFormat(vbo_.get(), ibo_.get());
 
-	if (shortIndices_.isEmpty() == false)
-		glDrawElements(GL_TRIANGLE_STRIP, shortIndices_.size(), GL_UNSIGNED_SHORT, nullptr);
+	if (gridAnimationsCounter_ == 0)
+	{
+		spriteShaderProgram_->use();
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	}
 	else
-		glDrawElements(GL_TRIANGLE_STRIP, indices_.size(), GL_UNSIGNED_INT, nullptr);
+	{
+		meshSpriteShaderProgram_->use();
+		vbo_->bind();
+		ibo_->bind();
+		meshSpriteShaderAttributes_->defineVertexFormat(vbo_.get(), ibo_.get());
 
-	vbo_->unbind();
-	ibo_->unbind();
-#else
-	spriteShaderProgram_->use();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-#endif
+		if (shortIndices_.isEmpty() == false)
+			glDrawElements(GL_TRIANGLE_STRIP, shortIndices_.size(), GL_UNSIGNED_SHORT, nullptr);
+		else
+			glDrawElements(GL_TRIANGLE_STRIP, indices_.size(), GL_UNSIGNED_INT, nullptr);
+
+		vbo_->unbind();
+		ibo_->unbind();
+	}
 }
 
 void Sprite::resetGrid()
@@ -186,6 +195,26 @@ void *Sprite::imguiTexId()
 	return reinterpret_cast<void *>(texture_->imguiTexId());
 }
 
+void Sprite::incrementGridAnimCounter()
+{
+	if (gridAnimationsCounter_ == 0)
+		initGrid(width_, height_);
+	gridAnimationsCounter_++;
+}
+
+void Sprite::decrementGridAnimCounter()
+{
+	gridAnimationsCounter_--;
+	FATAL_ASSERT(gridAnimationsCounter_ >= 0);
+	if (gridAnimationsCounter_ == 0)
+	{
+		interleavedVertices_.clear();
+		restPositions_.clear();
+		indices_.clear();
+		shortIndices_.clear();
+	}
+}
+
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
@@ -199,6 +228,12 @@ void Sprite::setSize(int width, int height)
 	width_ = width;
 	height_ = height;
 
+	if (gridAnimationsCounter_ > 0)
+		initGrid(width, height);
+}
+
+void Sprite::initGrid(int width, int height)
+{
 	const unsigned int verticesCapacity = (width + 1) * (height + 1);
 	if (interleavedVertices_.capacity() < verticesCapacity)
 	{

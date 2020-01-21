@@ -93,8 +93,11 @@ class UserInterface
 	void createPropertyAnimationGui(AnimationGroup &parentGroup, unsigned int index);
 	void createGridAnimationGui(AnimationGroup &parentGroup, unsigned int index);
 
+	void createCanvasWindow();
 	void createTexRectWindow();
 	void createAboutWindow();
+
+	void mouseWheelCanvasZoom();
 };
 
 #endif
