@@ -26,10 +26,13 @@ struct VertexFormat
 
 Sprite::Sprite(Texture *texture)
     : name(MaxNameLength), visible(true), x(0.0f), y(0.0f), rotation(0.0f), scaleFactor(1.0f, 1.0f),
-      anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), width_(0), height_(0),
-      modelView_(nc::Matrix4x4f::Identity), texture_(nullptr), texRect_(0, 0, 0, 0),
+      anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), visited(false), width_(0), height_(0),
+      localMatrix_(nc::Matrix4x4f::Identity), worldMatrix_(nc::Matrix4x4f::Identity),
+      absPosition_(0.0f, 0.0f), absScaleFactor_(1.0f, 1.0f), absRotation_(0.0f),
+      absColor_(nc::Colorf::White), texture_(nullptr), texRect_(0, 0, 0, 0),
       flippedX_(false), flippedY_(false), blendingPreset_(BlendingPreset::ALPHA),
-      gridAnimationsCounter_(0), interleavedVertices_(0), restPositions_(0), indices_(0), shortIndices_(0)
+      gridAnimationsCounter_(0), interleavedVertices_(0), restPositions_(0),
+      indices_(0), shortIndices_(0), parent_(nullptr), children_(4)
 {
 	spriteShaderProgram_ = RenderingResources::spriteShaderProgram();
 	spriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(spriteShaderProgram_);
@@ -64,10 +67,27 @@ Sprite::Sprite(Texture *texture)
 
 void Sprite::transform()
 {
-	modelView_ = nc::Matrix4x4f::translation(x, y, 0.0f);
-	modelView_.rotateZ(rotation);
-	modelView_.scale(scaleFactor.x, scaleFactor.y, 1.0f);
-	modelView_.translate(-anchorPoint.x, -anchorPoint.y, 0.0f);
+	localMatrix_ = nc::Matrix4x4f::translation(x, y, 0.0f);
+	localMatrix_.rotateZ(rotation);
+	localMatrix_.scale(scaleFactor.x, scaleFactor.y, 1.0f);
+	localMatrix_.translate(-anchorPoint.x, -anchorPoint.y, 0.0f);
+
+	absScaleFactor_ = scaleFactor;
+	absRotation_ = rotation;
+	absColor_ = color;
+
+	if (parent_)
+	{
+		worldMatrix_ = parent_->worldMatrix_ * localMatrix_;
+
+		absScaleFactor_ *= parent_->absScaleFactor_;
+		absRotation_ += parent_->absRotation_;
+		absColor_ *= parent_->absColor_;
+	}
+	else
+		worldMatrix_ = localMatrix_;
+
+	absPosition_.set(worldMatrix_[3][0], worldMatrix_[3][1]);
 }
 
 void Sprite::updateRender()
@@ -81,20 +101,20 @@ void Sprite::updateRender()
 
 	if (gridAnimationsCounter_ == 0)
 	{
-		spriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
+		spriteShaderUniforms_->uniform("color")->setFloatVector(absColor_.data());
 		spriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
 		spriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
 		spriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
-		spriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
+		spriteShaderUniforms_->uniform("modelView")->setFloatVector(worldMatrix_.data());
 		spriteShaderUniforms_->commitUniforms();
 	}
 	else
 	{
-		meshSpriteShaderUniforms_->uniform("color")->setFloatVector(color.data());
+		meshSpriteShaderUniforms_->uniform("color")->setFloatVector(absColor_.data());
 		meshSpriteShaderUniforms_->uniform("texRect")->setFloatValue(texScaleX, texBiasX, texScaleY, texBiasY);
 		meshSpriteShaderUniforms_->uniform("spriteSize")->setFloatValue(width_, height_);
 		meshSpriteShaderUniforms_->uniform("projection")->setFloatVector(RenderingResources::projectionMatrix().data());
-		meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(modelView_.data());
+		meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(worldMatrix_.data());
 		meshSpriteShaderUniforms_->commitUniforms();
 
 		const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
@@ -212,6 +232,38 @@ void Sprite::decrementGridAnimCounter()
 		restPositions_.clear();
 		indices_.clear();
 		shortIndices_.clear();
+	}
+}
+
+void Sprite::setParent(Sprite *parent)
+{
+	if (parent == this || parent == parent_)
+		return;
+
+	if (parent_)
+		parent_->removeChild(this);
+	if (parent)
+		parent->addChild(this);
+	parent_ = parent;
+}
+
+void Sprite::setAbsPosition(float xx, float yy)
+{
+	if (parent_)
+	{
+		nc::Matrix4x4f inverseParent = nc::Matrix4x4f::scaling(1.0f / parent_->absScaleFactor_.x, 1.0f / parent_->absScaleFactor_.y, 1.0f);
+		inverseParent.rotateZ(-parent_->absRotation_);
+		inverseParent.translate(-parent_->absPosition_.x, -parent_->absPosition_.y, 0.0f);
+
+		nc::Vector4f position(xx, yy, 1.0f, 1.0f);
+		position = position * inverseParent;
+		x = position.x;
+		y = position.y;
+	}
+	else
+	{
+		x = xx;
+		y = yy;
 	}
 }
 
@@ -335,4 +387,38 @@ void Sprite::resetIndices()
 		indicesString.formatAppend(" %u,", indices_[i]);
 	LOGE_X("Indices:%s", indicesString.data());
 #endif
+}
+
+bool Sprite::addChild(Sprite *sprite)
+{
+	if (sprite == this || sprite == nullptr)
+		return false;
+
+	children_.pushBack(sprite);
+	return true;
+}
+
+bool Sprite::removeChild(Sprite *sprite)
+{
+	if (sprite == this || sprite == nullptr || children_.isEmpty() ||
+	    (sprite && sprite->parent() != this))
+		return false;
+
+	int index = -1;
+	for (unsigned int i = 0; i < children_.size(); i++)
+	{
+		if (children_[i] == sprite)
+		{
+			index = i;
+			break;
+		}
+	}
+
+	if (index > -1)
+	{
+		children_.removeAt(index);
+		return true;
+	}
+	else
+		return false;
 }

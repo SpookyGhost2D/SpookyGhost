@@ -53,6 +53,8 @@ class Sprite
 	nc::Vector2f scaleFactor;
 	nc::Vector2f anchorPoint;
 	nc::Colorf color;
+	/// Used by the GUI to exclude children from becoming parents of their parents
+	bool visited;
 
 	Sprite(Texture *texture);
 
@@ -91,11 +93,30 @@ class Sprite
 	void incrementGridAnimCounter();
 	void decrementGridAnimCounter();
 
+	inline const nctl::Array<Sprite *> children() const { return children_; }
+	inline const Sprite *parent() const { return parent_; }
+	void setParent(Sprite *parent);
+
+	inline const nc::Vector2f absPosition() const { return absPosition_; }
+	inline void setAbsPosition(const nc::Vector2f position) { setAbsPosition(position.x, position.y); }
+	void setAbsPosition(float xx, float yy);
+
+	inline const nc::Vector2f &absScaleFactor() const { return absScaleFactor_; }
+	inline float absRotation() const { return absRotation_; }
+	inline const nc::Colorf &absColor() const { return absColor_; }
+
   private:
 	int width_;
 	int height_;
 
-	nc::Matrix4x4f modelView_;
+	nc::Matrix4x4f localMatrix_;
+	nc::Matrix4x4f worldMatrix_;
+
+	nc::Vector2f absPosition_;
+	nc::Vector2f absScaleFactor_;
+	float absRotation_;
+	nc::Colorf absColor_;
+
 	Texture *texture_;
 	nc::Recti texRect_;
 
@@ -110,6 +131,9 @@ class Sprite
 	nctl::Array<VertexPosition> restPositions_;
 	nctl::Array<unsigned int> indices_;
 	nctl::Array<unsigned short> shortIndices_;
+
+	Sprite *parent_;
+	nctl::Array<Sprite *> children_;
 
 	static const int UniformsBufferSize = 256;
 	unsigned char uniformsBuffer_[UniformsBufferSize];
@@ -129,6 +153,9 @@ class Sprite
 	void initGrid(int width, int height);
 	void resetVertices();
 	void resetIndices();
+
+	bool addChild(Sprite *sprite);
+	bool removeChild(Sprite *sprite);
 };
 
 #endif

@@ -2,6 +2,7 @@
 #define CLASS_USERINTERFACE
 
 #include <nctl/String.h>
+#include <nctl/Array.h>
 #include <ncine/Vector2.h>
 #include <ncine/TimeStamp.h>
 
@@ -51,6 +52,18 @@ class UserInterface
   private:
 	static const unsigned int MaxStringLength = 256;
 
+	/// Used to keep track of which node can be parent of another node
+	struct SpriteStruct
+	{
+		SpriteStruct()
+		    : index(-1), sprite(nullptr) {}
+		SpriteStruct(int i, Sprite *sp)
+		    : index(i), sprite(sp) {}
+
+		int index;
+		Sprite *sprite;
+	};
+
 	nctl::String comboString_ = nctl::String(1024 * 2);
 	nctl::String auxString_ = nctl::String(MaxStringLength);
 	Canvas &canvas_;
@@ -58,7 +71,10 @@ class UserInterface
 	Canvas &spritesheet_;
 	SpriteManager &spriteMgr_;
 	AnimationManager &animMgr_;
-	int selectedSpriteIndex_ = 0;
+	int selectedSpriteIndex_;
+
+	/// Used to keep track of which node can be the parent of the selected one
+	nctl::Array<SpriteStruct> spriteGraph_;
 
 	nctl::String texFilename_ = nctl::String(MaxStringLength);
 	nctl::String animFilename_ = nctl::String(MaxStringLength);
@@ -98,6 +114,7 @@ class UserInterface
 	void createAboutWindow();
 
 	void mouseWheelCanvasZoom();
+	void visitSprite(Sprite &sprite);
 };
 
 #endif

@@ -207,7 +207,8 @@ void applyDarkStyle()
 ///////////////////////////////////////////////////////////
 
 UserInterface::UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr)
-    : canvas_(canvas), resizedCanvas_(resizedCanvas), spritesheet_(spritesheet), spriteMgr_(spriteMgr), animMgr_(animMgr)
+    : canvas_(canvas), resizedCanvas_(resizedCanvas), spritesheet_(spritesheet), spriteMgr_(spriteMgr), animMgr_(animMgr),
+      selectedSpriteIndex_(0), spriteGraph_(4)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -612,6 +613,48 @@ void UserInterface::createSpritesGui()
 			ImGui::SameLine();
 			ImGui::Checkbox("Visible", &sprite.visible);
 
+			// Create an array of sprites that can be a parent of the selected one
+			spriteGraph_.clear();
+			spriteGraph_.pushBack(SpriteStruct(-1, nullptr));
+			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+				spriteMgr_.sprites()[i]->visited = false;
+			visitSprite(sprite);
+			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+			{
+				if (spriteMgr_.sprites()[i]->visited == false)
+					spriteGraph_.pushBack(SpriteStruct(i, spriteMgr_.sprites()[i].get()));
+			}
+
+			int currentParentCombo = 0; // None
+			comboString_.clear();
+			for (unsigned int i = 0; i < spriteGraph_.size(); i++)
+			{
+				const int index = spriteGraph_[i].index;
+				const Sprite &currentSprite = *spriteGraph_[i].sprite;
+				if (index < 0)
+					comboString_.append("None");
+				else
+					comboString_.formatAppend("#%u: \"%s\" (%d x %d)", index, currentSprite.name.data(), currentSprite.width(), currentSprite.height());
+				comboString_.setLength(comboString_.length() + 1);
+
+				if (sprite.parent() == &currentSprite)
+					currentParentCombo = i;
+			}
+			comboString_.setLength(comboString_.length() + 1);
+			// Append a second '\0' to signal the end of the combo item list
+			comboString_[comboString_.length() - 1] = '\0';
+
+			ImGui::Combo("Parent", &currentParentCombo, comboString_.data());
+
+			const Sprite *prevParent = sprite.parent();
+			const nc::Vector2f absPosition = sprite.absPosition();
+			Sprite *parent = spriteGraph_[currentParentCombo].sprite;
+			if (prevParent != parent)
+			{
+				sprite.setParent(parent);
+				sprite.setAbsPosition(absPosition);
+			}
+
 			nc::Vector2f position(sprite.x, sprite.y);
 			ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(canvas_.texWidth()));
 			sprite.x = roundf(position.x);
@@ -646,6 +689,12 @@ void UserInterface::createSpritesGui()
 						sprite.anchorPoint.set(sprite.width() * 0.5f, -sprite.height() * 0.5f);
 						break;
 				}
+			}
+			if (sprite.parent() != nullptr)
+			{
+				ImGui::Text("Abs Position: %f, %f", sprite.absPosition().x, sprite.absPosition().y);
+				ImGui::Text("Abs Rotation: %f", sprite.absRotation());
+				ImGui::Text("Abs Scale: %f, %f", sprite.absScaleFactor().x, sprite.absScaleFactor().y);
 			}
 
 			ImGui::Separator();
@@ -691,9 +740,9 @@ void UserInterface::createSpritesGui()
 				sprite.setFlippedY(isFlippedY);
 
 			ImGui::Separator();
-			int selectedBlendingPreset = static_cast<int>(sprite.blendingPreset());
-			ImGui::Combo("Blending", &selectedBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
-			sprite.setBlendingPreset(static_cast<Sprite::BlendingPreset>(selectedBlendingPreset));
+			int currentBlendingPreset = static_cast<int>(sprite.blendingPreset());
+			ImGui::Combo("Blending", &currentBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
+			sprite.setBlendingPreset(static_cast<Sprite::BlendingPreset>(currentBlendingPreset));
 
 			ImGui::ColorEdit4("Color", sprite.color.data(), ImGuiColorEditFlags_AlphaBar);
 			ImGui::SameLine();
@@ -1205,8 +1254,7 @@ void UserInterface::createCanvasWindow()
 		if (spriteMgr_.sprites().isEmpty() == false)
 		{
 			Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
-			sprite.x = relativePos.x / canvasZoom_;
-			sprite.y = relativePos.y / canvasZoom_;
+			sprite.setAbsPosition(relativePos.x / canvasZoom_, relativePos.y / canvasZoom_);
 		}
 	}
 	mouseWheelCanvasZoom();
@@ -1385,4 +1433,11 @@ void UserInterface::mouseWheelCanvasZoom()
 		else if (canvasZoom_ < 0.125f)
 			canvasZoom_ = 0.125;
 	}
+}
+
+void UserInterface::visitSprite(Sprite &sprite)
+{
+	sprite.visited = true;
+	for (unsigned int i = 0; i < sprite.children().size(); i++)
+		visitSprite(*sprite.children()[i]);
 }

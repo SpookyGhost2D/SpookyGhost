@@ -34,7 +34,7 @@ void setBlendingFactors(Sprite::BlendingPreset blendingPreset)
 ///////////////////////////////////////////////////////////
 
 SpriteManager::SpriteManager()
-    : textures_(4), sprites_(4)
+    : textures_(4), sprites_(4), spritesWithoutParent_(4)
 {
 	nc::GLBlending::enable();
 }
@@ -45,21 +45,26 @@ SpriteManager::SpriteManager()
 
 void SpriteManager::update()
 {
+	spritesWithoutParent_.clear();
 	for (unsigned int i = 0; i < sprites_.size(); i++)
 	{
-		if (sprites_[i]->visible == false)
-			continue;
-		sprites_[i]->transform();
-		sprites_[i]->updateRender();
-		setBlendingFactors(sprites_[i]->blendingPreset());
-		sprites_[i]->render();
-		sprites_[i]->resetGrid();
+		if (sprites_[i]->parent() == nullptr)
+			spritesWithoutParent_.pushBack(sprites_[i].get());
 	}
+
+	for (unsigned int i = 0; i < spritesWithoutParent_.size(); i++)
+		transform(spritesWithoutParent_[i]);
+
+	for (unsigned int i = 0; i < sprites_.size(); i++)
+		draw(sprites_[i].get());
 }
 
 // TODO: Get rid of this function
 int SpriteManager::textureIndex(const Texture *texture) const
 {
+	if (texture == nullptr)
+		return -1;
+
 	int index = -1;
 	for (unsigned int i = 0; i < textures_.size(); i++)
 	{
@@ -76,6 +81,9 @@ int SpriteManager::textureIndex(const Texture *texture) const
 // TODO: Get rid of this function
 int SpriteManager::spriteIndex(const Sprite *sprite) const
 {
+	if (sprite == nullptr)
+		return -1;
+
 	int index = -1;
 	for (unsigned int i = 0; i < sprites_.size(); i++)
 	{
@@ -87,4 +95,27 @@ int SpriteManager::spriteIndex(const Sprite *sprite) const
 	}
 
 	return index;
+}
+
+///////////////////////////////////////////////////////////
+// PRIVATE FUNCTIONS
+///////////////////////////////////////////////////////////
+
+void SpriteManager::transform(Sprite *sprite)
+{
+	sprite->transform();
+
+	for (unsigned int i = 0; i < sprite->children().size(); i++)
+		transform(sprite->children()[i]);
+}
+
+void SpriteManager::draw(Sprite *sprite)
+{
+	if (sprite->visible == false)
+		return;
+
+	sprite->updateRender();
+	setBlendingFactors(sprite->blendingPreset());
+	sprite->render();
+	sprite->resetGrid();
 }

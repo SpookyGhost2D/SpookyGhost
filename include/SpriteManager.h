@@ -26,6 +26,10 @@ class SpriteManager
   private:
 	nctl::Array<nctl::UniquePtr<Texture>> textures_;
 	nctl::Array<nctl::UniquePtr<Sprite>> sprites_;
+	nctl::Array<Sprite *> spritesWithoutParent_;
+
+	void transform(Sprite *sprite);
+	void draw(Sprite *sprite);
 };
 
 #endif
