@@ -1215,23 +1215,124 @@ void UserInterface::createCanvasWindow()
 
 void UserInterface::createTexRectWindow()
 {
+	enum class MouseStatus { IDLE, CLICKED, RELEASED, DRAGGING };
+	static MouseStatus mouseStatus_ = MouseStatus::IDLE;
+	static ImVec2 startPos(0.0f, 0.0f);
+	static ImVec2 endPos(0.0f, 0.0f);
+
 	Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
-
-	const float texWidth = static_cast<float>(sprite.texture().width());
-	const float texHeight = static_cast<float>(sprite.texture().height());
 	nc::Recti texRect = sprite.texRect();
-	ImVec2 size = ImVec2(sprite.width() * canvasZoom_, sprite.height() * canvasZoom_);
-	ImVec2 uv0(0.0f, 0.0f);
-	ImVec2 uv1(1.0, 1.0f);
-	uv0.x = texRect.x / texWidth;
-	uv0.y = texRect.y / texHeight;
-	uv1.x = (texRect.x + texRect.w) / texWidth;
-	uv1.y = (texRect.y + texRect.h) / texHeight;
 
+	ImVec2 size = ImVec2(sprite.texture().width() * canvasZoom_, sprite.texture().height() * canvasZoom_);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Once);
 	ImGui::Begin("TexRect", &showTexrectWindow, ImGuiWindowFlags_HorizontalScrollbar);
-	ImGui::Image(sprite.imguiTexId(), size, uv0, uv1);
+	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
+	ImGui::Image(sprite.imguiTexId(), size);
+
 	mouseWheelCanvasZoom();
+
+	if (ImGui::IsWindowHovered())
+	{
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			mouseStatus_ = MouseStatus::CLICKED;
+			startPos = ImGui::GetMousePos();
+		}
+		else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+		{
+			mouseStatus_ = MouseStatus::DRAGGING;
+			endPos = ImGui::GetMousePos();
+		}
+		else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+		{
+			mouseStatus_ = MouseStatus::RELEASED;
+			endPos = ImGui::GetMousePos();
+		}
+	}
+	else
+		mouseStatus_ = MouseStatus::IDLE;
+
+	if (mouseStatus_ == MouseStatus::CLICKED)
+	{
+		// Clipping to image
+		if (startPos.x > cursorScreenPos.x + size.x)
+			startPos.x = cursorScreenPos.x + size.x;
+		if (startPos.y > cursorScreenPos.y + size.y)
+			startPos.y = cursorScreenPos.y + size.y;
+
+		// Zoomed pixel snapping
+		if (canvasZoom_ > 1.0f)
+		{
+			startPos.x = roundf((startPos.x -  cursorScreenPos.x) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.x;
+			startPos.y = roundf((startPos.y -  cursorScreenPos.y) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.y;
+		}
+	}
+	else if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
+	{
+		// Clipping to image
+		if (endPos.x < cursorScreenPos.x)
+			endPos.x = cursorScreenPos.x;
+		if (endPos.y < cursorScreenPos.y)
+			endPos.y = cursorScreenPos.y;
+
+		if (endPos.x > cursorScreenPos.x + size.x)
+			endPos.x = cursorScreenPos.x + size.x;
+		if (endPos.y > cursorScreenPos.y + size.y)
+			endPos.y = cursorScreenPos.y + size.y;
+
+		// Zoomed pixel snapping
+		if (canvasZoom_ > 1.0f)
+		{
+			endPos.x = roundf((endPos.x -  cursorScreenPos.x) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.x;
+			endPos.y = roundf((endPos.y -  cursorScreenPos.y) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.y;
+		}
+	}
+
+	ImVec2 minRect(startPos);
+	ImVec2 maxRect(endPos);
+
+	if (mouseStatus_ == MouseStatus::IDLE || mouseStatus_ == MouseStatus::CLICKED ||
+	    ((maxRect.x - minRect.x == 0 || maxRect.y - minRect.y == 0) && mouseStatus_ != MouseStatus::DRAGGING))
+	{
+		// Setting the non covered rect from the sprite texrect
+		minRect.x = cursorScreenPos.x  + (texRect.x * canvasZoom_);
+		minRect.y = cursorScreenPos.y  + (texRect.y * canvasZoom_);
+		maxRect.x = minRect.x + (texRect.w * canvasZoom_);
+		maxRect.y = minRect.y  + (texRect.h * canvasZoom_);
+	}
+	else
+	{
+		// Setting the non covered rect from the mouse dragged area
+		if (minRect.x > maxRect.x)
+			nctl::swap(minRect.x, maxRect.x);
+		if (minRect.y > maxRect.y)
+			nctl::swap(minRect.y, maxRect.y);
+	}
+
+	const ImU32 darkGray = IM_COL32(0, 0, 0, 85);
+	ImRect top(ImVec2(cursorScreenPos.x, cursorScreenPos.y), ImVec2(cursorScreenPos.x + size.x, minRect.y));
+	ImRect left(ImVec2(cursorScreenPos.x, minRect.y), ImVec2(minRect.x, cursorScreenPos.y + size.y));
+	ImRect right(ImVec2(maxRect.x, minRect.y), ImVec2(cursorScreenPos.x + size.x, cursorScreenPos.y + size.y));
+	ImRect bottom(ImVec2(minRect.x, maxRect.y), ImVec2(maxRect.x, cursorScreenPos.y + size.y));
+	ImDrawList *drawList = ImGui::GetWindowDrawList();
+	drawList->AddRectFilled(top.Min, top.Max, darkGray);
+	drawList->AddRectFilled(left.Min, left.Max, darkGray);
+	drawList->AddRectFilled(right.Min, right.Max, darkGray);
+	drawList->AddRectFilled(bottom.Min, bottom.Max, darkGray);
+
+	if (mouseStatus_ == MouseStatus::RELEASED)
+	{
+		texRect.x = (minRect.x - cursorScreenPos.x) / canvasZoom_;
+		texRect.y = (minRect.y - cursorScreenPos.y) / canvasZoom_;
+		texRect.w = (maxRect.x - minRect.x) / canvasZoom_;
+		texRect.h = (maxRect.y - minRect.y) / canvasZoom_;
+		ASSERT(texRect.x >= 0);
+		ASSERT(texRect.y >= 0);
+
+		if (texRect.w > 0 && texRect.h > 0)
+			sprite.setTexRect(texRect);
+	}
+
 	ImGui::End();
 }
 
