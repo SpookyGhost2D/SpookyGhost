@@ -20,6 +20,7 @@
 
 namespace {
 
+// clang-format off
 const char *anchorPointItems[] = { "Center", "Bottom Left", "Top Left", "Bottom Right", "Top Right" };
 enum AnchorPointsEnum { CENTER, BOTTOM_LEFT, TOP_LEFT, BOTTOM_RIGHT, TOP_RIGHT };
 const char *blendingPresets[] = { "Disabled", "Alpha", "Pre-multiplied Alpha", "Additive", "Multiply" };
@@ -39,7 +40,8 @@ const char *gridAnimTypes[] = { "Wobble X", "Wooble Y", "Skew X", "Skew Y", "Zoo
 const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
 
-enum CanvasZoomEnum {X1_8, X1_4, X1_2, X1, X2, X4, X8 };
+enum CanvasZoomEnum { X1_8, X1_4, X1_2, X1, X2, X4, X8 };
+// clang-format on
 
 static bool showAboutWindow = false;
 static bool showTexrectWindow = false;
@@ -117,6 +119,7 @@ void applyDarkStyle()
 	/// 1 = MORE "3D" LOOK
 	const float is3D = 1.0f;
 
+	// clang-format off
 	colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 	colors[ImGuiCol_TextDisabled]           = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
 	colors[ImGuiCol_ChildBg]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
@@ -180,24 +183,25 @@ void applyDarkStyle()
 	style.ScrollbarRounding = 2;
 	style.GrabRounding      = 3;
 
-	#ifdef IMGUI_HAS_DOCK
-		style.TabBorderSize = is3D;
-		style.TabRounding   = 3;
+#ifdef IMGUI_HAS_DOCK
+	style.TabBorderSize = is3D;
+	style.TabRounding   = 3;
 
-		colors[ImGuiCol_DockingEmptyBg]     = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
-		colors[ImGuiCol_Tab]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-		colors[ImGuiCol_TabHovered]         = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-		colors[ImGuiCol_TabActive]          = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
-		colors[ImGuiCol_TabUnfocused]       = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-		colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
-		colors[ImGuiCol_DockingPreview]     = ImVec4(0.85f, 0.85f, 0.85f, 0.28f);
+	colors[ImGuiCol_DockingEmptyBg]     = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
+	colors[ImGuiCol_Tab]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	colors[ImGuiCol_TabHovered]         = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+	colors[ImGuiCol_TabActive]          = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
+	colors[ImGuiCol_TabUnfocused]       = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
+	colors[ImGuiCol_DockingPreview]     = ImVec4(0.85f, 0.85f, 0.85f, 0.28f);
+	// clang-format on
 
-		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			style.WindowRounding = 0.0f;
-			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-		}
-	#endif
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
+#endif
 }
 
 }
@@ -391,10 +395,14 @@ void UserInterface::createMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem(Labels::New, "CTRL + N")) { menuNew(); }
-			if (ImGui::MenuItem(Labels::Open)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
-			if (ImGui::MenuItem(Labels::Save)) { pushStatusErrorMessage("Open and Save are not implemented yet"); }
-			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q")) { nc::theApplication().quit(); }
+			if (ImGui::MenuItem(Labels::New, "CTRL + N"))
+				menuNew();
+			if (ImGui::MenuItem(Labels::Open))
+				pushStatusErrorMessage("Open and Save are not implemented yet");
+			if (ImGui::MenuItem(Labels::Save))
+				pushStatusErrorMessage("Open and Save are not implemented yet");
+			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q"))
+				nc::theApplication().quit();
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("?"))
@@ -910,7 +918,7 @@ void UserInterface::createRenderGui()
 
 		const int sideX = static_cast<int>(ceil(sqrt(saveAnimStatus_.numFrames)));
 		const int sideY = (sideX * (sideX - 1) > saveAnimStatus_.numFrames) ? sideX - 1 : sideX;
-		const nc::Vector2i uncappedSpritesheetSize(sideX * frameSize.x,sideY * frameSize.y);
+		const nc::Vector2i uncappedSpritesheetSize(sideX * frameSize.x, sideY * frameSize.y);
 		// Immediately-invoked function expression for const initialization
 		const nc::Vector2i spritesheetSize = [&] {
 			nc::Vector2i size = uncappedSpritesheetSize;
@@ -1263,7 +1271,6 @@ void UserInterface::createCanvasWindow()
 
 void UserInterface::createTexRectWindow()
 {
-	enum class MouseStatus { IDLE, CLICKED, RELEASED, DRAGGING };
 	static MouseStatus mouseStatus_ = MouseStatus::IDLE;
 	static ImVec2 startPos(0.0f, 0.0f);
 	static ImVec2 endPos(0.0f, 0.0f);
@@ -1311,8 +1318,8 @@ void UserInterface::createTexRectWindow()
 		// Zoomed pixel snapping
 		if (canvasZoom_ > 1.0f)
 		{
-			startPos.x = roundf((startPos.x -  cursorScreenPos.x) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.x;
-			startPos.y = roundf((startPos.y -  cursorScreenPos.y) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.y;
+			startPos.x = roundf((startPos.x - cursorScreenPos.x) / canvasZoom_) * canvasZoom_ + cursorScreenPos.x;
+			startPos.y = roundf((startPos.y - cursorScreenPos.y) / canvasZoom_) * canvasZoom_ + cursorScreenPos.y;
 		}
 	}
 	else if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
@@ -1331,8 +1338,8 @@ void UserInterface::createTexRectWindow()
 		// Zoomed pixel snapping
 		if (canvasZoom_ > 1.0f)
 		{
-			endPos.x = roundf((endPos.x -  cursorScreenPos.x) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.x;
-			endPos.y = roundf((endPos.y -  cursorScreenPos.y) / canvasZoom_) * canvasZoom_ +  cursorScreenPos.y;
+			endPos.x = roundf((endPos.x - cursorScreenPos.x) / canvasZoom_) * canvasZoom_ + cursorScreenPos.x;
+			endPos.y = roundf((endPos.y - cursorScreenPos.y) / canvasZoom_) * canvasZoom_ + cursorScreenPos.y;
 		}
 	}
 
@@ -1343,10 +1350,10 @@ void UserInterface::createTexRectWindow()
 	    ((maxRect.x - minRect.x == 0 || maxRect.y - minRect.y == 0) && mouseStatus_ != MouseStatus::DRAGGING))
 	{
 		// Setting the non covered rect from the sprite texrect
-		minRect.x = cursorScreenPos.x  + (texRect.x * canvasZoom_);
-		minRect.y = cursorScreenPos.y  + (texRect.y * canvasZoom_);
+		minRect.x = cursorScreenPos.x + (texRect.x * canvasZoom_);
+		minRect.y = cursorScreenPos.y + (texRect.y * canvasZoom_);
 		maxRect.x = minRect.x + (texRect.w * canvasZoom_);
-		maxRect.y = minRect.y  + (texRect.h * canvasZoom_);
+		maxRect.y = minRect.y + (texRect.h * canvasZoom_);
 	}
 	else
 	{

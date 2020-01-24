@@ -52,6 +52,14 @@ class UserInterface
   private:
 	static const unsigned int MaxStringLength = 256;
 
+	enum class MouseStatus
+	{
+		IDLE,
+		CLICKED,
+		RELEASED,
+		DRAGGING
+	};
+
 	/// Used to keep track of which node can be parent of another node
 	struct SpriteStruct
 	{

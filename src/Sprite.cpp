@@ -299,8 +299,8 @@ void Sprite::initGrid(int width, int height)
 
 	const unsigned int indicesCapacity = (width + 1) * (height + 1) * 2;
 	const long int iboBytes = (indicesCapacity < 65536)
-	        ? indicesCapacity * sizeof(unsigned short)
-	        : indicesCapacity * sizeof(unsigned int);
+	                              ? indicesCapacity * sizeof(unsigned short)
+	                              : indicesCapacity * sizeof(unsigned int);
 	if (indices_.capacity() < indicesCapacity)
 	{
 		indices_.clear();
