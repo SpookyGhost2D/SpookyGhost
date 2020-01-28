@@ -50,7 +50,7 @@ float EasingCurve::value()
 		case Type::SINE:
 			return sinf(time_ * ncine::fPi) * scale_ + shift_;
 		case Type::EXPO:
-			return powf(2, time_) * scale_ + shift_;
+			return (1.0f - powf(2, time_)) * scale_ + shift_;
 		case Type::CIRC:
 			return sqrtf(1.0f - time_ * time_) * scale_ + shift_;
 	}
@@ -58,7 +58,7 @@ float EasingCurve::value()
 	return 1.0f;
 }
 
-float EasingCurve::next(float deltaTime)
+void EasingCurve::next(float deltaTime)
 {
 	if ((forward_ && direction_ == Direction::FORWARD) ||
 	    (!forward_ && direction_ == Direction::BACKWARD))
@@ -106,6 +106,4 @@ float EasingCurve::next(float deltaTime)
 			forward_ = true;
 		}
 	}
-
-	return value();
 }

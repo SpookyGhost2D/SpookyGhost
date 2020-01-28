@@ -35,7 +35,8 @@ void PropertyAnimation::update(float deltaTime)
 				*property_ = curve().value();
 			break;
 		case State::PLAYING:
-			const float value = curve_.next(speed_ * deltaTime);
+			curve_.next(speed_ * deltaTime);
+			const float value = curve_.value();
 			if (property_)
 				*property_ = value;
 			break;

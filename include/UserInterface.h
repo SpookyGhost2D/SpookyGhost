@@ -4,6 +4,7 @@
 #include <nctl/String.h>
 #include <nctl/Array.h>
 #include <ncine/Vector2.h>
+#include <ncine/Colorf.h>
 #include <ncine/TimeStamp.h>
 
 class Canvas;
@@ -46,6 +47,7 @@ class UserInterface
 
 	void closeAboutWindow();
 	void cancelRender();
+	void removeSelectedSprite();
 	void menuNew();
 	void createGui();
 
@@ -71,6 +73,31 @@ class UserInterface
 		int index;
 		Sprite *sprite;
 	};
+
+	struct CurveAnimationGuiLimits
+	{
+		float minScale = -1.0;
+		float maxScale = 1.0f;
+		float minShift = -1.0f;
+		float maxShift = 1.0f;
+	};
+
+	class SpriteProperties
+	{
+	  public:
+		void save(Sprite &sprite);
+		void restore(Sprite &sprite);
+
+	  private:
+		bool saved_ = false;
+		Sprite *parent_ = nullptr;
+		nc::Vector2f position_ = nc::Vector2f(0.0f, 0.0f);
+		float rotation_ = 0.0f;
+		nc::Vector2f scaleFactor_ = nc::Vector2f(1.0f, 1.0f);
+		nc::Vector2f anchorPoint_ = nc::Vector2f(1.0f, 1.0f);
+		nc::Colorf color_ = nc::Colorf::White;
+	};
+	SpriteProperties spriteProps_;
 
 	nctl::String comboString_ = nctl::String(1024 * 2);
 	nctl::String auxString_ = nctl::String(MaxStringLength);
@@ -109,7 +136,7 @@ class UserInterface
 	void createRenderGui();
 
 	void createAnimationStateGui(IAnimation &anim);
-	void createCurveAnimationGui(CurveAnimation &anim);
+	void createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits);
 	void createAnimationRemoveButton(AnimationGroup &parentGroup, unsigned int index);
 
 	void createRecursiveAnimationsGui(AnimationGroup &parentGroup, unsigned int index);

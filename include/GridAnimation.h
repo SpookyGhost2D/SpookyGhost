@@ -1,23 +1,18 @@
 #ifndef CLASS_GRIDANIMATION
 #define CLASS_GRIDANIMATION
 
+#include <nctl/Array.h>
+#include <ncine/Vector2.h>
 #include "CurveAnimation.h"
+#include "GridFunctionParameter.h"
 
 class Sprite;
+class GridFunction;
 
 /// The grid animation class
 class GridAnimation : public CurveAnimation
 {
   public:
-	enum class AnimationType
-	{
-		WOBBLE_X,
-		WOBBLE_Y,
-		SKEW_X,
-		SKEW_Y,
-		ZOOM
-	};
-
 	GridAnimation();
 	GridAnimation(EasingCurve::Type curveType, EasingCurve::LoopMode loopMode);
 
@@ -27,16 +22,19 @@ class GridAnimation : public CurveAnimation
 	void update(float deltaTime) override;
 
 	inline const Sprite *sprite() const { return sprite_; }
+	inline Sprite *sprite() { return sprite_; }
 	void setSprite(Sprite *sprite);
 
-	inline AnimationType gridAnimationType() const { return type_; }
-	inline void setGridAnimationType(AnimationType type) { type_ = type; }
+	inline const GridFunction *function() { return gridFunction_; }
+	void setFunction(const GridFunction *function);
+
+	inline const nctl::Array<GridFunctionParameter> &parameters() const { return params_; }
+	inline nctl::Array<GridFunctionParameter> &parameters() { return params_; }
 
   private:
-	AnimationType type_;
 	Sprite *sprite_;
-
-	void deform(float value);
+	const GridFunction *gridFunction_;
+	nctl::Array<GridFunctionParameter> params_;
 };
 
 #endif

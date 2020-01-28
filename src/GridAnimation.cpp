@@ -1,5 +1,7 @@
 #include "GridAnimation.h"
 #include "Sprite.h"
+#include "GridFunction.h"
+#include "GridFunctionLibrary.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -11,8 +13,9 @@ GridAnimation::GridAnimation()
 }
 
 GridAnimation::GridAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : CurveAnimation(type, loopMode), type_(AnimationType::WOBBLE_X), sprite_(nullptr)
+    : CurveAnimation(type, loopMode), sprite_(nullptr), gridFunction_(nullptr), params_(4)
 {
+	setFunction(&GridFunctionLibrary::gridFunctions()[0]);
 }
 
 ///////////////////////////////////////////////////////////
@@ -21,9 +24,12 @@ GridAnimation::GridAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopM
 
 void GridAnimation::stop()
 {
+	if (state_ == State::STOPPED)
+		return;
+
 	CurveAnimation::stop();
-	if (sprite_)
-		deform(curve_.value());
+	if (sprite_ && gridFunction_)
+		gridFunction_->execute(*this);
 }
 
 void GridAnimation::update(float deltaTime)
@@ -32,13 +38,13 @@ void GridAnimation::update(float deltaTime)
 	{
 		case State::STOPPED:
 		case State::PAUSED:
-			if (sprite_ && sprite_->visible)
-				deform(curve_.value());
+			if (sprite_ && sprite_->visible && gridFunction_)
+				gridFunction_->execute(*this);
 			break;
 		case State::PLAYING:
-			const float value = curve_.next(speed_ * deltaTime);
-			if (sprite_ && sprite_->visible)
-				deform(value);
+			curve_.next(speed_ * deltaTime);
+			if (sprite_ && sprite_->visible && gridFunction_)
+				gridFunction_->execute(*this);
 			break;
 	}
 
@@ -55,140 +61,20 @@ void GridAnimation::setSprite(Sprite *sprite)
 	sprite_ = sprite;
 }
 
-///////////////////////////////////////////////////////////
-// PRIVATE FUNCTIONS
-///////////////////////////////////////////////////////////
-
-namespace {
-
-void wobbleX(Sprite *sprite, float value)
+void GridAnimation::setFunction(const GridFunction *function)
 {
-	const int width = sprite->width();
-	const int height = sprite->height();
-	const int halfHeight = height / 2;
-	const float invWidth = 1.0f / static_cast<float>(width);
-	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
-
-	for (int y = 0; y < height + 1; y++)
+	if (function)
 	{
-		for (int x = 0; x < width + 1; x++)
+		if (function->numParameters() != params_.size())
+			params_.setSize(function->numParameters());
+
+		for (unsigned int i = 0; i < function->numParameters(); i++)
 		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
-			Sprite::Vertex &v = interleavedVertices[index];
-			//v.x += 0.15f * sinf(value * (y / static_cast<float>(height + 1))) * (y / static_cast<float>(height + 1));
-			const int distCenterY = halfHeight - y;
-			v.x += invWidth * sinf(value + distCenterY * 0.25f);
+			const GridFunction::ParameterInfo &paramInfo = function->parameterInfo(i);
+			params_[i].value0 = paramInfo.initialValue.value0;
+			params_[i].value1 = paramInfo.initialValue.value1;
 		}
 	}
-}
 
-void wobbleY(Sprite *sprite, float value)
-{
-	const int width = sprite->width();
-	const int height = sprite->height();
-	const int halfWidth = width / 2;
-	const float invHeight = 1.0f / static_cast<float>(height);
-	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
-
-	for (int y = 0; y < height + 1; y++)
-	{
-		for (int x = 0; x < width + 1; x++)
-		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
-			Sprite::Vertex &v = interleavedVertices[index];
-			//v.y += 0.15f * sinf(value * (x / static_cast<float>(width + 1))) * (x / static_cast<float>(width + 1));
-			const int distCenterX = halfWidth - x;
-			v.y += invHeight * sinf(value + distCenterX * 0.25f);
-		}
-	}
-}
-
-void skewX(Sprite *sprite, float value)
-{
-	const int width = sprite->width();
-	const int height = sprite->height();
-	const int halfHeight = height / 2;
-	const float invWidth = 1.0f / float(width);
-	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
-
-	for (int y = 0; y < height + 1; y++)
-	{
-		for (int x = 0; x < width + 1; x++)
-		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
-			Sprite::Vertex &v = interleavedVertices[index];
-			const int distCenterY = halfHeight - y;
-			v.x += -distCenterY * value * invWidth;
-		}
-	}
-}
-
-void skewY(Sprite *sprite, float value)
-{
-	const int width = sprite->width();
-	const int height = sprite->height();
-	const int halfWidth = width / 2;
-	const float invHeight = 1.0f / float(height);
-	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
-
-	for (int y = 0; y < height + 1; y++)
-	{
-		for (int x = 0; x < width + 1; x++)
-		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
-			Sprite::Vertex &v = interleavedVertices[index];
-			const int distCenterX = halfWidth - x;
-			v.y += -distCenterX * value * invHeight;
-		}
-	}
-}
-
-void zoom(Sprite *sprite, float value)
-{
-	const int width = sprite->width();
-	const int height = sprite->height();
-	const int halfWidth = width / 2;
-	const int halfHeight = height / 2;
-	const float invWidth = 1.0f / float(width);
-	const float invHeight = 1.0f / float(height);
-	nctl::Array<Sprite::Vertex> &interleavedVertices = sprite->interleavedVertices();
-
-	for (int y = 0; y < height + 1; y++)
-	{
-		for (int x = 0; x < width + 1; x++)
-		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
-			Sprite::Vertex &v = interleavedVertices[index];
-			const int distCenterX = halfWidth - x;
-			const int distCenterY = halfHeight - y;
-			v.x += -distCenterX * value * invWidth;
-			v.y += -distCenterY * value * invHeight;
-		}
-	}
-}
-
-}
-
-void GridAnimation::deform(float value)
-{
-	FATAL_ASSERT(sprite_ != nullptr);
-
-	switch (type_)
-	{
-		case AnimationType::WOBBLE_X:
-			wobbleX(sprite_, value);
-			break;
-		case AnimationType::WOBBLE_Y:
-			wobbleY(sprite_, value);
-			break;
-		case AnimationType::SKEW_X:
-			skewX(sprite_, value);
-			break;
-		case AnimationType::SKEW_Y:
-			skewY(sprite_, value);
-			break;
-		case AnimationType::ZOOM:
-			zoom(sprite_, value);
-			break;
-	}
+	gridFunction_ = function;
 }

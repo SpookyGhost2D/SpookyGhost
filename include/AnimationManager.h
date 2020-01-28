@@ -29,6 +29,7 @@ class AnimationManager
 	void clear();
 
 	void removeSprite(Sprite *sprite);
+	void assignGridAnchorToParameters(Sprite *sprite);
 
   private:
 	nctl::UniquePtr<AnimationGroup> animGroup_;

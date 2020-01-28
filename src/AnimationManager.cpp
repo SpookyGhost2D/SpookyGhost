@@ -2,6 +2,8 @@
 #include "ParallelAnimationGroup.h"
 #include "PropertyAnimation.h"
 #include "GridAnimation.h"
+#include "GridFunction.h"
+#include "Sprite.h"
 
 namespace {
 
@@ -47,6 +49,48 @@ void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 	}
 }
 
+void recursiveAssignGridAnchorToParameters(AnimationGroup &animGroup, Sprite *sprite)
+{
+	for (unsigned int i = 0; i < animGroup.anims().size(); i++)
+	{
+		IAnimation &anim = *animGroup.anims()[i];
+
+		switch (anim.type())
+		{
+			case IAnimation::Type::PARALLEL_GROUP:
+			case IAnimation::Type::SEQUENTIAL_GROUP:
+			{
+				AnimationGroup &innerGroup = static_cast<AnimationGroup &>(anim);
+				recursiveAssignGridAnchorToParameters(innerGroup, sprite);
+				break;
+			}
+			case IAnimation::Type::PROPERTY:
+				break;
+			case IAnimation::Type::GRID:
+			{
+				GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+				if (gridAnim.sprite() == sprite && gridAnim.function() != nullptr)
+				{
+					const GridFunction &function = *gridAnim.function();
+					for (unsigned int paramIndex = 0; paramIndex < function.numParameters(); paramIndex++)
+					{
+						if (function.parameterInfo(paramIndex).anchorType == GridFunction::AnchorType::X)
+							gridAnim.parameters()[paramIndex].value0 = gridAnim.sprite()->gridAnchorPoint.x;
+						else if (function.parameterInfo(paramIndex).anchorType == GridFunction::AnchorType::Y)
+							gridAnim.parameters()[paramIndex].value0 = gridAnim.sprite()->gridAnchorPoint.y;
+						else if (function.parameterInfo(paramIndex).anchorType == GridFunction::AnchorType::XY)
+						{
+							gridAnim.parameters()[paramIndex].value0 = gridAnim.sprite()->gridAnchorPoint.x;
+							gridAnim.parameters()[paramIndex].value1 = gridAnim.sprite()->gridAnchorPoint.y;
+						}
+					}
+				}
+				break;
+			}
+		}
+	}
+}
+
 }
 
 ///////////////////////////////////////////////////////////
@@ -83,4 +127,9 @@ void AnimationManager::removeSprite(Sprite *sprite)
 		return;
 
 	recursiveRemoveSprite(*animGroup_, sprite);
+}
+
+void AnimationManager::assignGridAnchorToParameters(Sprite *sprite)
+{
+	recursiveAssignGridAnchorToParameters(*animGroup_, sprite);
 }

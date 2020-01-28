@@ -10,6 +10,7 @@
 #include "AnimationManager.h"
 #include "PropertyAnimation.h"
 #include "GridAnimation.h"
+#include "GridFunctionLibrary.h"
 #include "ParallelAnimationGroup.h"
 #include "SequentialAnimationGroup.h"
 
@@ -57,7 +58,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	config.vaoPoolSize = 1; // TODO: FIX size > 1
 
 	config.windowTitle = "SpookyGhost";
-	config.windowIconFilename = "icon84.png";
+	config.windowIconFilename = "icon96.png";
 
 	config.consoleLogLevel = nc::ILogger::LogLevel::WARN;
 }
@@ -65,6 +66,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 void MyEventHandler::onInit()
 {
 	RenderingResources::create();
+	GridFunctionLibrary::init();
 
 	canvas_ = nctl::makeUnique<Canvas>(imageWidth, imageHeight);
 	resizedCanvas_ = nctl::makeUnique<Canvas>();
@@ -72,13 +74,13 @@ void MyEventHandler::onInit()
 	spriteMgr_ = nctl::makeUnique<SpriteManager>();
 	animMgr_ = nctl::makeUnique<AnimationManager>();
 
-	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon84.png").data());
+	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon96.png").data());
 	nctl::UniquePtr<Sprite> sprite = nctl::makeUnique<Sprite>(texture.get());
 	sprite->name = "Ghost";
 	sprite->x = 100.0f;
 	sprite->y = 100.0f;
 
-	nctl::UniquePtr<Texture> texture2 = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine84.png").data());
+	nctl::UniquePtr<Texture> texture2 = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine96.png").data());
 	nctl::UniquePtr<Sprite> sprite2 = nctl::makeUnique<Sprite>(texture2.get());
 	sprite2->name = "nCine";
 	sprite2->x = 100.0f;
@@ -88,10 +90,10 @@ void MyEventHandler::onInit()
 
 	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
 
-	nctl::UniquePtr<GridAnimation> gridAnim = nctl::makeUnique<GridAnimation>(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::PING_PONG);
-	gridAnim->curve().setScale(10.0f);
+	nctl::UniquePtr<GridAnimation> gridAnim = nctl::makeUnique<GridAnimation>(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::REWIND);
+	gridAnim->curve().setScale(1.0f);
 	gridAnim->setSprite(sprite.get());
-	gridAnim->setGridAnimationType(GridAnimation::AnimationType::WOBBLE_X);
+	gridAnim->setFunction(&GridFunctionLibrary::gridFunctions()[0]);
 	animGroup->anims().pushBack(nctl::move(gridAnim));
 
 	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
@@ -194,9 +196,11 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 	{
 		if (event.sym == nc::KeySym::N)
 			ui_->menuNew();
-		if (event.sym == nc::KeySym::Q)
+		else if (event.sym == nc::KeySym::Q)
 			nc::theApplication().quit();
 	}
+	if (event.sym == nc::KeySym::DELETE)
+		ui_->removeSelectedSprite();
 }
 
 void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)

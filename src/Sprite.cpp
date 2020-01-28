@@ -26,8 +26,8 @@ struct VertexFormat
 
 Sprite::Sprite(Texture *texture)
     : name(MaxNameLength), visible(true), x(0.0f), y(0.0f), rotation(0.0f), scaleFactor(1.0f, 1.0f),
-      anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), visited(false), width_(0), height_(0),
-      localMatrix_(nc::Matrix4x4f::Identity), worldMatrix_(nc::Matrix4x4f::Identity),
+      anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), visited(false), gridAnchorPoint(0.0f, 0.0f),
+      width_(0), height_(0), localMatrix_(nc::Matrix4x4f::Identity), worldMatrix_(nc::Matrix4x4f::Identity),
       absPosition_(0.0f, 0.0f), absScaleFactor_(1.0f, 1.0f), absRotation_(0.0f),
       absColor_(nc::Colorf::White), texture_(nullptr), texRect_(0, 0, 0, 0),
       flippedX_(false), flippedY_(false), blendingPreset_(BlendingPreset::ALPHA),

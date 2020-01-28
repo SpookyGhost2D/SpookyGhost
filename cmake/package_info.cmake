@@ -27,6 +27,9 @@ set(PACKAGE_SOURCES
 	include/ParallelAnimationGroup.h
 	include/AnimationManager.h
 	include/SpriteManager.h
+	include/GridFunction.h
+	include/GridFunctionParameter.h
+	include/GridFunctionLibrary.h
 
 	src/main.cpp
 	src/shader_strings.cpp
@@ -44,6 +47,8 @@ set(PACKAGE_SOURCES
 	src/ParallelAnimationGroup.cpp
 	src/AnimationManager.cpp
 	src/SpriteManager.cpp
+	src/GridFunction.cpp
+	src/GridFunctionLibrary.cpp
 )
 
 function(callback_before_target)

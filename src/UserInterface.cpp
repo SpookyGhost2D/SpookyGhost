@@ -12,6 +12,7 @@
 #include "ParallelAnimationGroup.h"
 #include "SequentialAnimationGroup.h"
 #include "GridAnimation.h"
+#include "GridFunctionLibrary.h"
 #include "Sprite.h"
 #include "Texture.h"
 
@@ -34,8 +35,6 @@ enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 
 const char *propertyTypes[] = { "None", "Position X", "Position Y", "Rotation", "Scale X", "Scale Y", "AnchorPoint X", "AnchorPoint Y", "Opacity", "Red Channel", "Green Channel", "Blue Channel" };
 enum PropertyTypesEnum { NONE, POSITION_X, POSITION_Y, ROTATION, SCALE_X, SCALE_Y, ANCHOR_X, ANCHOR_Y, OPACITY, COLOR_R, COLOR_G, COLOR_B };
-
-const char *gridAnimTypes[] = { "Wobble X", "Wooble Y", "Skew X", "Skew Y", "Zoom" };
 
 const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
@@ -233,8 +232,8 @@ UserInterface::UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spri
 
 	applyDarkStyle();
 
-	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon84.png").data());
-	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine84.png").data());
+	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon96.png").data());
+	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine96.png").data());
 }
 
 ///////////////////////////////////////////////////////////
@@ -299,6 +298,18 @@ void UserInterface::cancelRender()
 	}
 }
 
+void UserInterface::removeSelectedSprite()
+{
+	if (spriteMgr_.sprites().isEmpty() == false)
+	{
+		animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
+		if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
+			spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
+		if (selectedSpriteIndex_ > 0)
+			selectedSpriteIndex_--;
+	}
+}
+
 void UserInterface::menuNew()
 {
 	// Always clear animations before sprites
@@ -309,6 +320,9 @@ void UserInterface::menuNew()
 
 void UserInterface::createGui()
 {
+	if (lastStatus_.secondsSince() >= 2.0f)
+		statusMessage_.clear();
+
 	createDockingSpace();
 
 	ImGui::Begin("SpookyGhost");
@@ -322,8 +336,6 @@ void UserInterface::createGui()
 	if (spriteMgr_.sprites().isEmpty() == false && showTexrectWindow)
 		createTexRectWindow();
 
-	if (lastStatus_.secondsSince() >= 2.0f)
-		statusMessage_.clear();
 	ImGui::Begin("Status");
 	ImGui::Text("%s", statusMessage_.data());
 	ImGui::End();
@@ -537,7 +549,13 @@ void UserInterface::createSpritesGui()
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
 		{
-			if (nc::IFile::access(texFilename_.data(), nc::IFile::AccessMode::READABLE))
+			if (nc::IFile::access((nc::IFile::dataPath() + texFilename_).data(), nc::IFile::AccessMode::READABLE))
+			{
+				spriteMgr_.textures().pushBack(nctl::makeUnique<Texture>((nc::IFile::dataPath() + texFilename_).data()));
+				auxString_.format("Loaded texture \"%s\"", (nc::IFile::dataPath() + texFilename_).data());
+				selectedTextureIndex = spriteMgr_.textures().size() - 1;
+			}
+			else if (nc::IFile::access(texFilename_.data(), nc::IFile::AccessMode::READABLE))
 			{
 				spriteMgr_.textures().pushBack(nctl::makeUnique<Texture>(texFilename_.data()));
 				auxString_.format("Loaded texture \"%s\"", texFilename_.data());
@@ -565,14 +583,8 @@ void UserInterface::createSpritesGui()
 				}
 			}
 			ImGui::SameLine();
-			if (ImGui::Button(Labels::Remove) && spriteMgr_.sprites().isEmpty() == false)
-			{
-				animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
-				if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
-					spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
-				if (selectedSpriteIndex_ > 0)
-					selectedSpriteIndex_--;
-			}
+			if (ImGui::Button(Labels::Remove))
+				removeSelectedSprite();
 		}
 		else
 			ImGui::Text("Load at least one texture in order to add sprites");
@@ -775,7 +787,7 @@ void UserInterface::createAnimationStateGui(IAnimation &anim)
 		anim.play();
 }
 
-void UserInterface::createCurveAnimationGui(CurveAnimation &anim)
+void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits)
 {
 	int currentComboCurveType = static_cast<int>(anim.curve().type());
 	ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
@@ -789,12 +801,12 @@ void UserInterface::createCurveAnimationGui(CurveAnimation &anim)
 	ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
 	anim.curve().setLoopMode(static_cast<EasingCurve::LoopMode>(currentComboLoopMode));
 
-	ImGui::SliderFloat("Shift", &anim.curve().shift(), -500.0f, 500.0f);
+	ImGui::SliderFloat("Shift", &anim.curve().shift(), limits.minShift, limits.maxShift);
 	ImGui::SameLine();
 	auxString_.format("%s##Shift", Labels::Reset);
 	if (ImGui::Button(auxString_.data()))
 		anim.curve().shift() = 0.0f;
-	ImGui::SliderFloat("Scale", &anim.curve().scale(), -500.0f, 500.0f);
+	ImGui::SliderFloat("Scale", &anim.curve().scale(), limits.minScale, limits.maxScale);
 	ImGui::SameLine();
 	auxString_.format("%s##Scale", Labels::Reset);
 	if (ImGui::Button(auxString_.data()))
@@ -1092,6 +1104,7 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 		auxString_.append(")");
 	auxString_.append("###PropertyAnimation");
 
+	static CurveAnimationGuiLimits limits;
 	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
@@ -1146,36 +1159,80 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 					break;
 				case PropertyTypesEnum::POSITION_X:
 					anim.setProperty(&sprite.x);
+					limits.minShift = -sprite.width() * 0.5f;
+					limits.maxShift = canvas_.texWidth() + sprite.width() * 0.5f;
+					limits.minScale = -canvas_.texWidth();
+					limits.maxScale = canvas_.texWidth();
 					break;
 				case PropertyTypesEnum::POSITION_Y:
 					anim.setProperty(&sprite.y);
+					limits.minShift = -sprite.height() * 0.5f;
+					limits.maxShift = canvas_.texHeight() + sprite.height() * 0.5f;
+					limits.minScale = -canvas_.texHeight();
+					limits.maxScale = canvas_.texHeight();
 					break;
 				case PropertyTypesEnum::ROTATION:
 					anim.setProperty(&sprite.rotation);
+					limits.minShift = 0.0f;
+					limits.maxShift = 360.0f;
+					limits.minScale = -360.0f;
+					limits.maxScale = 360.0f;
 					break;
 				case PropertyTypesEnum::SCALE_X:
 					anim.setProperty(&sprite.scaleFactor.x);
+					limits.minShift = -8.0f;
+					limits.maxShift = 8.0f;
+					limits.minScale = -8.0f;
+					limits.maxScale = 8.0f;
 					break;
 				case PropertyTypesEnum::SCALE_Y:
 					anim.setProperty(&sprite.scaleFactor.y);
+					limits.minShift = -8.0f;
+					limits.maxShift = 8.0f;
+					limits.minScale = -8.0f;
+					limits.maxScale = 8.0f;
 					break;
 				case PropertyTypesEnum::ANCHOR_X:
 					anim.setProperty(&sprite.anchorPoint.x);
+					limits.minShift = -sprite.width() * 0.5f;
+					limits.maxShift = sprite.width() * 0.5f;
+					limits.minScale = -sprite.width();
+					limits.maxScale = sprite.width();
 					break;
 				case PropertyTypesEnum::ANCHOR_Y:
 					anim.setProperty(&sprite.anchorPoint.y);
+					limits.minShift = -sprite.height() * 0.5f;
+					limits.maxShift = sprite.height() * 0.5f;
+					limits.minScale = -sprite.height();
+					limits.maxScale = sprite.height();
 					break;
 				case PropertyTypesEnum::OPACITY:
 					anim.setProperty(&sprite.color.data()[3]);
+					limits.minShift = 0.0f;
+					limits.maxShift = 1.0f;
+					limits.minScale = -1.0f;
+					limits.maxScale = 1.0f;
 					break;
 				case PropertyTypesEnum::COLOR_R:
 					anim.setProperty(&sprite.color.data()[0]);
+					limits.minShift = 0.0f;
+					limits.maxShift = 1.0f;
+					limits.minScale = -1.0f;
+					limits.maxScale = 1.0f;
 					break;
 				case PropertyTypesEnum::COLOR_G:
 					anim.setProperty(&sprite.color.data()[1]);
+					limits.minShift = 0.0f;
+					limits.maxShift = 1.0f;
+					limits.minScale = -1.0f;
+					limits.maxScale = 1.0f;
 					break;
 				case PropertyTypesEnum::COLOR_B:
 					anim.setProperty(&sprite.color.data()[2]);
+					limits.minShift = 0.0f;
+					limits.maxShift = 1.0f;
+					limits.minScale = -1.0f;
+					limits.maxScale = 1.0f;
 					break;
 			}
 			if (setCurveShift && anim.property())
@@ -1184,7 +1241,7 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 		else
 			ImGui::TextDisabled("No sprite currently loaded");
 
-		createCurveAnimationGui(anim);
+		createCurveAnimationGui(anim, limits);
 		createAnimationStateGui(anim);
 		createAnimationRemoveButton(parentGroup, index);
 
@@ -1200,13 +1257,19 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 	auxString_.format("#%u: ", index);
 	if (anim.name.isEmpty() == false)
 		auxString_.formatAppend("\"%s\" (", anim.name.data());
-	auxString_.formatAppend("%s grid", gridAnimTypes[static_cast<int>(anim.gridAnimationType())]);
+	if (anim.function() != nullptr)
+		auxString_.formatAppend("%s grid", anim.function()->name().data());
 	if (anim.sprite() != nullptr && anim.sprite()->name.isEmpty() == false)
 		auxString_.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
 	if (anim.name.isEmpty() == false)
 		auxString_.append(")");
 	auxString_.append("###GridAnimation");
 
+	CurveAnimationGuiLimits limits;
+	limits.minScale = -10.0f;
+	limits.maxScale = 10.0f;
+	limits.minShift = -100.0f;
+	limits.maxShift = 100.0f;
 	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
@@ -1231,22 +1294,136 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 			comboString_[comboString_.length() - 1] = '\0';
 
 			ImGui::Combo("Sprite", &spriteIndex, comboString_.data());
-			anim.setSprite(spriteMgr_.sprites()[spriteIndex].get());
+			Sprite *sprite = spriteMgr_.sprites()[spriteIndex].get();
+			if (anim.sprite() != sprite)
+				anim.setSprite(sprite);
 		}
 		else
 			ImGui::TextDisabled("No sprite currently loaded");
 
-		static int currentComboType = -1;
-		currentComboType = static_cast<int>(anim.gridAnimationType());
-		ImGui::Combo("Type", &currentComboType, gridAnimTypes, IM_ARRAYSIZE(gridAnimTypes));
-		anim.setGridAnimationType(static_cast<GridAnimation::AnimationType>(currentComboType));
+		static int currentComboFunction = -1;
+		comboString_.clear();
+		for (unsigned int i = 0; i < GridFunctionLibrary::gridFunctions().size(); i++)
+		{
+			const nctl::String &functionName = GridFunctionLibrary::gridFunctions()[i].name();
+			comboString_.formatAppend("%s", functionName.data());
+			comboString_.setLength(comboString_.length() + 1);
 
-		createCurveAnimationGui(anim);
+			if (anim.function() && functionName == anim.function()->name())
+				currentComboFunction = i;
+		}
+		comboString_.setLength(comboString_.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		comboString_[comboString_.length() - 1] = '\0';
+		ASSERT(currentComboFunction > -1);
+
+		ImGui::Combo("Function", &currentComboFunction, comboString_.data());
+		const GridFunction *gridFunction = &GridFunctionLibrary::gridFunctions()[currentComboFunction];
+		if (anim.function() != gridFunction)
+			anim.setFunction(gridFunction);
+
+		if (anim.function() != nullptr)
+		{
+			for (unsigned int i = 0; i < anim.function()->numParameters(); i++)
+			{
+				const GridFunction::ParameterInfo &paramInfo = anim.function()->parameterInfo(i);
+				auxString_.format("%s##GridFunction%u", paramInfo.name.data(), i);
+				float minValue = paramInfo.minValue.value0;
+				float maxValue = paramInfo.maxValue.value0;
+
+				if (anim.sprite())
+				{
+					if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
+						minValue *= anim.sprite()->width();
+					else if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
+						minValue *= anim.sprite()->height();
+
+					if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
+						maxValue *= anim.sprite()->width();
+					else if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
+						maxValue *= anim.sprite()->height();
+				}
+
+				switch (paramInfo.type)
+				{
+					case GridFunction::ParameterType::FLOAT:
+						ImGui::SliderFloat(auxString_.data(), &anim.parameters()[i].value0, minValue, maxValue);
+						break;
+					case GridFunction::ParameterType::VECTOR2F:
+						ImGui::SliderFloat2(auxString_.data(), &anim.parameters()[i].value0, minValue, maxValue);
+						break;
+				}
+
+				if (anim.sprite())
+				{
+					if (paramInfo.anchorType == GridFunction::AnchorType::X)
+						anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
+					else if (paramInfo.anchorType == GridFunction::AnchorType::Y)
+						anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value0;
+					else if (paramInfo.anchorType == GridFunction::AnchorType::XY)
+					{
+						anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
+						anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value1;
+					}
+				}
+
+				ImGui::SameLine();
+				auxString_.format("%s##GridFunction%u", Labels::Reset, i);
+				if (ImGui::Button(auxString_.data()))
+				{
+					anim.parameters()[i].value0 = paramInfo.initialValue.value0;
+					anim.parameters()[i].value1 = paramInfo.initialValue.value1;
+				}
+			}
+		}
+
+		createCurveAnimationGui(anim, limits);
 		createAnimationStateGui(anim);
 		createAnimationRemoveButton(parentGroup, index);
 
 		ImGui::TreePop();
 	}
+}
+
+void UserInterface::SpriteProperties::save(Sprite &sprite)
+{
+	if (saved_)
+		return;
+	ASSERT(saved_ == false);
+
+	parent_ = sprite.parent();
+	position_.set(sprite.x, sprite.y);
+	rotation_ = sprite.rotation;
+	scaleFactor_ = sprite.scaleFactor;
+	anchorPoint_ = sprite.anchorPoint;
+	color_ = sprite.color;
+
+	const nc::Vector2f absPosition = sprite.absPosition();
+	sprite.setParent(nullptr);
+	sprite.setAbsPosition(absPosition);
+	sprite.rotation = 0.0f;
+	sprite.scaleFactor.set(1.0f, 1.0f);
+	sprite.anchorPoint.set(0.0f, 0.0f);
+	sprite.color = nc::Colorf::White;
+
+	saved_ = true;
+}
+
+void UserInterface::SpriteProperties::restore(Sprite &sprite)
+{
+	if (saved_ == false)
+		return;
+	ASSERT(saved_ == true);
+
+	sprite.setParent(parent_);
+	sprite.x = position_.x;
+	sprite.y = position_.y;
+	sprite.rotation = rotation_;
+	sprite.scaleFactor = scaleFactor_;
+	sprite.anchorPoint = anchorPoint_;
+	sprite.color = color_;
+
+	saved_ = false;
 }
 
 void UserInterface::createCanvasWindow()
@@ -1255,17 +1432,94 @@ void UserInterface::createCanvasWindow()
 	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
-	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || (ImGui::IsItemHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)))
+
+	if (ImGui::IsItemHovered() && spriteMgr_.sprites().isEmpty() == false)
 	{
 		const ImVec2 mousePos = ImGui::GetMousePos();
 		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
-		if (spriteMgr_.sprites().isEmpty() == false)
+		Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+		const nc::Vector2f newSpriteAbsPos(roundf(relativePos.x / canvasZoom_), roundf(relativePos.y / canvasZoom_));
+		const nc::Vector2f spriteRelativePos(newSpriteAbsPos - sprite.absPosition());
+
+		static bool shiftAndClick = false;
+		static bool ctrlAndClick = false;
+		if (ImGui::GetIO().KeyShift || ImGui::GetIO().KeyCtrl)
 		{
-			Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
-			sprite.setAbsPosition(relativePos.x / canvasZoom_, relativePos.y / canvasZoom_);
+			if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				shiftAndClick = ImGui::GetIO().KeyShift;
+				ctrlAndClick = ImGui::GetIO().KeyCtrl;
+
+				// One frame lasting message
+				statusMessage_.format("Coordinates: %d, %d", static_cast<int>(spriteRelativePos.x), static_cast<int>(spriteRelativePos.y));
+
+				ImU32 color = IM_COL32(0, 0, 0, 255); // opaque black
+				if (ImGui::GetIO().KeyShift)
+					color |= 0x000000FF; // red
+				if (ImGui::GetIO().KeyCtrl)
+					color |= 0x00FF0000; // blue
+
+				ImDrawList *drawList = ImGui::GetWindowDrawList();
+
+				const ImRect spriteRect(cursorScreenPos.x + (sprite.absPosition().x - sprite.absWidth() / 2) * canvasZoom_,
+				                        cursorScreenPos.y + (sprite.absPosition().y - sprite.absHeight() / 2) * canvasZoom_,
+				                        cursorScreenPos.x + (sprite.absPosition().x + sprite.absWidth() / 2) * canvasZoom_,
+				                        cursorScreenPos.y + (sprite.absPosition().y + sprite.absHeight() / 2) * canvasZoom_);
+				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawCornerFlags_All, canvasZoom_);
+				if (spriteRect.Contains(mousePos))
+				{
+					drawList->AddLine(ImVec2(spriteRect.Min.x, mousePos.y), ImVec2(spriteRect.Max.x, mousePos.y), color, canvasZoom_);
+					drawList->AddLine(ImVec2(mousePos.x, spriteRect.Min.y), ImVec2(mousePos.x, spriteRect.Max.y), color, canvasZoom_);
+				}
+
+				spriteProps_.save(sprite);
+
+				const float rectHalfSize = 2.0f * canvasZoom_;
+				drawList->AddRectFilled(ImVec2(mousePos.x - rectHalfSize, mousePos.y - rectHalfSize), ImVec2(mousePos.x + rectHalfSize, mousePos.y + rectHalfSize), color);
+				if (ImGui::GetIO().KeyCtrl &&
+				    (spriteRelativePos.x != sprite.gridAnchorPoint.x || spriteRelativePos.y != sprite.gridAnchorPoint.y))
+				{
+					// Update grid anchor point while pressing Ctrl, clicking and moving the mouse
+					sprite.gridAnchorPoint = spriteRelativePos;
+					animMgr_.assignGridAnchorToParameters(&sprite);
+				}
+			}
+			if (ImGui::GetIO().KeyShift && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				spriteProps_.restore(sprite);
+
+				// Update sprite anchor point while pressing Shift and releasing the mouse button
+				sprite.anchorPoint = spriteRelativePos;
+				sprite.setAbsPosition(newSpriteAbsPos);
+			}
+		}
+		else
+		{
+			if (shiftAndClick || ctrlAndClick)
+			{
+				spriteProps_.restore(sprite);
+
+				if (shiftAndClick)
+				{
+					// Update sprite anchor point while clicking the mouse button and releasing the Shift key
+					sprite.anchorPoint = spriteRelativePos;
+					sprite.setAbsPosition(newSpriteAbsPos);
+				}
+			}
+			else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f) || ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				// Update sprite position while clicking and moving the mouse (with pixel snapping)
+				if (sprite.absPosition().x != newSpriteAbsPos.x || sprite.absPosition().y != newSpriteAbsPos.y)
+					sprite.setAbsPosition(newSpriteAbsPos);
+			}
+
+			shiftAndClick = false;
+			ctrlAndClick = false;
 		}
 	}
+
 	mouseWheelCanvasZoom();
+
 	ImGui::End();
 }
 
@@ -1285,6 +1539,18 @@ void UserInterface::createTexRectWindow()
 	ImGui::Image(sprite.imguiTexId(), size);
 
 	mouseWheelCanvasZoom();
+
+	if (ImGui::IsItemHovered())
+	{
+		const ImVec2 mousePos = ImGui::GetMousePos();
+		ImVec2 relPos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
+
+		relPos.x = roundf(relPos.x / canvasZoom_);
+		relPos.y = roundf(relPos.y / canvasZoom_);
+
+		// One frame lasting message
+		statusMessage_.format("Coordinates: %d, %d", static_cast<int>(relPos.x), static_cast<int>(relPos.y));
+	}
 
 	if (ImGui::IsWindowHovered())
 	{

@@ -66,7 +66,7 @@ class EasingCurve
 
 	void reset();
 	float value();
-	float next(float deltaTime);
+	void next(float deltaTime);
 
   private:
 	Type type_;

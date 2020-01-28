@@ -55,6 +55,8 @@ class Sprite
 	nc::Colorf color;
 	/// Used by the GUI to exclude children from becoming parents of their parents
 	bool visited;
+	/// Anchor point used by some grid animation functions
+	nc::Vector2f gridAnchorPoint;
 
 	Sprite(Texture *texture);
 
@@ -95,7 +97,11 @@ class Sprite
 
 	inline const nctl::Array<Sprite *> children() const { return children_; }
 	inline const Sprite *parent() const { return parent_; }
+	inline Sprite *parent() { return parent_; }
 	void setParent(Sprite *parent);
+
+	inline int absWidth() const { return width_ * absScaleFactor_.x; }
+	inline int absHeight() const { return height_ * absScaleFactor_.y; }
 
 	inline const nc::Vector2f absPosition() const { return absPosition_; }
 	inline void setAbsPosition(const nc::Vector2f position) { setAbsPosition(position.x, position.y); }
