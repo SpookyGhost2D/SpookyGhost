@@ -26,7 +26,6 @@ class PropertyAnimation : public CurveAnimation
 	inline void setProperty(float *property) { property_ = property; }
 	inline const nctl::String &propertyName() const { return propertyName_; }
 	inline void setPropertyName(const nctl::String &name) { propertyName_ = name; }
-	//setProperty(void *function); //TODO: with setter function
 
   private:
 	float *property_;

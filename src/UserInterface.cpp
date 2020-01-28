@@ -36,7 +36,7 @@ enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 const char *propertyTypes[] = { "None", "Position X", "Position Y", "Rotation", "Scale X", "Scale Y", "AnchorPoint X", "AnchorPoint Y", "Opacity", "Red Channel", "Green Channel", "Blue Channel" };
 enum PropertyTypesEnum { NONE, POSITION_X, POSITION_Y, ROTATION, SCALE_X, SCALE_Y, ANCHOR_X, ANCHOR_Y, OPACITY, COLOR_R, COLOR_G, COLOR_B };
 
-const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "custom" };
+const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "Custom" };
 enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
 
 enum CanvasZoomEnum { X1_8, X1_4, X1_2, X1, X2, X4, X8 };
@@ -454,7 +454,7 @@ void UserInterface::createCanvasGui()
 		canvasZoom_ = CanvasEnumToZoom(static_cast<CanvasZoomEnum>(canvasZoomRadio));
 
 		nc::Vector2i desiredCanvasSize;
-		static int currentComboResize = static_cast<int>(ResizePresetsEnum::SIZE256); // TOD: hard-coded initial state
+		static int currentComboResize = static_cast<int>(ResizePresetsEnum::SIZE256); // TODO: hard-coded initial state
 		ImGui::Combo("Presets", &currentComboResize, resizePresets, IM_ARRAYSIZE(resizePresets));
 		if (currentComboResize == ResizePresetsEnum::CUSTOM)
 			ImGui::InputInt2("Custom Size", customCanvasSize_.data());
@@ -953,7 +953,8 @@ void UserInterface::createRenderGui()
 			const unsigned int numSavedFrames = saveAnimStatus_.numSavedFrames;
 			const float fraction = numSavedFrames / static_cast<float>(saveAnimStatus_.numFrames);
 			auxString_.format("Frame: %d/%d", numSavedFrames, saveAnimStatus_.numFrames);
-			ImGui::ProgressBar(fraction, ImVec2(-1.0f, 0.0f), auxString_.data());
+			ImGui::ProgressBar(fraction, ImVec2(0.0f, 0.0f), auxString_.data());
+			ImGui::SameLine();
 			if (ImGui::Button(Labels::Cancel))
 				cancelRender();
 		}
@@ -1239,7 +1240,7 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 				anim.curve().setShift(*anim.property());
 		}
 		else
-			ImGui::TextDisabled("No sprite currently loaded");
+			ImGui::TextDisabled("There are no sprites to animate");
 
 		createCurveAnimationGui(anim, limits);
 		createAnimationStateGui(anim);
@@ -1299,7 +1300,7 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 				anim.setSprite(sprite);
 		}
 		else
-			ImGui::TextDisabled("No sprite currently loaded");
+			ImGui::TextDisabled("There are no sprites to animate");
 
 		static int currentComboFunction = -1;
 		comboString_.clear();
@@ -1570,8 +1571,8 @@ void UserInterface::createTexRectWindow()
 			endPos = ImGui::GetMousePos();
 		}
 	}
-	else
-		mouseStatus_ = MouseStatus::IDLE;
+	else if (mouseStatus_ == MouseStatus::CLICKED || mouseStatus_ == MouseStatus::DRAGGING)
+		mouseStatus_ = MouseStatus::RELEASED;
 
 	if (mouseStatus_ == MouseStatus::CLICKED)
 	{
@@ -1613,7 +1614,7 @@ void UserInterface::createTexRectWindow()
 	ImVec2 maxRect(endPos);
 
 	if (mouseStatus_ == MouseStatus::IDLE || mouseStatus_ == MouseStatus::CLICKED ||
-	    ((maxRect.x - minRect.x == 0 || maxRect.y - minRect.y == 0) && mouseStatus_ != MouseStatus::DRAGGING))
+	    (!(maxRect.x - minRect.x != 0.0f && maxRect.y - minRect.y != 0.0f) && mouseStatus_ != MouseStatus::DRAGGING))
 	{
 		// Setting the non covered rect from the sprite texrect
 		minRect.x = cursorScreenPos.x + (texRect.x * canvasZoom_);
@@ -1652,6 +1653,9 @@ void UserInterface::createTexRectWindow()
 
 		if (texRect.w > 0 && texRect.h > 0)
 			sprite.setTexRect(texRect);
+
+		// Back to idle mouse status after assigning the new texrect
+		mouseStatus_ = MouseStatus::IDLE;
 	}
 
 	ImGui::End();
@@ -1697,10 +1701,12 @@ void UserInterface::mouseWheelCanvasZoom()
 	if (ImGui::IsItemHovered() && ImGui::GetIO().KeyCtrl && ImGui::GetIO().MouseWheel != 0.0f)
 	{
 		const float wheel = ImGui::GetIO().MouseWheel;
+
 		if (wheel > 0.0f)
 			canvasZoom_ *= 2.0f;
 		else if (wheel < 0.0f)
 			canvasZoom_ *= 0.5f;
+
 		if (canvasZoom_ > 8.0f)
 			canvasZoom_ = 8.0f;
 		else if (canvasZoom_ < 0.125f)

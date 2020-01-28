@@ -81,3 +81,9 @@ function(callback_after_target)
 	# Needed to compile on Android
 	set(GENERATED_SOURCES ${GENERATED_SOURCES} PARENT_SCOPE)
 endfunction()
+
+function(callback_end)
+	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND IS_DIRECTORY ${PACKAGE_DATA_DIR}/docs)
+		install(DIRECTORY ${PACKAGE_DATA_DIR}/docs DESTINATION . PATTERN "*.adoc" EXCLUDE)
+	endif()
+endfunction()

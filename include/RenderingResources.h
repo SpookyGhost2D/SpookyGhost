@@ -5,10 +5,10 @@
 #include <ncine/Matrix4x4.h>
 
 namespace ncine {
-class GLShaderProgram;
-}
 
-// TODO: RENAME
+class GLShaderProgram;
+
+}
 
 namespace nc = ncine;
 

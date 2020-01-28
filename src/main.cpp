@@ -17,16 +17,6 @@
 #include <ncine/Application.h>
 #include <ncine/IFile.h>
 
-#include "Texture.h"
-#include "Sprite.h"
-
-namespace {
-
-const unsigned int imageWidth = 256;
-const unsigned int imageHeight = 256;
-
-}
-
 nc::IAppEventHandler *createAppEventHandler()
 {
 	return new MyEventHandler;
@@ -54,7 +44,6 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	config.withDebugOverlay = false;
 	config.withThreads = false;
 	config.isResizable = true;
-	//config.hasBorders = false;
 	config.vaoPoolSize = 1; // TODO: FIX size > 1
 
 	config.windowTitle = "SpookyGhost";
@@ -68,65 +57,13 @@ void MyEventHandler::onInit()
 	RenderingResources::create();
 	GridFunctionLibrary::init();
 
-	canvas_ = nctl::makeUnique<Canvas>(imageWidth, imageHeight);
+	canvas_ = nctl::makeUnique<Canvas>(256, 256); // TODO: Hard-coded initial size
 	resizedCanvas_ = nctl::makeUnique<Canvas>();
 	spritesheet_ = nctl::makeUnique<Canvas>();
 	spriteMgr_ = nctl::makeUnique<SpriteManager>();
 	animMgr_ = nctl::makeUnique<AnimationManager>();
 
-	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon96.png").data());
-	nctl::UniquePtr<Sprite> sprite = nctl::makeUnique<Sprite>(texture.get());
-	sprite->name = "Ghost";
-	sprite->x = 100.0f;
-	sprite->y = 100.0f;
-
-	nctl::UniquePtr<Texture> texture2 = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine96.png").data());
-	nctl::UniquePtr<Sprite> sprite2 = nctl::makeUnique<Sprite>(texture2.get());
-	sprite2->name = "nCine";
-	sprite2->x = 100.0f;
-	sprite2->y = 100.0f;
-
 	ui_ = nctl::makeUnique<UserInterface>(*canvas_, *resizedCanvas_, *spritesheet_, *spriteMgr_, *animMgr_);
-
-	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
-
-	nctl::UniquePtr<GridAnimation> gridAnim = nctl::makeUnique<GridAnimation>(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::REWIND);
-	gridAnim->curve().setScale(1.0f);
-	gridAnim->setSprite(sprite.get());
-	gridAnim->setFunction(&GridFunctionLibrary::gridFunctions()[0]);
-	animGroup->anims().pushBack(nctl::move(gridAnim));
-
-	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
-	anim->curve().setShift(sprite2->width() * 0.5f);
-	anim->curve().setScale(20.0f);
-	anim->setProperty(&sprite2->x);
-	anim->setPropertyName("Position X");
-	anim->setSprite(sprite2.get());
-	animGroup->anims().pushBack(nctl::move(anim));
-
-	anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
-	anim->curve().setShift(sprite2->height() * 0.5f);
-	anim->curve().setScale(150.0f);
-	anim->setProperty(&sprite2->y);
-	anim->setPropertyName("Position Y");
-	anim->setSprite(sprite2.get());
-	animGroup->anims().pushBack(nctl::move(anim));
-
-	anim = nctl::makeUnique<PropertyAnimation>(EasingCurve::Type::QUAD, EasingCurve::LoopMode::PING_PONG);
-	anim->curve().setScale(150.0f);
-	anim->setProperty(&sprite2->rotation);
-	anim->setPropertyName("Rotation");
-	anim->setSprite(sprite2.get());
-	animGroup->anims().pushBack(nctl::move(anim));
-
-	animGroup->play();
-	animMgr_->anims().pushBack(nctl::move(animGroup));
-
-	spriteMgr_->textures().pushBack(nctl::move(texture));
-	spriteMgr_->sprites().pushBack(nctl::move(sprite));
-
-	spriteMgr_->textures().pushBack(nctl::move(texture2));
-	spriteMgr_->sprites().pushBack(nctl::move(sprite2));
 }
 
 void MyEventHandler::onShutdown()
