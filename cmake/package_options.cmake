@@ -9,6 +9,10 @@ elseif(EMSCRIPTEN)
 	set(NCINE_EXTERNAL_DIR "${PARENT_SOURCE_DIR}/nCine-external-emscripten" CACHE PATH "Set the path to the nCine Emscripten libraries")
 endif()
 
+if(MSVC)
+	option(PACKAGE_INSTALL_SYSLIBS "Install required MSVC system libraries with CMake" ON)
+endif()
+
 if(PACKAGE_BUILD_ANDROID)
 	set(NDK_DIR "" CACHE PATH "Set the path to the Android NDK")
 	set(PACKAGE_NDK_ARCHITECTURES arm64-v8a CACHE STRING "Set the NDK target architectures")
