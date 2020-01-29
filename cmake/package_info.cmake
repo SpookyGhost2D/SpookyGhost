@@ -1,10 +1,10 @@
-set(PACKAGE_NAME "ncSpookyGhost")
+set(PACKAGE_NAME "SpookyGhost")
 set(PACKAGE_EXE_NAME "spookyghost")
 set(PACKAGE_VENDOR "Angelo Theodorou")
 set(PACKAGE_COPYRIGHT "Copyright ©2020 ${PACKAGE_VENDOR}")
 set(PACKAGE_DESCRIPTION "A procedural sprite animation tool")
-set(PACKAGE_HOMEPAGE "https://ncine.github.io")
-set(PACKAGE_REVERSE_DNS "io.github.ncine.spookyghost")
+set(PACKAGE_HOMEPAGE "https://encelo.itch.io/spookyghost")
+set(PACKAGE_REVERSE_DNS "io.itch.encelo.spookyghost")
 
 set(PACKAGE_INCLUDE_DIRS include)
 
@@ -52,6 +52,13 @@ set(PACKAGE_SOURCES
 )
 
 function(callback_before_target)
+	option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)
+	if(CUSTOM_ITCHIO_BUILD)
+		if(NOT APPLE)
+			install(FILES .itch.toml DESTINATION .)
+		endif()
+	endif()
+
 	option(CUSTOM_WITH_FONTAWESOME "Download FontAwesome and include it in ImGui atlas" ON)
 	if(PACKAGE_OPTIONS_PRESETS STREQUAL BinDist)
 		set(CUSTOM_WITH_FONTAWESOME ON CACHE BOOL "Download FontAwesome and include it in ImGui atlas" FORCE)

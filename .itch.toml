@@ -1,0 +1,25 @@
+[[actions]]
+name = "play"
+path = "bin/spookyghost.exe"
+platform = "windows"
+
+[[actions]]
+name = "play"
+path = "spookyghost.app"
+platform = "osx"
+
+[[actions]]
+name = "play"
+path = "bin/spookyghost"
+platform = "linux"
+
+[[prereqs]]
+name = "vcredist-2017-x64"
+
+[[actions]]
+name = "manual"
+path = "docs/documentation.html"
+
+[[actions]]
+name = "forums"
+path = "https://encelo.itch.io/SpookyGhost/community"
