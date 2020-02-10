@@ -125,6 +125,8 @@ class Sprite
 
 	Texture *texture_;
 	nc::Recti texRect_;
+	/// Texture rectangle that takes flipping into account
+	nc::Recti flippingTexRect_;
 
 	bool flippedX_;
 	bool flippedY_;

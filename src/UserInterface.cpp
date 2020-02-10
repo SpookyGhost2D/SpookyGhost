@@ -44,6 +44,7 @@ enum CanvasZoomEnum { X1_8, X1_4, X1_2, X1, X2, X4, X8 };
 
 static bool showAboutWindow = false;
 static bool showTexrectWindow = false;
+static bool hoveringOnCanvas = false;
 
 int inputTextCallback(ImGuiInputTextCallbackData *data)
 {
@@ -298,15 +299,19 @@ void UserInterface::cancelRender()
 	}
 }
 
-void UserInterface::removeSelectedSprite()
+void UserInterface::removeSelectedSpriteWithKey()
 {
-	if (spriteMgr_.sprites().isEmpty() == false)
+	if (hoveringOnCanvas)
+		removeSelectedSprite();
+}
+
+void UserInterface::moveSprite(int xDiff, int yDiff)
+{
+	if (spriteMgr_.sprites().isEmpty() == false && hoveringOnCanvas)
 	{
-		animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
-		if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
-			spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
-		if (selectedSpriteIndex_ > 0)
-			selectedSpriteIndex_--;
+		Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+		sprite.x += xDiff;
+		sprite.y += yDiff;
 	}
 }
 
@@ -721,8 +726,6 @@ void UserInterface::createSpritesGui()
 			nc::Recti texRect = sprite.texRect();
 			int minX = texRect.x;
 			int maxX = minX + texRect.w;
-			if (sprite.isFlippedX())
-				nctl::swap(minX, maxX);
 			ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
 
 			ImGui::SameLine();
@@ -730,8 +733,6 @@ void UserInterface::createSpritesGui()
 
 			int minY = texRect.y;
 			int maxY = minY + texRect.h;
-			if (sprite.isFlippedY())
-				nctl::swap(minY, maxY);
 			ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, tex.height());
 
 			texRect.x = minX;
@@ -1434,8 +1435,10 @@ void UserInterface::createCanvasWindow()
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
+	hoveringOnCanvas = false;
 	if (ImGui::IsItemHovered() && spriteMgr_.sprites().isEmpty() == false)
 	{
+		hoveringOnCanvas = true;
 		const ImVec2 mousePos = ImGui::GetMousePos();
 		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
 		Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
@@ -1719,4 +1722,16 @@ void UserInterface::visitSprite(Sprite &sprite)
 	sprite.visited = true;
 	for (unsigned int i = 0; i < sprite.children().size(); i++)
 		visitSprite(*sprite.children()[i]);
+}
+
+void UserInterface::removeSelectedSprite()
+{
+	if (spriteMgr_.sprites().isEmpty() == false)
+	{
+		animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
+		if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
+			spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
+		if (selectedSpriteIndex_ > 0)
+			selectedSpriteIndex_--;
+	}
 }

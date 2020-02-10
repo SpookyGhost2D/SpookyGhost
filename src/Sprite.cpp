@@ -28,8 +28,8 @@ Sprite::Sprite(Texture *texture)
     : name(MaxNameLength), visible(true), x(0.0f), y(0.0f), rotation(0.0f), scaleFactor(1.0f, 1.0f),
       anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), visited(false), gridAnchorPoint(0.0f, 0.0f),
       width_(0), height_(0), localMatrix_(nc::Matrix4x4f::Identity), worldMatrix_(nc::Matrix4x4f::Identity),
-      absPosition_(0.0f, 0.0f), absScaleFactor_(1.0f, 1.0f), absRotation_(0.0f),
-      absColor_(nc::Colorf::White), texture_(nullptr), texRect_(0, 0, 0, 0),
+      absPosition_(0.0f, 0.0f), absScaleFactor_(1.0f, 1.0f), absRotation_(0.0f), absColor_(nc::Colorf::White),
+      texture_(nullptr), texRect_(0, 0, 0, 0), flippingTexRect_(0, 0, 0, 0),
       flippedX_(false), flippedY_(false), blendingPreset_(BlendingPreset::ALPHA),
       gridAnimationsCounter_(0), interleavedVertices_(0), restPositions_(0),
       indices_(0), shortIndices_(0), parent_(nullptr), children_(4)
@@ -94,10 +94,10 @@ void Sprite::updateRender()
 {
 	const float texWidth = static_cast<float>(texture_->width());
 	const float texHeight = static_cast<float>(texture_->height());
-	const float texScaleX = texRect_.w / texWidth;
-	const float texBiasX = texRect_.x / texWidth;
-	const float texScaleY = texRect_.h / texHeight;
-	const float texBiasY = texRect_.y / texHeight;
+	const float texScaleX = flippingTexRect_.w / texWidth;
+	const float texBiasX = flippingTexRect_.x / texWidth;
+	const float texScaleY = flippingTexRect_.h / texHeight;
+	const float texBiasY = flippingTexRect_.y / texHeight;
 
 	if (gridAnimationsCounter_ == 0)
 	{
@@ -161,41 +161,40 @@ void Sprite::setTexture(Texture *texture)
 {
 	FATAL_ASSERT(texture);
 	texture_ = texture;
-	texRect_ = nc::Recti(0, 0, texture->width(), texture->height());
-	setSize(texRect_.w, texRect_.h);
+	setTexRect(nc::Recti(0, 0, texture_->width(), texture_->height()));
 }
 
 void Sprite::setTexRect(const nc::Recti &rect)
 {
 	texRect_ = rect;
-	setSize(abs(rect.w), abs(rect.h));
+	flippingTexRect_ = texRect_;
+	setSize(rect.w, rect.h);
 
 	if (flippedX_)
 	{
-		texRect_.x += texRect_.w;
-		texRect_.w *= -1;
+		flippingTexRect_.x += flippingTexRect_.w;
+		flippingTexRect_.w *= -1;
 	}
 
 	if (flippedY_)
 	{
-		texRect_.y += texRect_.h;
-		texRect_.h *= -1;
+		flippingTexRect_.y += flippingTexRect_.h;
+		flippingTexRect_.h *= -1;
 	}
 }
 
 void Sprite::loadTexture(const char *filename)
 {
 	texture_->load(filename, 0, 0);
-	texRect_ = nc::Recti(0, 0, texture_->width(), texture_->height());
-	setSize(texRect_.w, texRect_.h);
+	setTexRect(nc::Recti(0, 0, texture_->width(), texture_->height()));
 }
 
 void Sprite::setFlippedX(bool flippedX)
 {
 	if (flippedX_ != flippedX)
 	{
-		texRect_.x += texRect_.w;
-		texRect_.w *= -1;
+		flippingTexRect_.x += flippingTexRect_.w;
+		flippingTexRect_.w *= -1;
 		flippedX_ = flippedX;
 	}
 }
@@ -204,8 +203,8 @@ void Sprite::setFlippedY(bool flippedY)
 {
 	if (flippedY_ != flippedY)
 	{
-		texRect_.y += texRect_.h;
-		texRect_.h *= -1;
+		flippingTexRect_.y += flippingTexRect_.h;
+		flippingTexRect_.h *= -1;
 		flippedY_ = flippedY;
 	}
 }
@@ -293,19 +292,16 @@ void Sprite::initGrid(int width, int height)
 		interleavedVertices_.setCapacity(verticesCapacity);
 		restPositions_.clear();
 		restPositions_.setCapacity(verticesCapacity);
-		const long int vboBytes = interleavedVertices_.capacity() * sizeof(Vertex);
+		const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
 		vbo_->bufferData(vboBytes, nullptr, GL_STATIC_DRAW);
 	}
 
-	const unsigned int indicesCapacity = (width + 1) * (height + 1) * 2;
-	const long int iboBytes = (indicesCapacity < 65536)
-	                              ? indicesCapacity * sizeof(unsigned short)
-	                              : indicesCapacity * sizeof(unsigned int);
+	// Upper bound for number of indices
+	const unsigned int indicesCapacity = (width + 2) * height * 2;
 	if (indices_.capacity() < indicesCapacity)
 	{
 		indices_.clear();
 		indices_.setCapacity(indicesCapacity);
-		ibo_->bufferData(iboBytes, nullptr, GL_STATIC_DRAW);
 	}
 
 	resetVertices();
@@ -313,12 +309,16 @@ void Sprite::initGrid(int width, int height)
 	resetIndices();
 	ASSERT(indices_.capacity() == indicesCapacity);
 
-	if (indicesCapacity < 65536)
+	const unsigned int indicesSize = indices_.size();
+	const long int iboBytes = (indicesSize < 65536)
+	                              ? indicesSize * sizeof(unsigned short)
+	                              : indicesSize * sizeof(unsigned int);
+	if (indicesSize < 65536)
 	{
 		shortIndices_.clear();
 		if (shortIndices_.capacity() < indicesCapacity)
 			shortIndices_.setCapacity(indicesCapacity);
-		for (unsigned int i = 0; i < indices_.size(); i++)
+		for (unsigned int i = 0; i < indicesSize; i++)
 			shortIndices_[i] = static_cast<unsigned short>(indices_[i]);
 		ibo_->bufferData(iboBytes, shortIndices_.data(), GL_STATIC_DRAW);
 	}
@@ -360,11 +360,10 @@ void Sprite::resetIndices()
 {
 	indices_.clear();
 	const unsigned int gridWidth = static_cast<unsigned int>(width_ + 1);
-	const unsigned int gridHeight = static_cast<unsigned int>(height_ + 1);
 
 	unsigned int vertexIndex = gridWidth;
 	unsigned int arrayIndex = 0;
-	for (unsigned int i = 0; i < gridHeight - 1; i++)
+	for (unsigned int i = 0; i < height_; i++)
 	{
 		for (unsigned int j = 0; j < gridWidth; j++)
 		{

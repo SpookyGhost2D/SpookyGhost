@@ -137,7 +137,15 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 			nc::theApplication().quit();
 	}
 	if (event.sym == nc::KeySym::DELETE)
-		ui_->removeSelectedSprite();
+		ui_->removeSelectedSpriteWithKey();
+	else if (event.sym == nc::KeySym::RIGHT)
+		ui_->moveSprite(1, 0);
+	else if (event.sym == nc::KeySym::LEFT)
+		ui_->moveSprite(-1, 0);
+	else if (event.sym == nc::KeySym::DOWN)
+		ui_->moveSprite(0, 1);
+	else if (event.sym == nc::KeySym::UP)
+		ui_->moveSprite(0, -1);
 }
 
 void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)

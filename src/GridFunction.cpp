@@ -19,6 +19,12 @@ const GridFunction::ParameterInfo &GridFunction::parameterInfo(unsigned int inde
 	return parametersInfo_[index];
 }
 
+const char *GridFunction::parameterName(unsigned int index) const
+{
+	FATAL_ASSERT(index < parametersInfo_.size());
+	return parametersInfo_[index].name.data();
+}
+
 GridFunction::ParameterType GridFunction::parameterType(unsigned int index) const
 {
 	FATAL_ASSERT(index < parametersInfo_.size());

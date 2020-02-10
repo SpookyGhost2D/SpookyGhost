@@ -23,7 +23,7 @@ class Texture
 	Texture(const char *filename);
 	Texture(const char *filename, int width, int height);
 
-	inline const nctl::String name() const { return name_; }
+	inline const nctl::String &name() const { return name_; }
 
 	inline nc::Vector2i size() const { return nc::Vector2i(width_, height_); }
 	inline int width() const { return width_; }

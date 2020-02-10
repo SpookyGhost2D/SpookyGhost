@@ -47,7 +47,8 @@ class UserInterface
 
 	void closeAboutWindow();
 	void cancelRender();
-	void removeSelectedSprite();
+	void removeSelectedSpriteWithKey();
+	void moveSprite(int xDiff, int yDiff);
 	void menuNew();
 	void createGui();
 
@@ -150,6 +151,7 @@ class UserInterface
 
 	void mouseWheelCanvasZoom();
 	void visitSprite(Sprite &sprite);
+	void removeSelectedSprite();
 };
 
 #endif

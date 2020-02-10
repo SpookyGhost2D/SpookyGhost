@@ -25,7 +25,7 @@ class GridAnimation : public CurveAnimation
 	inline Sprite *sprite() { return sprite_; }
 	void setSprite(Sprite *sprite);
 
-	inline const GridFunction *function() { return gridFunction_; }
+	inline const GridFunction *function() const { return gridFunction_; }
 	void setFunction(const GridFunction *function);
 
 	inline const nctl::Array<GridFunctionParameter> &parameters() const { return params_; }
