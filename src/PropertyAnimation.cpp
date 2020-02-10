@@ -1,4 +1,5 @@
 #include "PropertyAnimation.h"
+#include "Sprite.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -43,4 +44,68 @@ void PropertyAnimation::update(float deltaTime)
 	}
 
 	CurveAnimation::update(deltaTime);
+}
+
+namespace Properties {
+
+void assign(PropertyAnimation &anim, Types type)
+{
+	if (anim.sprite() == nullptr)
+		return;
+
+	anim.setProperty(nullptr);
+	switch (type)
+	{
+		case Types::NONE:
+			anim.setProperty(nullptr);
+			break;
+		case Types::POSITION_X:
+			anim.setProperty(&anim.sprite()->x);
+			break;
+		case Types::POSITION_Y:
+			anim.setProperty(&anim.sprite()->y);
+			break;
+		case Types::ROTATION:
+			anim.setProperty(&anim.sprite()->rotation);
+			break;
+		case Types::SCALE_X:
+			anim.setProperty(&anim.sprite()->scaleFactor.x);
+			break;
+		case Types::SCALE_Y:
+			anim.setProperty(&anim.sprite()->scaleFactor.y);
+			break;
+		case Types::ANCHOR_X:
+			anim.setProperty(&anim.sprite()->anchorPoint.x);
+			break;
+		case Types::ANCHOR_Y:
+			anim.setProperty(&anim.sprite()->anchorPoint.y);
+			break;
+		case Types::OPACITY:
+			anim.setProperty(&anim.sprite()->color.data()[3]);
+			break;
+		case Types::COLOR_R:
+			anim.setProperty(&anim.sprite()->color.data()[0]);
+			break;
+		case Types::COLOR_G:
+			anim.setProperty(&anim.sprite()->color.data()[1]);
+			break;
+		case Types::COLOR_B:
+			anim.setProperty(&anim.sprite()->color.data()[2]);
+			break;
+	}
+}
+
+void assign(PropertyAnimation &anim, const char *name)
+{
+	nctl::String string(name);
+	for (unsigned int i = 0; i < Count; i++)
+	{
+		if (string == Strings[i])
+		{
+			assign(anim, static_cast<Types>(i));
+			break;
+		}
+	}
+}
+
 }

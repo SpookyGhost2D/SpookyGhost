@@ -3,6 +3,8 @@
 
 #include <nctl/String.h>
 
+class AnimationGroup;
+
 /// The animation interface class
 class IAnimation
 {
@@ -23,7 +25,7 @@ class IAnimation
 	};
 
 	IAnimation()
-	    : state_(State::PAUSED) {}
+	    : state_(State::PAUSED), parent_(nullptr) {}
 	virtual ~IAnimation() {}
 
 	static const unsigned int MaxNameLength = 64;
@@ -39,8 +41,13 @@ class IAnimation
 	virtual void update(float deltaTime) = 0;
 	virtual void reset() = 0;
 
+	inline AnimationGroup *parent() { return parent_; }
+	inline const AnimationGroup *parent() const { return parent_; }
+	inline void setParent(AnimationGroup *parent) { parent_ = parent; }
+
   protected:
 	State state_;
+	AnimationGroup *parent_;
 };
 
 #endif

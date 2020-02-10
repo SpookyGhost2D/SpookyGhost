@@ -15,6 +15,7 @@
 #include "GridFunctionLibrary.h"
 #include "Sprite.h"
 #include "Texture.h"
+#include "LuaSaver.h"
 
 #include "version.h"
 #include <ncine/version.h>
@@ -32,14 +33,6 @@ const char *easingCurveLoopModes[] = { "Disabled", "Rewind", "Ping Pong" };
 
 const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid" };
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
-
-const char *propertyTypes[] = { "None", "Position X", "Position Y", "Rotation", "Scale X", "Scale Y", "AnchorPoint X", "AnchorPoint Y", "Opacity", "Red Channel", "Green Channel", "Blue Channel" };
-enum PropertyTypesEnum { NONE, POSITION_X, POSITION_Y, ROTATION, SCALE_X, SCALE_Y, ANCHOR_X, ANCHOR_Y, OPACITY, COLOR_R, COLOR_G, COLOR_B };
-
-const char *resizePresets[] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "Custom" };
-enum ResizePresetsEnum { SIZE16, SIZE32, SIZE64, SIZE128, SIZE256, SIZE512, CUSTOM };
-
-enum CanvasZoomEnum { X1_8, X1_4, X1_2, X1, X2, X4, X8 };
 // clang-format on
 
 static bool showAboutWindow = false;
@@ -68,46 +61,6 @@ const char *animStateToString(IAnimation::State state)
 		case IAnimation::State::PLAYING: return "Playing";
 	}
 	return "Unknown";
-}
-
-CanvasZoomEnum CanvasZoomToEnum(float zoom)
-{
-	if (zoom <= 0.125f)
-		return CanvasZoomEnum::X1_8;
-	else if (zoom <= 0.25f)
-		return CanvasZoomEnum::X1_4;
-	else if (zoom <= 0.5f)
-		return CanvasZoomEnum::X1_2;
-	else if (zoom <= 1.0f)
-		return CanvasZoomEnum::X1;
-	else if (zoom <= 2.0f)
-		return CanvasZoomEnum::X2;
-	else if (zoom <= 4.0f)
-		return CanvasZoomEnum::X4;
-	else
-		return CanvasZoomEnum::X8;
-}
-
-float CanvasEnumToZoom(CanvasZoomEnum resizeEnum)
-{
-	switch (resizeEnum)
-	{
-		case CanvasZoomEnum::X1_8:
-			return 0.125f;
-		case CanvasZoomEnum::X1_4:
-			return 0.25f;
-		case CanvasZoomEnum::X1_2:
-			return 0.5f;
-		case CanvasZoomEnum::X1:
-			return 1.0f;
-		case CanvasZoomEnum::X2:
-			return 2.0f;
-		case CanvasZoomEnum::X4:
-			return 4.0f;
-		case CanvasZoomEnum::X8:
-			return 8.0f;
-	}
-	return 1.0f;
 }
 
 void applyDarkStyle()
@@ -235,6 +188,8 @@ UserInterface::UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spri
 
 	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon96.png").data());
 	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine96.png").data());
+
+	canvasGuiStatus_.setResize(canvas_.size());
 }
 
 ///////////////////////////////////////////////////////////
@@ -247,7 +202,7 @@ void UserInterface::signalFrameSaved()
 
 	saveAnimStatus_.numSavedFrames++;
 	if (shouldSaveFrames_)
-		saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+		saveAnimStatus_.filename.format("%s_%03d.png", renderGuiStatus_.filename.data(), saveAnimStatus_.numSavedFrames);
 	else if (shouldSaveSpritesheet_)
 	{
 		Canvas &sourceCanvas = (saveAnimStatus_.canvasResize != 1.0f) ? resizedCanvas_ : canvas_;
@@ -415,9 +370,19 @@ void UserInterface::createMenuBar()
 			if (ImGui::MenuItem(Labels::New, "CTRL + N"))
 				menuNew();
 			if (ImGui::MenuItem(Labels::Open))
-				pushStatusErrorMessage("Open and Save are not implemented yet");
+			{
+				LuaSaver saver;
+				LuaSaver::Data data(canvas_, spriteMgr_, animMgr_, saveAnimStatus_);
+				saver.load("test.lua", data);
+				canvasGuiStatus_.setResize(canvas_.size());
+				renderGuiStatus_.setResize(saveAnimStatus_.canvasResize);
+			}
 			if (ImGui::MenuItem(Labels::Save))
-				pushStatusErrorMessage("Open and Save are not implemented yet");
+			{
+				LuaSaver saver;
+				LuaSaver::Data data(canvas_, spriteMgr_, animMgr_, saveAnimStatus_);
+				saver.save("test.lua", data);
+			}
 			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q"))
 				nc::theApplication().quit();
 			ImGui::EndMenu();
@@ -437,58 +402,38 @@ void UserInterface::createCanvasGui()
 {
 	if (ImGui::CollapsingHeader(Labels::Canvas))
 	{
-		static int canvasZoomRadio = CanvasZoomEnum::X1;
-		canvasZoomRadio = CanvasZoomToEnum(canvasZoom_);
+		static int canvasZoomRadio = CanvasGuiStatus::ZoomLevel::X1;
+		canvasZoomRadio = static_cast<int>(canvasGuiStatus_.zoomLevel);
+
 		ImGui::PushID("Canvas");
 		ImGui::Text("Zoom:");
 		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasZoomRadio, CanvasZoomEnum::X1_8);
+		ImGui::RadioButton("1/8x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1_8);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasZoomRadio, CanvasZoomEnum::X1_4);
+		ImGui::RadioButton("1/4x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1_4);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasZoomRadio, CanvasZoomEnum::X1_2);
+		ImGui::RadioButton("1/2x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1_2);
 		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasZoomRadio, CanvasZoomEnum::X1);
+		ImGui::RadioButton("1x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1);
 		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasZoomRadio, CanvasZoomEnum::X2);
+		ImGui::RadioButton("2x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X2);
 		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasZoomRadio, CanvasZoomEnum::X4);
+		ImGui::RadioButton("4x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X4);
 		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasZoomRadio, CanvasZoomEnum::X8);
+		ImGui::RadioButton("8x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X8);
 		ImGui::PopID();
-		canvasZoom_ = CanvasEnumToZoom(static_cast<CanvasZoomEnum>(canvasZoomRadio));
+		canvasGuiStatus_.zoomLevel = static_cast<CanvasGuiStatus::ZoomLevel>(canvasZoomRadio);
 
-		nc::Vector2i desiredCanvasSize;
-		static int currentComboResize = static_cast<int>(ResizePresetsEnum::SIZE256); // TODO: hard-coded initial state
-		ImGui::Combo("Presets", &currentComboResize, resizePresets, IM_ARRAYSIZE(resizePresets));
-		if (currentComboResize == ResizePresetsEnum::CUSTOM)
-			ImGui::InputInt2("Custom Size", customCanvasSize_.data());
+		static int currentComboResize = 0;
+		currentComboResize = static_cast<int>(canvasGuiStatus_.resizePreset);
+		ImGui::Combo("Presets", &currentComboResize, canvasGuiStatus_.ResizeStrings, IM_ARRAYSIZE(canvasGuiStatus_.ResizeStrings));
+		canvasGuiStatus_.resizePreset = static_cast<CanvasGuiStatus::ResizePreset>(currentComboResize);
+		if (currentComboResize == CanvasGuiStatus::ResizePreset::CUSTOM)
+			ImGui::InputInt2("Custom Size", canvasGuiStatus_.customCanvasSize.data());
 		else
-			customCanvasSize_ = canvas_.size();
-		switch (currentComboResize)
-		{
-			case ResizePresetsEnum::SIZE16:
-				desiredCanvasSize.set(16, 16);
-				break;
-			case ResizePresetsEnum::SIZE32:
-				desiredCanvasSize.set(32, 32);
-				break;
-			case ResizePresetsEnum::SIZE64:
-				desiredCanvasSize.set(64, 64);
-				break;
-			case ResizePresetsEnum::SIZE128:
-				desiredCanvasSize.set(128, 128);
-				break;
-			case ResizePresetsEnum::SIZE256:
-				desiredCanvasSize.set(256, 256);
-				break;
-			case ResizePresetsEnum::SIZE512:
-				desiredCanvasSize.set(512, 512);
-				break;
-			case ResizePresetsEnum::CUSTOM:
-				desiredCanvasSize = customCanvasSize_;
-				break;
-		}
+			canvasGuiStatus_.customCanvasSize = canvas_.size();
+
+		nc::Vector2i desiredCanvasSize = canvasGuiStatus_.resizeVector();
 
 		if (desiredCanvasSize.x < 4)
 			desiredCanvasSize.x = 4;
@@ -870,6 +815,7 @@ void UserInterface::createAnimationsGui()
 					animMgr_.anims().pushBack(nctl::makeUnique<GridAnimation>());
 					break;
 			}
+			animMgr_.anims().back()->setParent(&animMgr_.animGroup());
 		}
 
 		ImGui::SameLine();
@@ -887,28 +833,31 @@ void UserInterface::createRenderGui()
 {
 	if (ImGui::CollapsingHeader(Labels::Render))
 	{
-		ImGui::InputText("Filename prefix", animFilename_.data(), MaxStringLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &animFilename_);
+		ImGui::InputText("Filename prefix", renderGuiStatus_.filename.data(), MaxStringLength,
+		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &renderGuiStatus_.filename);
 
-		static int canvasResizeRadio = CanvasZoomEnum::X1;
+		static int canvasResizeRadio = RenderGuiStatus::ResizeLevel::X1;
+		canvasResizeRadio = static_cast<int>(renderGuiStatus_.resizeLevel);
+
 		ImGui::PushID("Render");
 		ImGui::Text("Resize:");
 		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasResizeRadio, CanvasZoomEnum::X1_8);
+		ImGui::RadioButton("1/8x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1_8);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasResizeRadio, CanvasZoomEnum::X1_4);
+		ImGui::RadioButton("1/4x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1_4);
 		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasResizeRadio, CanvasZoomEnum::X1_2);
+		ImGui::RadioButton("1/2x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1_2);
 		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasResizeRadio, CanvasZoomEnum::X1);
+		ImGui::RadioButton("1x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1);
 		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasResizeRadio, CanvasZoomEnum::X2);
+		ImGui::RadioButton("2x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X2);
 		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasResizeRadio, CanvasZoomEnum::X4);
+		ImGui::RadioButton("4x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X4);
 		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasResizeRadio, CanvasZoomEnum::X8);
+		ImGui::RadioButton("8x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X8);
 		ImGui::PopID();
-		saveAnimStatus_.canvasResize = CanvasEnumToZoom(static_cast<CanvasZoomEnum>(canvasResizeRadio));
+		renderGuiStatus_.resizeLevel = static_cast<RenderGuiStatus::ResizeLevel>(canvasResizeRadio);
+		saveAnimStatus_.canvasResize = renderGuiStatus_.resizeAmount();
 
 		ImGui::InputInt("FPS", &saveAnimStatus_.fps);
 		ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, 10 * saveAnimStatus_.fps); // Hard-coded limit
@@ -963,12 +912,12 @@ void UserInterface::createRenderGui()
 		{
 			if (ImGui::Button(Labels::SaveFrames))
 			{
-				if (animFilename_.isEmpty())
+				if (renderGuiStatus_.filename.isEmpty())
 					pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
 					animMgr_.play();
-					saveAnimStatus_.filename.format("%s_%03d.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+					saveAnimStatus_.filename.format("%s_%03d.png", renderGuiStatus_.filename.data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveFrames_ = true;
 					resizedCanvas_.resizeTexture(frameSize);
 				}
@@ -976,12 +925,12 @@ void UserInterface::createRenderGui()
 			ImGui::SameLine();
 			if (ImGui::Button(Labels::SaveSpritesheet))
 			{
-				if (animFilename_.isEmpty())
+				if (renderGuiStatus_.filename.isEmpty())
 					pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
 					animMgr_.play();
-					saveAnimStatus_.filename.format("%s.png", animFilename_.data(), saveAnimStatus_.numSavedFrames);
+					saveAnimStatus_.filename.format("%s.png", renderGuiStatus_.filename.data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveSpritesheet_ = true;
 					saveAnimStatus_.sheetDestPos.set(0, 0);
 					resizedCanvas_.resizeTexture(canvas_.size() * saveAnimStatus_.canvasResize);
@@ -1073,6 +1022,7 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &parentGroup, unsigne
 					break;
 				}
 			}
+			animGroup.anims().back()->setParent(&animGroup);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Clear))
@@ -1137,100 +1087,89 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 
 			static int currentComboProperty = -1;
 			const nctl::String &propertyName = anim.propertyName();
-			currentComboProperty = PropertyTypesEnum::NONE;
+			currentComboProperty = Properties::Types::NONE;
 			if (anim.property() != nullptr)
 			{
-				for (unsigned int i = 0; i < IM_ARRAYSIZE(propertyTypes); i++)
+				for (unsigned int i = 0; i < IM_ARRAYSIZE(Properties::Strings); i++)
 				{
-					if (propertyName == propertyTypes[i])
+					if (propertyName == Properties::Strings[i])
 					{
-						currentComboProperty = static_cast<PropertyTypesEnum>(i);
+						currentComboProperty = static_cast<Properties::Types>(i);
 						break;
 					}
 				}
 			}
 
 			bool setCurveShift = false;
-			if (ImGui::Combo("Property", &currentComboProperty, propertyTypes, IM_ARRAYSIZE(propertyTypes)))
+			if (ImGui::Combo("Property", &currentComboProperty, Properties::Strings, IM_ARRAYSIZE(Properties::Strings)))
 				setCurveShift = true;
-			anim.setPropertyName(propertyTypes[currentComboProperty]);
+			anim.setPropertyName(Properties::Strings[currentComboProperty]);
+			Properties::assign(anim, static_cast<Properties::Types>(currentComboProperty));
 			switch (currentComboProperty)
 			{
-				case PropertyTypesEnum::NONE:
-					anim.setProperty(nullptr);
+				case Properties::Types::NONE:
 					break;
-				case PropertyTypesEnum::POSITION_X:
-					anim.setProperty(&sprite.x);
+				case Properties::Types::POSITION_X:
 					limits.minShift = -sprite.width() * 0.5f;
 					limits.maxShift = canvas_.texWidth() + sprite.width() * 0.5f;
 					limits.minScale = -canvas_.texWidth();
 					limits.maxScale = canvas_.texWidth();
 					break;
-				case PropertyTypesEnum::POSITION_Y:
-					anim.setProperty(&sprite.y);
+				case Properties::Types::POSITION_Y:
 					limits.minShift = -sprite.height() * 0.5f;
 					limits.maxShift = canvas_.texHeight() + sprite.height() * 0.5f;
 					limits.minScale = -canvas_.texHeight();
 					limits.maxScale = canvas_.texHeight();
 					break;
-				case PropertyTypesEnum::ROTATION:
-					anim.setProperty(&sprite.rotation);
+				case Properties::Types::ROTATION:
 					limits.minShift = 0.0f;
 					limits.maxShift = 360.0f;
 					limits.minScale = -360.0f;
 					limits.maxScale = 360.0f;
 					break;
-				case PropertyTypesEnum::SCALE_X:
-					anim.setProperty(&sprite.scaleFactor.x);
+				case Properties::Types::SCALE_X:
 					limits.minShift = -8.0f;
 					limits.maxShift = 8.0f;
 					limits.minScale = -8.0f;
 					limits.maxScale = 8.0f;
 					break;
-				case PropertyTypesEnum::SCALE_Y:
-					anim.setProperty(&sprite.scaleFactor.y);
+				case Properties::Types::SCALE_Y:
 					limits.minShift = -8.0f;
 					limits.maxShift = 8.0f;
 					limits.minScale = -8.0f;
 					limits.maxScale = 8.0f;
 					break;
-				case PropertyTypesEnum::ANCHOR_X:
-					anim.setProperty(&sprite.anchorPoint.x);
+				case Properties::Types::ANCHOR_X:
 					limits.minShift = -sprite.width() * 0.5f;
 					limits.maxShift = sprite.width() * 0.5f;
 					limits.minScale = -sprite.width();
 					limits.maxScale = sprite.width();
 					break;
-				case PropertyTypesEnum::ANCHOR_Y:
-					anim.setProperty(&sprite.anchorPoint.y);
+				case Properties::Types::ANCHOR_Y:
 					limits.minShift = -sprite.height() * 0.5f;
 					limits.maxShift = sprite.height() * 0.5f;
 					limits.minScale = -sprite.height();
 					limits.maxScale = sprite.height();
 					break;
-				case PropertyTypesEnum::OPACITY:
-					anim.setProperty(&sprite.color.data()[3]);
+				case Properties::Types::OPACITY:
 					limits.minShift = 0.0f;
 					limits.maxShift = 1.0f;
 					limits.minScale = -1.0f;
 					limits.maxScale = 1.0f;
 					break;
-				case PropertyTypesEnum::COLOR_R:
-					anim.setProperty(&sprite.color.data()[0]);
+				case Properties::Types::COLOR_R:
 					limits.minShift = 0.0f;
 					limits.maxShift = 1.0f;
 					limits.minScale = -1.0f;
 					limits.maxScale = 1.0f;
 					break;
-				case PropertyTypesEnum::COLOR_G:
-					anim.setProperty(&sprite.color.data()[1]);
+				case Properties::Types::COLOR_G:
 					limits.minShift = 0.0f;
 					limits.maxShift = 1.0f;
 					limits.minScale = -1.0f;
 					limits.maxScale = 1.0f;
 					break;
-				case PropertyTypesEnum::COLOR_B:
-					anim.setProperty(&sprite.color.data()[2]);
+				case Properties::Types::COLOR_B:
 					limits.minShift = 0.0f;
 					limits.maxShift = 1.0f;
 					limits.minScale = -1.0f;
@@ -1430,10 +1369,12 @@ void UserInterface::SpriteProperties::restore(Sprite &sprite)
 
 void UserInterface::createCanvasWindow()
 {
-	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImGuiCond_Once);
+	const float canvasZoom = canvasGuiStatus_.zoomAmount();
+
+	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom, canvas_.texHeight() * canvasZoom), ImGuiCond_Once);
 	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
-	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom_, canvas_.texHeight() * canvasZoom_), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom, canvas_.texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	hoveringOnCanvas = false;
 	if (ImGui::IsItemHovered() && spriteMgr_.sprites().isEmpty() == false)
@@ -1442,7 +1383,7 @@ void UserInterface::createCanvasWindow()
 		const ImVec2 mousePos = ImGui::GetMousePos();
 		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
 		Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
-		const nc::Vector2f newSpriteAbsPos(roundf(relativePos.x / canvasZoom_), roundf(relativePos.y / canvasZoom_));
+		const nc::Vector2f newSpriteAbsPos(roundf(relativePos.x / canvasZoom), roundf(relativePos.y / canvasZoom));
 		const nc::Vector2f spriteRelativePos(newSpriteAbsPos - sprite.absPosition());
 
 		static bool shiftAndClick = false;
@@ -1465,20 +1406,20 @@ void UserInterface::createCanvasWindow()
 
 				ImDrawList *drawList = ImGui::GetWindowDrawList();
 
-				const ImRect spriteRect(cursorScreenPos.x + (sprite.absPosition().x - sprite.absWidth() / 2) * canvasZoom_,
-				                        cursorScreenPos.y + (sprite.absPosition().y - sprite.absHeight() / 2) * canvasZoom_,
-				                        cursorScreenPos.x + (sprite.absPosition().x + sprite.absWidth() / 2) * canvasZoom_,
-				                        cursorScreenPos.y + (sprite.absPosition().y + sprite.absHeight() / 2) * canvasZoom_);
-				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawCornerFlags_All, canvasZoom_);
+				const ImRect spriteRect(cursorScreenPos.x + (sprite.absPosition().x - sprite.absWidth() / 2) * canvasZoom,
+				                        cursorScreenPos.y + (sprite.absPosition().y - sprite.absHeight() / 2) * canvasZoom,
+				                        cursorScreenPos.x + (sprite.absPosition().x + sprite.absWidth() / 2) * canvasZoom,
+				                        cursorScreenPos.y + (sprite.absPosition().y + sprite.absHeight() / 2) * canvasZoom);
+				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawCornerFlags_All, canvasZoom);
 				if (spriteRect.Contains(mousePos))
 				{
-					drawList->AddLine(ImVec2(spriteRect.Min.x, mousePos.y), ImVec2(spriteRect.Max.x, mousePos.y), color, canvasZoom_);
-					drawList->AddLine(ImVec2(mousePos.x, spriteRect.Min.y), ImVec2(mousePos.x, spriteRect.Max.y), color, canvasZoom_);
+					drawList->AddLine(ImVec2(spriteRect.Min.x, mousePos.y), ImVec2(spriteRect.Max.x, mousePos.y), color, canvasZoom);
+					drawList->AddLine(ImVec2(mousePos.x, spriteRect.Min.y), ImVec2(mousePos.x, spriteRect.Max.y), color, canvasZoom);
 				}
 
 				spriteProps_.save(sprite);
 
-				const float rectHalfSize = 2.0f * canvasZoom_;
+				const float rectHalfSize = 2.0f * canvasZoom;
 				drawList->AddRectFilled(ImVec2(mousePos.x - rectHalfSize, mousePos.y - rectHalfSize), ImVec2(mousePos.x + rectHalfSize, mousePos.y + rectHalfSize), color);
 				if (ImGui::GetIO().KeyCtrl &&
 				    (spriteRelativePos.x != sprite.gridAnchorPoint.x || spriteRelativePos.y != sprite.gridAnchorPoint.y))
@@ -1529,6 +1470,7 @@ void UserInterface::createCanvasWindow()
 
 void UserInterface::createTexRectWindow()
 {
+	const float canvasZoom = canvasGuiStatus_.zoomAmount();
 	static MouseStatus mouseStatus_ = MouseStatus::IDLE;
 	static ImVec2 startPos(0.0f, 0.0f);
 	static ImVec2 endPos(0.0f, 0.0f);
@@ -1536,7 +1478,7 @@ void UserInterface::createTexRectWindow()
 	Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
 	nc::Recti texRect = sprite.texRect();
 
-	ImVec2 size = ImVec2(sprite.texture().width() * canvasZoom_, sprite.texture().height() * canvasZoom_);
+	ImVec2 size = ImVec2(sprite.texture().width() * canvasZoom, sprite.texture().height() * canvasZoom);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Once);
 	ImGui::Begin("TexRect", &showTexrectWindow, ImGuiWindowFlags_HorizontalScrollbar);
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
@@ -1549,8 +1491,8 @@ void UserInterface::createTexRectWindow()
 		const ImVec2 mousePos = ImGui::GetMousePos();
 		ImVec2 relPos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
 
-		relPos.x = roundf(relPos.x / canvasZoom_);
-		relPos.y = roundf(relPos.y / canvasZoom_);
+		relPos.x = roundf(relPos.x / canvasZoom);
+		relPos.y = roundf(relPos.y / canvasZoom);
 
 		// One frame lasting message
 		statusMessage_.format("Coordinates: %d, %d", static_cast<int>(relPos.x), static_cast<int>(relPos.y));
@@ -1586,10 +1528,10 @@ void UserInterface::createTexRectWindow()
 			startPos.y = cursorScreenPos.y + size.y;
 
 		// Zoomed pixel snapping
-		if (canvasZoom_ > 1.0f)
+		if (canvasZoom > 1.0f)
 		{
-			startPos.x = roundf((startPos.x - cursorScreenPos.x) / canvasZoom_) * canvasZoom_ + cursorScreenPos.x;
-			startPos.y = roundf((startPos.y - cursorScreenPos.y) / canvasZoom_) * canvasZoom_ + cursorScreenPos.y;
+			startPos.x = roundf((startPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
+			startPos.y = roundf((startPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
 		}
 	}
 	else if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
@@ -1606,10 +1548,10 @@ void UserInterface::createTexRectWindow()
 			endPos.y = cursorScreenPos.y + size.y;
 
 		// Zoomed pixel snapping
-		if (canvasZoom_ > 1.0f)
+		if (canvasZoom > 1.0f)
 		{
-			endPos.x = roundf((endPos.x - cursorScreenPos.x) / canvasZoom_) * canvasZoom_ + cursorScreenPos.x;
-			endPos.y = roundf((endPos.y - cursorScreenPos.y) / canvasZoom_) * canvasZoom_ + cursorScreenPos.y;
+			endPos.x = roundf((endPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
+			endPos.y = roundf((endPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
 		}
 	}
 
@@ -1620,10 +1562,10 @@ void UserInterface::createTexRectWindow()
 	    (!(maxRect.x - minRect.x != 0.0f && maxRect.y - minRect.y != 0.0f) && mouseStatus_ != MouseStatus::DRAGGING))
 	{
 		// Setting the non covered rect from the sprite texrect
-		minRect.x = cursorScreenPos.x + (texRect.x * canvasZoom_);
-		minRect.y = cursorScreenPos.y + (texRect.y * canvasZoom_);
-		maxRect.x = minRect.x + (texRect.w * canvasZoom_);
-		maxRect.y = minRect.y + (texRect.h * canvasZoom_);
+		minRect.x = cursorScreenPos.x + (texRect.x * canvasZoom);
+		minRect.y = cursorScreenPos.y + (texRect.y * canvasZoom);
+		maxRect.x = minRect.x + (texRect.w * canvasZoom);
+		maxRect.y = minRect.y + (texRect.h * canvasZoom);
 	}
 	else
 	{
@@ -1647,10 +1589,10 @@ void UserInterface::createTexRectWindow()
 
 	if (mouseStatus_ == MouseStatus::RELEASED)
 	{
-		texRect.x = (minRect.x - cursorScreenPos.x) / canvasZoom_;
-		texRect.y = (minRect.y - cursorScreenPos.y) / canvasZoom_;
-		texRect.w = (maxRect.x - minRect.x) / canvasZoom_;
-		texRect.h = (maxRect.y - minRect.y) / canvasZoom_;
+		texRect.x = (minRect.x - cursorScreenPos.x) / canvasZoom;
+		texRect.y = (minRect.y - cursorScreenPos.y) / canvasZoom;
+		texRect.w = (maxRect.x - minRect.x) / canvasZoom;
+		texRect.h = (maxRect.y - minRect.y) / canvasZoom;
 		ASSERT(texRect.x >= 0);
 		ASSERT(texRect.y >= 0);
 
@@ -1706,14 +1648,9 @@ void UserInterface::mouseWheelCanvasZoom()
 		const float wheel = ImGui::GetIO().MouseWheel;
 
 		if (wheel > 0.0f)
-			canvasZoom_ *= 2.0f;
+			canvasGuiStatus_.increaseZoom();
 		else if (wheel < 0.0f)
-			canvasZoom_ *= 0.5f;
-
-		if (canvasZoom_ > 8.0f)
-			canvasZoom_ = 8.0f;
-		else if (canvasZoom_ < 0.125f)
-			canvasZoom_ = 0.125;
+			canvasGuiStatus_.decreaseZoom();
 	}
 }
 

@@ -30,6 +30,11 @@ set(PACKAGE_SOURCES
 	include/GridFunction.h
 	include/GridFunctionParameter.h
 	include/GridFunctionLibrary.h
+	include/LuaSerializer.h
+	include/LuaSaver.h
+	include/Serializers.h
+	include/CanvasGuiStatus.h
+	include/RenderGuiStatus.h
 
 	src/main.cpp
 	src/shader_strings.cpp
@@ -49,6 +54,11 @@ set(PACKAGE_SOURCES
 	src/SpriteManager.cpp
 	src/GridFunction.cpp
 	src/GridFunctionLibrary.cpp
+	src/LuaSerializer.cpp
+	src/LuaSaver.cpp
+	src/Serializers.cpp
+	src/CanvasGuiStatus.cpp
+	src/RenderGuiStatus.cpp
 )
 
 function(callback_before_target)

@@ -19,6 +19,7 @@ class PropertyAnimation : public CurveAnimation
 	void update(float deltaTime) override;
 
 	inline const Sprite *sprite() const { return sprite_; }
+	inline Sprite *sprite() { return sprite_; }
 	inline void setSprite(Sprite *sprite) { sprite_ = sprite; }
 
 	inline const float *property() const { return property_; }
@@ -32,5 +33,31 @@ class PropertyAnimation : public CurveAnimation
 	nctl::String propertyName_;
 	Sprite *sprite_;
 };
+
+namespace Properties {
+
+const unsigned int Count = 12;
+static const char *Strings[Count] = { "None", "Position X", "Position Y", "Rotation", "Scale X", "Scale Y", "AnchorPoint X", "AnchorPoint Y", "Opacity", "Red Channel", "Green Channel", "Blue Channel" };
+
+enum Types
+{
+	NONE,
+	POSITION_X,
+	POSITION_Y,
+	ROTATION,
+	SCALE_X,
+	SCALE_Y,
+	ANCHOR_X,
+	ANCHOR_Y,
+	OPACITY,
+	COLOR_R,
+	COLOR_G,
+	COLOR_B
+};
+
+void assign(PropertyAnimation &anim, Types type);
+void assign(PropertyAnimation &anim, const char *name);
+
+}
 
 #endif

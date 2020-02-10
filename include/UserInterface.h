@@ -7,6 +7,9 @@
 #include <ncine/Colorf.h>
 #include <ncine/TimeStamp.h>
 
+#include "CanvasGuiStatus.h"
+#include "RenderGuiStatus.h"
+
 class Canvas;
 class SpriteManager;
 class AnimationManager;
@@ -24,18 +27,6 @@ namespace nc = ncine;
 class UserInterface
 {
   public:
-	struct SaveAnim
-	{
-		inline float inverseFps() const { return 1.0f / static_cast<float>(fps); }
-
-		nctl::String filename = nctl::String(MaxStringLength);
-		unsigned int numSavedFrames = 0;
-		int numFrames = 60;
-		int fps = 60;
-		float canvasResize = 1.0f;
-		nc::Vector2i sheetDestPos;
-	};
-
 	UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr);
 	const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
 	bool shouldSaveFrames() const { return shouldSaveFrames_; }
@@ -112,14 +103,13 @@ class UserInterface
 	/// Used to keep track of which node can be the parent of the selected one
 	nctl::Array<SpriteStruct> spriteGraph_;
 
+	CanvasGuiStatus canvasGuiStatus_;
+	RenderGuiStatus renderGuiStatus_;
+
 	nctl::String texFilename_ = nctl::String(MaxStringLength);
-	nctl::String animFilename_ = nctl::String(MaxStringLength);
 	SaveAnim saveAnimStatus_;
 	bool shouldSaveFrames_ = false;
 	bool shouldSaveSpritesheet_ = false;
-
-	float canvasZoom_ = 1.0f;
-	nc::Vector2i customCanvasSize_;
 
 	nctl::String statusMessage_ = nctl::String(MaxStringLength);
 	nc::TimeStamp lastStatus_;

@@ -78,7 +78,7 @@ void MyEventHandler::onFrameStart()
 
 	canvas_->bind();
 
-	const UserInterface::SaveAnim &saveAnimStatus = ui_->saveAnimStatus();
+	const SaveAnim &saveAnimStatus = ui_->saveAnimStatus();
 	if (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet())
 	{
 		if (saveAnimStatus.numSavedFrames == 0)
