@@ -1,11 +1,12 @@
 #define NCINE_INCLUDE_OPENGL
 #include <ncine/common_headers.h>
 
+#include "singletons.h"
 #include "main.h"
 #include "RenderingResources.h"
 #include "Canvas.h"
 #include "SpriteManager.h"
-#include "UserInterface.h"
+#include "gui/UserInterface.h"
 
 #include "AnimationManager.h"
 #include "PropertyAnimation.h"
@@ -13,6 +14,7 @@
 #include "GridFunctionLibrary.h"
 #include "ParallelAnimationGroup.h"
 #include "SequentialAnimationGroup.h"
+#include "LuaSaver.h"
 
 #include <ncine/Application.h>
 #include <ncine/IFile.h>
@@ -36,20 +38,31 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	#endif
 #endif
 
-	config.resolution.x = 1280;
-	config.resolution.y = 720;
+	if (nc::IFile::access("config.lua", nc::IFile::AccessMode::READABLE))
+	{
+		LuaSaver saver(4096);
+		saver.loadCfg("config.lua", theCfg);
+	}
+
+	if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE) == false)
+		theCfg.scriptsPath = nc::IFile::dataPath() + "scripts/";
+	if (nc::IFile::access(theCfg.texturesPath.data(), nc::IFile::AccessMode::READABLE) == false)
+		theCfg.texturesPath = nc::IFile::dataPath();
+
+	config.resolution.set(theCfg.width, theCfg.height);
+	config.inFullscreen = theCfg.fullscreen;
+	config.isResizable = theCfg.resizable;
+	config.frameLimit = static_cast<unsigned int>(theCfg.frameLimit);
+	config.withVSync = theCfg.withVSync;
 
 	config.withScenegraph = false;
 	config.withAudio = false;
 	config.withDebugOverlay = false;
 	config.withThreads = false;
-	config.isResizable = true;
 	config.vaoPoolSize = 1; // TODO: FIX size > 1
 
 	config.windowTitle = "SpookyGhost";
 	config.windowIconFilename = "icon96.png";
-
-	config.consoleLogLevel = nc::ILogger::LogLevel::WARN;
 }
 
 void MyEventHandler::onInit()
@@ -57,13 +70,14 @@ void MyEventHandler::onInit()
 	RenderingResources::create();
 	GridFunctionLibrary::init();
 
-	canvas_ = nctl::makeUnique<Canvas>(256, 256); // TODO: Hard-coded initial size
-	resizedCanvas_ = nctl::makeUnique<Canvas>();
-	spritesheet_ = nctl::makeUnique<Canvas>();
-	spriteMgr_ = nctl::makeUnique<SpriteManager>();
-	animMgr_ = nctl::makeUnique<AnimationManager>();
+	theCanvas = nctl::makeUnique<Canvas>(theCfg.canvasWidth, theCfg.canvasHeight);
+	theResizedCanvas = nctl::makeUnique<Canvas>();
+	theSpritesheet = nctl::makeUnique<Canvas>();
+	theSpriteMgr = nctl::makeUnique<SpriteManager>();
+	theAnimMgr = nctl::makeUnique<AnimationManager>();
+	theSaver = nctl::makeUnique<LuaSaver>(theCfg.saveFileMaxSize);
 
-	ui_ = nctl::makeUnique<UserInterface>(*canvas_, *resizedCanvas_, *spritesheet_, *spriteMgr_, *animMgr_);
+	ui_ = nctl::makeUnique<UserInterface>();
 }
 
 void MyEventHandler::onShutdown()
@@ -76,33 +90,33 @@ void MyEventHandler::onFrameStart()
 	const float interval = nc::theApplication().interval();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	canvas_->bind();
+	theCanvas->bind();
 
 	const SaveAnim &saveAnimStatus = ui_->saveAnimStatus();
 	if (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet())
 	{
 		if (saveAnimStatus.numSavedFrames == 0)
 		{
-			animMgr_->reset();
-			animMgr_->update(0.0f);
+			theAnimMgr->reset();
+			theAnimMgr->update(0.0f);
 		}
 	}
 	else
-		animMgr_->update(interval);
-	spriteMgr_->update();
+		theAnimMgr->update(interval);
+	theSpriteMgr->update();
 
-	canvas_->unbind();
+	theCanvas->unbind();
 
 	if (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet())
 	{
-		Canvas *sourceCanvas = (saveAnimStatus.canvasResize != 1.0f) ? resizedCanvas_.get() : canvas_.get();
+		Canvas *sourceCanvas = (saveAnimStatus.canvasResize != 1.0f) ? theResizedCanvas.get() : theCanvas.get();
 		if (saveAnimStatus.canvasResize != 1.0f)
 		{
-			canvas_->bindRead();
-			resizedCanvas_->bindDraw();
-			glBlitFramebuffer(0, 0, canvas_->texWidth(), canvas_->texHeight(), 0, 0, resizedCanvas_->texWidth(), resizedCanvas_->texHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			canvas_->unbind();
-			resizedCanvas_->unbind();
+			theCanvas->bindRead();
+			theResizedCanvas->bindDraw();
+			glBlitFramebuffer(0, 0, theCanvas->texWidth(), theCanvas->texHeight(), 0, 0, theResizedCanvas->texWidth(), theResizedCanvas->texHeight(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			theCanvas->unbind();
+			theResizedCanvas->unbind();
 		}
 
 		if (ui_->shouldSaveFrames())
@@ -110,18 +124,18 @@ void MyEventHandler::onFrameStart()
 		else if (ui_->shouldSaveSpritesheet())
 		{
 			sourceCanvas->bindRead();
-			spritesheet_->bindTexture();
+			theSpritesheet->bindTexture();
 			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, saveAnimStatus.sheetDestPos.x, saveAnimStatus.sheetDestPos.y, 0, 0, sourceCanvas->texWidth(), sourceCanvas->texHeight());
 			sourceCanvas->unbind();
-			spritesheet_->unbindTexture();
+			theSpritesheet->unbindTexture();
 		}
 
 		const bool shouldSaveSpritesheet = ui_->shouldSaveSpritesheet();
 		ui_->signalFrameSaved();
 		// If this was the last frame to blit then we save the spritesheet
 		if (shouldSaveSpritesheet && ui_->shouldSaveSpritesheet() == false)
-			spritesheet_->save(saveAnimStatus.filename.data());
-		animMgr_->update(saveAnimStatus.inverseFps());
+			theSpritesheet->save(saveAnimStatus.filename.data());
+		theAnimMgr->update(saveAnimStatus.inverseFps());
 	}
 
 	ui_->createGui();
@@ -131,8 +145,12 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 {
 	if (event.mod & nc::KeyMod::CTRL)
 	{
-		if (event.sym == nc::KeySym::N)
+		if (event.sym == nc::KeySym::N && ui_->menuNewEnabled())
 			ui_->menuNew();
+		else if (event.sym == nc::KeySym::O)
+			ui_->menuOpen();
+		else if (event.sym == nc::KeySym::S && ui_->menuSaveEnabled())
+			ui_->menuSave();
 		else if (event.sym == nc::KeySym::Q)
 			nc::theApplication().quit();
 	}
@@ -152,7 +170,7 @@ void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 {
 	if (event.sym == nc::KeySym::ESCAPE)
 	{
-		ui_->closeAboutWindow();
+		ui_->closeModalsAndAbout();
 		ui_->cancelRender();
 	}
 }

@@ -3,25 +3,33 @@
 #include "Texture.h"
 #include "AnimationManager.h"
 #include "GridFunctionLibrary.h"
+#include "gui/RenderGuiSection.h"
+#include "Configuration.h"
 
 #include "Serializers.h"
 #include "LuaSerializer.h"
 #include "SerializerContext.h"
 
+namespace {
+
+const int ProjectVersion = 1;
+
+}
+
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-LuaSaver::LuaSaver()
+LuaSaver::LuaSaver(unsigned int bufferSize)
 {
-	serializer_ = nctl::makeUnique<LuaSerializer>();
+	serializer_ = nctl::makeUnique<LuaSerializer>(bufferSize);
 }
 
 ///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void LuaSaver::load(const char *filename, Data &data)
+bool LuaSaver::load(const char *filename, Data &data)
 {
 	DeserializerContext context;
 	serializer_->setContext(&context);
@@ -38,12 +46,16 @@ void LuaSaver::load(const char *filename, Data &data)
 		functionHash.insert(function.name().data(), &function);
 	}
 
-	serializer_->load(filename);
+	if (serializer_->load(filename) == false)
+		return false;
 
 	data.spriteMgr.textures().clear();
 	data.spriteMgr.sprites().clear();
 	data.animMgr.anims().clear();
 
+	int version = 0;
+	Deserializers::deserializeGlobal(*serializer_, "version", version);
+	ASSERT(version >= ProjectVersion);
 	Deserializers::deserialize(*serializer_, "canvas", data.canvas);
 	Deserializers::deserialize(*serializer_, "textures", data.spriteMgr.textures());
 	Deserializers::deserialize(*serializer_, "sprites", data.spriteMgr.sprites());
@@ -61,6 +73,8 @@ void LuaSaver::load(const char *filename, Data &data)
 			data.animMgr.anims().removeAt(i);
 		}
 	}
+
+	return true;
 }
 
 void visitAnimations(const IAnimation *anim, nctl::Array<const IAnimation *> &anims)
@@ -83,6 +97,7 @@ void LuaSaver::save(const char *filename, const Data &data)
 
 	serializer_->reset();
 
+	Serializers::serializeGlobal(*serializer_, "version", ProjectVersion);
 	Serializers::serialize(*serializer_, "canvas", data.canvas);
 	serializer_->buffer().append("\n");
 
@@ -129,3 +144,21 @@ void LuaSaver::save(const char *filename, const Data &data)
 
 	serializer_->save(filename);
 }
+
+bool LuaSaver::loadCfg(const char *filename, Configuration &cfg)
+{
+	if (serializer_->load(filename) == false)
+		return false;
+
+	Deserializers::deserialize(*serializer_, cfg);
+
+	return true;
+}
+
+void LuaSaver::saveCfg(const char *filename, const Configuration &cfg)
+{
+	serializer_->reset();
+	Serializers::serialize(*serializer_, cfg);
+	serializer_->save(filename);
+}
+

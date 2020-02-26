@@ -5,9 +5,17 @@
 	#include "IconsFontAwesome5.h"
 #endif
 
+#define TEXT_LOADINGERROR "Loading error!"
+#define TEXT_FILEEXISTS "File exists!"
+#define TEXT_OK "Ok"
+#define TEXT_CANCEL "Cancel"
+
 #define TEXT_MENU_FILE_NEW "New"
 #define TEXT_MENU_FILE_OPEN "Open"
+#define TEXT_MENU_FILE_OPENBUNDLED "Open Bundled"
 #define TEXT_MENU_FILE_SAVE "Save"
+#define TEXT_MENU_FILE_SAVEAS "Save as..."
+#define TEXT_MENU_FILE_CONFIGURATION "Configuration"
 #define TEXT_MENU_FILE_QUIT "Quit"
 #define TEXT_MENU_ABOUT "About"
 
@@ -20,6 +28,7 @@
 #define TEXT_RESET "Reset"
 #define TEXT_CLEAR "Clear"
 #define TEXT_APPLY "Apply"
+#define TEXT_CURRENT "Current"
 
 #define TEXT_ADD "Add"
 #define TEXT_REMOVE "Remove"
@@ -40,9 +49,17 @@ namespace Labels {
 static const char *INFO_MARKER = "(Info) ";
 static const char *ERROR_MARKER = "(Error) ";
 
+static const char *LoadingError = TEXT_LOADINGERROR;
+static const char *FileExists = TEXT_FILEEXISTS;
+static const char *Ok = TEXT_OK;
+static const char *Cancel = TEXT_CANCEL;
+
 static const char *New = TEXT_MENU_FILE_NEW;
 static const char *Open = TEXT_MENU_FILE_OPEN;
+static const char *OpenBundled = TEXT_MENU_FILE_OPENBUNDLED;
 static const char *Save = TEXT_MENU_FILE_SAVE;
+static const char *SaveAs = TEXT_MENU_FILE_SAVEAS;
+static const char *Configuration = TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = TEXT_MENU_FILE_QUIT;
 static const char *About = TEXT_MENU_ABOUT;
 
@@ -55,6 +72,7 @@ static const char *Load = TEXT_LOAD;
 static const char *Reset = TEXT_RESET;
 static const char *Clear = TEXT_CLEAR;
 static const char *Apply = TEXT_APPLY;
+static const char *Current = TEXT_CURRENT;
 
 static const char *Add = TEXT_ADD;
 static const char *Remove = TEXT_REMOVE;
@@ -67,7 +85,6 @@ static const char *Play = TEXT_PLAY;
 
 static const char *SaveFrames = TEXT_SAVE_FRAMES;
 static const char *SaveSpritesheet = TEXT_SAVE_SPRITESHEET;
-static const char *Cancel = TEXT_CANCEL;
 
 }
 #else
@@ -78,9 +95,17 @@ namespace Labels {
 static const char *INFO_MARKER = ICON_FA_INFO FA5_SPACING;
 static const char *ERROR_MARKER = ICON_FA_EXCLAMATION_TRIANGLE FA5_SPACING;
 
+static const char *LoadingError = ICON_FA_EXCLAMATION_TRIANGLE FA5_SPACING TEXT_LOADINGERROR;
+static const char *FileExists = ICON_FA_EXCLAMATION_TRIANGLE FA5_SPACING TEXT_FILEEXISTS;
+static const char *Ok = ICON_FA_CHECK FA5_SPACING TEXT_OK;
+static const char *Cancel = ICON_FA_TIMES_CIRCLE FA5_SPACING TEXT_CANCEL;
+
 static const char *New = ICON_FA_FILE FA5_SPACING TEXT_MENU_FILE_NEW;
 static const char *Open = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_MENU_FILE_OPEN;
+static const char *OpenBundled = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_MENU_FILE_OPENBUNDLED;
 static const char *Save = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVE;
+static const char *SaveAs = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVEAS;
+static const char *Configuration = ICON_FA_TOOLS FA5_SPACING TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = ICON_FA_POWER_OFF FA5_SPACING TEXT_MENU_FILE_QUIT;
 static const char *About = ICON_FA_INFO_CIRCLE FA5_SPACING TEXT_MENU_ABOUT;
 
@@ -93,6 +118,7 @@ static const char *Load = ICON_FA_FILE_UPLOAD FA5_SPACING TEXT_LOAD;
 static const char *Reset = ICON_FA_BACKSPACE FA5_SPACING TEXT_RESET;
 static const char *Clear = ICON_FA_BACKSPACE FA5_SPACING TEXT_CLEAR;
 static const char *Apply = ICON_FA_CHECK_CIRCLE FA5_SPACING TEXT_APPLY;
+static const char *Current = ICON_FA_SYNC FA5_SPACING TEXT_CURRENT;
 
 static const char *Add = ICON_FA_PLUS FA5_SPACING TEXT_ADD;
 static const char *Remove = ICON_FA_MINUS FA5_SPACING TEXT_REMOVE;
@@ -105,7 +131,6 @@ static const char *Play = ICON_FA_PLAY FA5_SPACING TEXT_PLAY;
 
 static const char *SaveFrames = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_FRAMES;
 static const char *SaveSpritesheet = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_SPRITESHEET;
-static const char *Cancel = ICON_FA_TIMES_CIRCLE FA5_SPACING TEXT_CANCEL;
 
 }
 #endif

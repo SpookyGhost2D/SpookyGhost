@@ -7,8 +7,8 @@
 #include <ncine/Colorf.h>
 #include <ncine/TimeStamp.h>
 
-#include "CanvasGuiStatus.h"
-#include "RenderGuiStatus.h"
+#include "gui/CanvasGuiSection.h"
+#include "gui/RenderGuiSection.h"
 
 class Canvas;
 class SpriteManager;
@@ -27,24 +27,31 @@ namespace nc = ncine;
 class UserInterface
 {
   public:
-	UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr);
-	const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
-	bool shouldSaveFrames() const { return shouldSaveFrames_; }
-	bool shouldSaveSpritesheet() const { return shouldSaveSpritesheet_; }
-	void signalFrameSaved();
+	UserInterface();
 
 	void pushStatusInfoMessage(const char *message);
 	void pushStatusErrorMessage(const char *message);
 
-	void closeAboutWindow();
+	const SaveAnim &saveAnimStatus() const;
+	bool shouldSaveFrames() const;
+	bool shouldSaveSpritesheet() const;
+	void signalFrameSaved();
 	void cancelRender();
+
+	void closeModalsAndAbout();
 	void removeSelectedSpriteWithKey();
 	void moveSprite(int xDiff, int yDiff);
+	bool menuNewEnabled();
+	bool menuSaveEnabled();
+	bool menuSaveAsEnabled();
 	void menuNew();
+	bool openProject(const char *filename);
+	void menuOpen();
+	void menuSave();
 	void createGui();
 
   private:
-	static const unsigned int MaxStringLength = 256;
+	static bool showConfigWindow;
 
 	enum class MouseStatus
 	{
@@ -90,28 +97,18 @@ class UserInterface
 		nc::Colorf color_ = nc::Colorf::White;
 	};
 	SpriteProperties spriteProps_;
-
-	nctl::String comboString_ = nctl::String(1024 * 2);
-	nctl::String auxString_ = nctl::String(MaxStringLength);
-	Canvas &canvas_;
-	Canvas &resizedCanvas_;
-	Canvas &spritesheet_;
-	SpriteManager &spriteMgr_;
-	AnimationManager &animMgr_;
 	int selectedSpriteIndex_;
 
 	/// Used to keep track of which node can be the parent of the selected one
 	nctl::Array<SpriteStruct> spriteGraph_;
 
-	CanvasGuiStatus canvasGuiStatus_;
-	RenderGuiStatus renderGuiStatus_;
+	CanvasGuiSection canvasGuiSection_;
+	RenderGuiSection renderGuiSection_;
 
-	nctl::String texFilename_ = nctl::String(MaxStringLength);
-	SaveAnim saveAnimStatus_;
-	bool shouldSaveFrames_ = false;
-	bool shouldSaveSpritesheet_ = false;
+	nctl::String filename_ = nctl::String(ui::MaxStringLength);
+	nctl::String texFilename_ = nctl::String(ui::MaxStringLength);
 
-	nctl::String statusMessage_ = nctl::String(MaxStringLength);
+	nctl::String statusMessage_ = nctl::String(ui::MaxStringLength);
 	nc::TimeStamp lastStatus_;
 
 	nctl::UniquePtr<Texture> spookyLogo_;
@@ -120,11 +117,10 @@ class UserInterface
 	void createDockingSpace();
 	void createInitialDocking();
 	void createMenuBar();
+	void createGuiPopups();
 
-	void createCanvasGui();
 	void createSpritesGui();
 	void createAnimationsGui();
-	void createRenderGui();
 
 	void createAnimationStateGui(IAnimation &anim);
 	void createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits);
@@ -137,11 +133,16 @@ class UserInterface
 
 	void createCanvasWindow();
 	void createTexRectWindow();
+	void createConfigWindow();
 	void createAboutWindow();
 
+	void applyDarkStyle();
 	void mouseWheelCanvasZoom();
 	void visitSprite(Sprite &sprite);
 	void removeSelectedSprite();
+	void sanitizeConfigValues();
+
+	friend class RenderGuiSection;
 };
 
 #endif

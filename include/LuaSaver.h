@@ -9,6 +9,7 @@ class Canvas;
 class SpriteManager;
 class AnimationManager;
 class SaveAnim;
+struct Configuration;
 
 /// The class that helps with Lua serialization
 class LuaSaver
@@ -25,10 +26,13 @@ class LuaSaver
 		SaveAnim &saveAnim;
 	};
 
-	LuaSaver();
+	LuaSaver(unsigned int bufferSize);
 
-	void load(const char *filename, Data &data);
+	bool load(const char *filename, Data &data);
 	void save(const char *filename, const Data &data);
+
+	bool loadCfg(const char *filename, Configuration &cfg);
+	void saveCfg(const char *filename, const Configuration &cfg);
 
   private:
 	nctl::UniquePtr<LuaSerializer> serializer_;

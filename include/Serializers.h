@@ -14,6 +14,8 @@ class GridAnimation;
 
 class SaveAnim;
 
+class Configuration;
+
 namespace Serializers {
 
 void serialize(LuaSerializer &ls, const char *name, const Canvas &canvas);
@@ -26,15 +28,18 @@ void serialize(LuaSerializer &ls, const GridAnimation &anim);
 
 void serialize(LuaSerializer &ls, const char *name, const SaveAnim &saveAnim);
 
+void serialize(LuaSerializer &ls, const Configuration &cf);
+
 }
 
 namespace Deserializers {
 
-void deserialize(LuaSerializer &ls, const char *name, Canvas &canvas);
+bool deserialize(LuaSerializer &ls, const char *name, Canvas &canvas);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim);
-void deserialize(LuaSerializer &ls, const char *name, SaveAnim &saveAnim);
+bool deserialize(LuaSerializer &ls, const char *name, SaveAnim &saveAnim);
+void deserialize(LuaSerializer &ls, Configuration &cfg);
 
 }
 

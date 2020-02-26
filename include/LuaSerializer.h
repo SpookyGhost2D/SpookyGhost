@@ -35,7 +35,7 @@ namespace nc = ncine;
 class LuaSerializer
 {
   public:
-	LuaSerializer();
+	LuaSerializer(unsigned int bufferSize);
 
 	void reset();
 
@@ -117,6 +117,24 @@ template <class T> void serializePtr(LuaSerializer &ls, const char *name, const 
 	serialize(ls, name, index);
 }
 
+void serializeGlobal(LuaSerializer &ls, const char *name, bool boolean);
+void serializeGlobal(LuaSerializer &ls, const char *name, int number);
+void serializeGlobal(LuaSerializer &ls, const char *name, unsigned int number);
+void serializeGlobal(LuaSerializer &ls, const char *name, float number);
+void serializeGlobal(LuaSerializer &ls, const char *name, const nctl::String &string);
+void serializeGlobal(LuaSerializer &ls, const char *name, const char *string);
+
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Recti &rect);
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Rectf &rect);
+
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Vector2i &vector);
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Vector2f &vector);
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Vector3i &vector);
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Vector3f &vector);
+
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Color &color);
+void serializeGlobal(LuaSerializer &ls, const char *name, const nc::Colorf &color);
+
 }
 
 namespace Deserializers {
@@ -138,12 +156,13 @@ class Array
 };
 
 template <class T>
-void deserialize(LuaSerializer &ls, const char *name, nctl::Array<T> &array)
+bool deserialize(LuaSerializer &ls, const char *name, nctl::Array<T> &array)
 {
 	ASSERT(name);
 	lua_State *L = ls.luaState();
 
-	nc::LuaUtils::retrieveGlobalTable(L, name);
+	if (nc::LuaUtils::tryRetrieveGlobalTable(L, name) == false)
+		return false;
 	const unsigned int numElements = nc::LuaUtils::rawLen(L, -1);
 	for (unsigned int i = 0; i < numElements; i++)
 	{
@@ -151,6 +170,8 @@ void deserialize(LuaSerializer &ls, const char *name, nctl::Array<T> &array)
 		deserialize(ls, array[i]);
 		nc::LuaUtils::pop(L);
 	}
+
+	return true;
 }
 
 template <class T> T deserialize(LuaSerializer &ls, const char *name) {}
@@ -158,7 +179,6 @@ template <> bool deserialize<bool>(LuaSerializer &ls, const char *name);
 template <> int deserialize<int>(LuaSerializer &ls, const char *name);
 template <> unsigned int deserialize<unsigned int>(LuaSerializer &ls, const char *name);
 template <> float deserialize<float>(LuaSerializer &ls, const char *name);
-template <> nctl::String deserialize<nctl::String>(LuaSerializer &ls, const char *name);
 template <> const char *deserialize<const char *>(LuaSerializer &ls, const char *name);
 
 template <> nc::Recti deserialize<nc::Recti>(LuaSerializer &ls, const char *name);
@@ -170,6 +190,13 @@ template <> nc::Vector3i deserialize<nc::Vector3i>(LuaSerializer &ls, const char
 template <> nc::Vector3f deserialize<nc::Vector3f>(LuaSerializer &ls, const char *name);
 
 template <> nc::Colorf deserialize<nc::Colorf>(LuaSerializer &ls, const char *name);
+
+template <class T> T deserializeGlobal(LuaSerializer &ls, const char *name) {}
+template <> bool deserializeGlobal<bool>(LuaSerializer &ls, const char *name);
+template <> int deserializeGlobal<int>(LuaSerializer &ls, const char *name);
+template <> unsigned int deserializeGlobal<unsigned int>(LuaSerializer &ls, const char *name);
+template <> float deserializeGlobal<float>(LuaSerializer &ls, const char *name);
+template <> const char *deserializeGlobal<const char *>(LuaSerializer &ls, const char *name);
 
 void deserialize(LuaSerializer &ls, const char *name, bool &boolean);
 void deserialize(LuaSerializer &ls, const char *name, int &number);
@@ -201,6 +228,13 @@ template <class T> T *deserializePtr(LuaSerializer &ls, const char *name, nctl::
 	T *ptr = (index >= 0 && index < array.size()) ? array[index].get() : nullptr;
 	return ptr;
 }
+
+void deserializeGlobal(LuaSerializer &ls, const char *name, bool &boolean);
+void deserializeGlobal(LuaSerializer &ls, const char *name, int &number);
+void deserializeGlobal(LuaSerializer &ls, const char *name, unsigned int &number);
+void deserializeGlobal(LuaSerializer &ls, const char *name, float &number);
+void deserializeGlobal(LuaSerializer &ls, const char *name, nctl::String &string);
+void deserializeGlobal(LuaSerializer &ls, const char *name, char *string);
 
 }
 

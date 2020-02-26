@@ -7,7 +7,8 @@
 #include "GridAnimation.h"
 #include "GridFunction.h"
 #include "AnimationManager.h"
-#include "RenderGuiStatus.h"
+#include "gui/RenderGuiSection.h"
+#include "Configuration.h"
 
 #include "Serializers.h"
 #include "LuaSerializer.h"
@@ -272,6 +273,24 @@ void serialize(LuaSerializer &ls, const char *name, const SaveAnim &saveAnim)
 	ls.buffer().append("}\n");
 }
 
+void serialize(LuaSerializer &ls, const Configuration &cfg)
+{
+	serializeGlobal(ls, "version", cfg.version);
+	serializeGlobal(ls, "width", cfg.width);
+	serializeGlobal(ls, "height", cfg.height);
+	serializeGlobal(ls, "fullscreen", cfg.fullscreen);
+	serializeGlobal(ls, "resizable", cfg.resizable);
+	serializeGlobal(ls, "vsync", cfg.withVSync);
+	serializeGlobal(ls, "frame_limit", cfg.frameLimit);
+	serializeGlobal(ls, "canvas_width", cfg.canvasWidth);
+	serializeGlobal(ls, "canvas_height", cfg.canvasHeight);
+	serializeGlobal(ls, "savefile_maxsize", cfg.saveFileMaxSize);
+	serializeGlobal(ls, "startup_script_name", cfg.startupScriptName);
+	serializeGlobal(ls, "auto_play_on_start", cfg.autoPlayOnStart);
+	serializeGlobal(ls, "scripts_path", cfg.scriptsPath);
+	serializeGlobal(ls, "textures_path", cfg.texturesPath);
+}
+
 }
 
 namespace Deserializers {
@@ -296,15 +315,17 @@ Sprite::BlendingPreset deserialize(LuaSerializer &ls, const char *name)
 		return Sprite::BlendingPreset::DISABLED;
 }
 
-void deserialize(LuaSerializer &ls, const char *name, Canvas &canvas)
+bool deserialize(LuaSerializer &ls, const char *name, Canvas &canvas)
 {
 	lua_State *L = ls.luaState();
-	nc::LuaUtils::retrieveGlobalTable(L, name);
+	if (nc::LuaUtils::tryRetrieveGlobalTable(L, name) == false)
+		return false;
 
 	canvas.backgroundColor = deserialize<nc::Colorf>(ls, "background_color");
 	canvas.resizeTexture(deserialize<nc::Vector2i>(ls, "size"));
 
 	nc::LuaUtils::pop(L);
+	return true;
 }
 
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture)
@@ -521,16 +542,37 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 	anim->setParent(parent);
 }
 
-void deserialize(LuaSerializer &ls, const char *name, SaveAnim &saveAnim)
+bool deserialize(LuaSerializer &ls, const char *name, SaveAnim &saveAnim)
 {
 	lua_State *L = ls.luaState();
-	nc::LuaUtils::retrieveGlobalTable(L, name);
+	if (nc::LuaUtils::tryRetrieveGlobalTable(L, name) == false)
+		return false;
 
 	saveAnim.numFrames = deserialize<int>(ls, "num_frames");
 	saveAnim.fps = deserialize<int>(ls, "fps");
 	saveAnim.canvasResize = deserialize<float>(ls, "canvas_resize");
 
 	nc::LuaUtils::pop(L);
+	return true;
+}
+
+void deserialize(LuaSerializer &ls, Configuration &cfg)
+{
+	cfg.version = deserializeGlobal<int>(ls, "version");
+	ASSERT(cfg.version >= 1);
+	cfg.width = deserializeGlobal<int>(ls, "width");
+	cfg.height = deserializeGlobal<int>(ls, "height");
+	cfg.fullscreen = deserializeGlobal<bool>(ls, "fullscreen");
+	cfg.resizable = deserializeGlobal<bool>(ls, "resizable");
+	cfg.withVSync = deserializeGlobal<bool>(ls, "vsync");
+	cfg.frameLimit = deserializeGlobal<int>(ls, "frame_limit");
+	cfg.canvasWidth = deserializeGlobal<int>(ls, "canvas_width");
+	cfg.canvasHeight = deserializeGlobal<int>(ls, "canvas_height");
+	cfg.saveFileMaxSize = deserializeGlobal<int>(ls, "savefile_maxsize");
+	deserializeGlobal(ls, "startup_script_name", cfg.startupScriptName);
+	cfg.autoPlayOnStart = deserializeGlobal<bool>(ls, "auto_play_on_start");
+	deserializeGlobal(ls, "scripts_path", cfg.scriptsPath);
+	deserializeGlobal(ls, "textures_path", cfg.texturesPath);
 }
 
 }

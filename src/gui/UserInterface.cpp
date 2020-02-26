@@ -1,10 +1,11 @@
-#include <ncine/imgui.h>
+#include "gui/gui_common.h"
 #include <ncine/imgui_internal.h>
 #include <ncine/Application.h>
 #include <ncine/IFile.h>
 
-#include "gui_labels.h"
-#include "UserInterface.h"
+#include "singletons.h"
+#include "gui/gui_labels.h"
+#include "gui/UserInterface.h"
 #include "Canvas.h"
 #include "SpriteManager.h"
 #include "AnimationManager.h"
@@ -19,6 +20,7 @@
 
 #include "version.h"
 #include <ncine/version.h>
+#include "script_strings.h"
 
 namespace {
 
@@ -35,22 +37,14 @@ const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 // clang-format on
 
+static bool requestCloseModal = false;
+static bool openModal = false;
+static bool saveAsModal = false;
+static bool allowOverwrite = false;
+
 static bool showAboutWindow = false;
 static bool showTexrectWindow = false;
 static bool hoveringOnCanvas = false;
-
-int inputTextCallback(ImGuiInputTextCallbackData *data)
-{
-	nctl::String *string = reinterpret_cast<nctl::String *>(data->UserData);
-	if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
-	{
-		// Resize string callback
-		ASSERT(data->Buf == string->data());
-		string->setLength(static_cast<unsigned int>(data->BufTextLen));
-		data->Buf = string->data();
-	}
-	return 0;
-}
 
 const char *animStateToString(IAnimation::State state)
 {
@@ -63,109 +57,14 @@ const char *animStateToString(IAnimation::State state)
 	return "Unknown";
 }
 
-void applyDarkStyle()
-{
-	ImGuiStyle &style = ImGui::GetStyle();
-	ImVec4 *colors = style.Colors;
-
-	/// 0 = FLAT APPEARENCE
-	/// 1 = MORE "3D" LOOK
-	const float is3D = 1.0f;
-
-	// clang-format off
-	colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-	colors[ImGuiCol_TextDisabled]           = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-	colors[ImGuiCol_ChildBg]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-	colors[ImGuiCol_WindowBg]               = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-	colors[ImGuiCol_PopupBg]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-	colors[ImGuiCol_Border]                 = ImVec4(0.12f, 0.12f, 0.12f, 0.71f);
-	colors[ImGuiCol_BorderShadow]           = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
-	colors[ImGuiCol_FrameBg]                = ImVec4(0.42f, 0.42f, 0.42f, 0.54f);
-	colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.42f, 0.42f, 0.42f, 0.40f);
-	colors[ImGuiCol_FrameBgActive]          = ImVec4(0.56f, 0.56f, 0.56f, 0.67f);
-	colors[ImGuiCol_TitleBg]                = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);
-	colors[ImGuiCol_TitleBgActive]          = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
-	colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.17f, 0.17f, 0.17f, 0.90f);
-	colors[ImGuiCol_MenuBarBg]              = ImVec4(0.335f, 0.335f, 0.335f, 1.000f);
-	colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.24f, 0.24f, 0.24f, 0.53f);
-	colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.52f, 0.52f, 0.52f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.76f, 0.76f, 0.76f, 1.00f);
-	colors[ImGuiCol_CheckMark]              = ImVec4(0.65f, 0.65f, 0.65f, 1.00f);
-	colors[ImGuiCol_SliderGrab]             = ImVec4(0.52f, 0.52f, 0.52f, 1.00f);
-	colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.64f, 0.64f, 0.64f, 1.00f);
-	colors[ImGuiCol_Button]                 = ImVec4(0.54f, 0.54f, 0.54f, 0.35f);
-	colors[ImGuiCol_ButtonHovered]          = ImVec4(0.52f, 0.52f, 0.52f, 0.59f);
-	colors[ImGuiCol_ButtonActive]           = ImVec4(0.76f, 0.76f, 0.76f, 1.00f);
-	colors[ImGuiCol_Header]                 = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
-	colors[ImGuiCol_HeaderHovered]          = ImVec4(0.47f, 0.47f, 0.47f, 1.00f);
-	colors[ImGuiCol_HeaderActive]           = ImVec4(0.76f, 0.76f, 0.76f, 0.77f);
-	colors[ImGuiCol_Separator]              = ImVec4(0.000f, 0.000f, 0.000f, 0.137f);
-	colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.700f, 0.671f, 0.600f, 0.290f);
-	colors[ImGuiCol_SeparatorActive]        = ImVec4(0.702f, 0.671f, 0.600f, 0.674f);
-	colors[ImGuiCol_ResizeGrip]             = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
-	colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
-	colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-	colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
-	colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-	colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
-	colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-	colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.73f, 0.73f, 0.73f, 0.35f);
-	colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
-	colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-	colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
-	colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-
-	style.PopupRounding = 3;
-
-	style.WindowPadding = ImVec2(4, 4);
-	style.FramePadding  = ImVec2(6, 4);
-	style.ItemSpacing   = ImVec2(6, 2);
-
-	style.ScrollbarSize = 18;
-
-	style.WindowBorderSize = 1;
-	style.ChildBorderSize  = 1;
-	style.PopupBorderSize  = 1;
-	style.FrameBorderSize  = is3D;
-
-	style.WindowRounding    = 3;
-	style.ChildRounding     = 3;
-	style.FrameRounding     = 3;
-	style.ScrollbarRounding = 2;
-	style.GrabRounding      = 3;
-
-#ifdef IMGUI_HAS_DOCK
-	style.TabBorderSize = is3D;
-	style.TabRounding   = 3;
-
-	colors[ImGuiCol_DockingEmptyBg]     = ImVec4(0.38f, 0.38f, 0.38f, 1.00f);
-	colors[ImGuiCol_Tab]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-	colors[ImGuiCol_TabHovered]         = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-	colors[ImGuiCol_TabActive]          = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
-	colors[ImGuiCol_TabUnfocused]       = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-	colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
-	colors[ImGuiCol_DockingPreview]     = ImVec4(0.85f, 0.85f, 0.85f, 0.28f);
-	// clang-format on
-
-	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
-		style.WindowRounding = 0.0f;
-		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-	}
-#endif
-}
-
 }
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-UserInterface::UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spritesheet, SpriteManager &spriteMgr, AnimationManager &animMgr)
-    : canvas_(canvas), resizedCanvas_(resizedCanvas), spritesheet_(spritesheet), spriteMgr_(spriteMgr), animMgr_(animMgr),
-      selectedSpriteIndex_(0), spriteGraph_(4)
+UserInterface::UserInterface()
+    : selectedSpriteIndex_(0), spriteGraph_(4), renderGuiSection_(*this)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -189,38 +88,24 @@ UserInterface::UserInterface(Canvas &canvas, Canvas &resizedCanvas, Canvas &spri
 	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon96.png").data());
 	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine96.png").data());
 
-	canvasGuiStatus_.setResize(canvas_.size());
+	canvasGuiSection_.setResize(theCanvas->size());
+
+	if (theCfg.startupScriptName.isEmpty() == false)
+	{
+		const nctl::String startupScript = theCfg.scriptsPath + theCfg.startupScriptName;
+		if (nc::IFile::access(startupScript.data(), nc::IFile::AccessMode::READABLE))
+		{
+			openProject(startupScript.data());
+			filename_ = theCfg.startupScriptName;
+		}
+	}
+	if (theCfg.autoPlayOnStart)
+		theAnimMgr->play();
 }
 
 ///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
-
-void UserInterface::signalFrameSaved()
-{
-	ASSERT(shouldSaveFrames_ || shouldSaveSpritesheet_);
-
-	saveAnimStatus_.numSavedFrames++;
-	if (shouldSaveFrames_)
-		saveAnimStatus_.filename.format("%s_%03d.png", renderGuiStatus_.filename.data(), saveAnimStatus_.numSavedFrames);
-	else if (shouldSaveSpritesheet_)
-	{
-		Canvas &sourceCanvas = (saveAnimStatus_.canvasResize != 1.0f) ? resizedCanvas_ : canvas_;
-		saveAnimStatus_.sheetDestPos.x += sourceCanvas.texWidth();
-		if (saveAnimStatus_.sheetDestPos.x + sourceCanvas.texWidth() > spritesheet_.texWidth())
-		{
-			saveAnimStatus_.sheetDestPos.x = 0;
-			saveAnimStatus_.sheetDestPos.y += sourceCanvas.texHeight();
-		}
-	}
-	if (saveAnimStatus_.numSavedFrames == saveAnimStatus_.numFrames)
-	{
-		shouldSaveFrames_ = false;
-		shouldSaveSpritesheet_ = false;
-		saveAnimStatus_.numSavedFrames = 0;
-		pushStatusInfoMessage("Animation saved");
-	}
-}
 
 void UserInterface::pushStatusInfoMessage(const char *message)
 {
@@ -234,24 +119,35 @@ void UserInterface::pushStatusErrorMessage(const char *message)
 	lastStatus_ = nc::TimeStamp::now();
 }
 
-void UserInterface::closeAboutWindow()
+const SaveAnim &UserInterface::saveAnimStatus() const
 {
-	showAboutWindow = false;
+	return renderGuiSection_.saveAnimStatus();
+}
+
+bool UserInterface::shouldSaveFrames() const
+{
+	return renderGuiSection_.shouldSaveFrames();
+}
+
+bool UserInterface::shouldSaveSpritesheet() const
+{
+	return renderGuiSection_.shouldSaveSpritesheet();
+}
+
+void UserInterface::signalFrameSaved()
+{
+	renderGuiSection_.signalFrameSaved();
 }
 
 void UserInterface::cancelRender()
 {
-	if (shouldSaveFrames_ || shouldSaveSpritesheet_)
-	{
-		if (shouldSaveFrames_)
-			auxString_.format("Render cancelled, saved %d out of %d frames", saveAnimStatus_.numSavedFrames, saveAnimStatus_.numFrames);
-		else if (shouldSaveSpritesheet_)
-			auxString_ = "Render cancelled, the spritesheet has not been saved";
-		pushStatusInfoMessage(auxString_.data());
-		saveAnimStatus_.numSavedFrames = 0;
-		shouldSaveFrames_ = false;
-		shouldSaveSpritesheet_ = false;
-	}
+	renderGuiSection_.cancelRender();
+}
+
+void UserInterface::closeModalsAndAbout()
+{
+	showAboutWindow = false;
+	requestCloseModal = true;
 }
 
 void UserInterface::removeSelectedSpriteWithKey()
@@ -262,20 +158,73 @@ void UserInterface::removeSelectedSpriteWithKey()
 
 void UserInterface::moveSprite(int xDiff, int yDiff)
 {
-	if (spriteMgr_.sprites().isEmpty() == false && hoveringOnCanvas)
+	if (theSpriteMgr->sprites().isEmpty() == false && hoveringOnCanvas)
 	{
-		Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+		Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
 		sprite.x += xDiff;
 		sprite.y += yDiff;
 	}
 }
 
+bool UserInterface::menuNewEnabled()
+{
+	return (theAnimMgr->anims().isEmpty() == false ||
+	        theSpriteMgr->sprites().isEmpty() == false ||
+	        theSpriteMgr->textures().isEmpty() == false);
+}
+
+bool UserInterface::menuSaveEnabled()
+{
+	return (filename_.isEmpty() == false &&
+	        (theSpriteMgr->textures().isEmpty() == false ||
+	        theSpriteMgr->sprites().isEmpty() == false ||
+	        theAnimMgr->anims().isEmpty() == false));
+}
+
+bool UserInterface::menuSaveAsEnabled()
+{
+	return (theSpriteMgr->textures().isEmpty() == false ||
+	        theSpriteMgr->sprites().isEmpty() == false ||
+	        theAnimMgr->anims().isEmpty() == false);
+}
+
 void UserInterface::menuNew()
 {
 	// Always clear animations before sprites
-	animMgr_.clear();
-	spriteMgr_.sprites().clear();
-	spriteMgr_.textures().clear();
+	theAnimMgr->clear();
+	theSpriteMgr->sprites().clear();
+	theSpriteMgr->textures().clear();
+}
+
+void UserInterface::menuOpen()
+{
+	openModal = true;
+}
+
+bool UserInterface::openProject(const char *filename)
+{
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+	if (nc::IFile::access(filename, nc::IFile::AccessMode::READABLE) &&
+	    theSaver->load(filename, data))
+	{
+		canvasGuiSection_.setResize(theCanvas->size());
+		renderGuiSection_.setResize(renderGuiSection_.saveAnimStatus().canvasResize);
+		ui::auxString.format("Loaded project file \"%s\"\n",filename);
+		pushStatusInfoMessage(ui::auxString.data());
+
+		return true;
+	}
+	else
+		return false;
+}
+
+void UserInterface::menuSave()
+{
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+	ui::filePath = filename_;
+	if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE))
+		ui::filePath = ui::joinPath(theCfg.scriptsPath, filename_);
+	theSaver->save(ui::filePath.data(), data);
 }
 
 void UserInterface::createGui()
@@ -286,14 +235,14 @@ void UserInterface::createGui()
 	createDockingSpace();
 
 	ImGui::Begin("SpookyGhost");
-	createCanvasGui();
+	canvasGuiSection_.create(*theCanvas);
 	createSpritesGui();
 	createAnimationsGui();
-	createRenderGui();
+	renderGuiSection_.create();
 	ImGui::End();
 
 	createCanvasWindow();
-	if (spriteMgr_.sprites().isEmpty() == false && showTexrectWindow)
+	if (theSpriteMgr->sprites().isEmpty() == false && showTexrectWindow)
 		createTexRectWindow();
 
 	ImGui::Begin("Status");
@@ -302,6 +251,8 @@ void UserInterface::createGui()
 
 	if (showAboutWindow)
 		createAboutWindow();
+
+	createConfigWindow();
 }
 
 ///////////////////////////////////////////////////////////
@@ -332,6 +283,7 @@ void UserInterface::createDockingSpace()
 
 	createInitialDocking();
 	createMenuBar();
+	createGuiPopups();
 
 	ImGui::End();
 }
@@ -367,22 +319,39 @@ void UserInterface::createMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem(Labels::New, "CTRL + N"))
+			LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+			if (ImGui::MenuItem(Labels::New, "CTRL + N", false, menuNewEnabled()))
 				menuNew();
-			if (ImGui::MenuItem(Labels::Open))
+
+			if (ImGui::MenuItem(Labels::Open, "CTRL + O"))
+				openModal = true;
+
+			const bool openBundledEnabled = ScriptStrings::Count > 0;
+			if (ImGui::BeginMenu(Labels::OpenBundled, openBundledEnabled))
 			{
-				LuaSaver saver;
-				LuaSaver::Data data(canvas_, spriteMgr_, animMgr_, saveAnimStatus_);
-				saver.load("test.lua", data);
-				canvasGuiStatus_.setResize(canvas_.size());
-				renderGuiStatus_.setResize(saveAnimStatus_.canvasResize);
+				for (unsigned int i = 0; i < ScriptStrings::Count; i++)
+				{
+					if (ImGui::MenuItem(ScriptStrings::Names[i]))
+					{
+						nctl::String filePath = ui::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]);
+						if (openProject(filePath.data()))
+							filename_ = ScriptStrings::Names[i];
+					}
+				}
+				ImGui::EndMenu();
 			}
-			if (ImGui::MenuItem(Labels::Save))
-			{
-				LuaSaver saver;
-				LuaSaver::Data data(canvas_, spriteMgr_, animMgr_, saveAnimStatus_);
-				saver.save("test.lua", data);
-			}
+
+			if (ImGui::MenuItem(Labels::Save, "CTRL + S", false, menuSaveEnabled()))
+				menuSave();
+
+			if (ImGui::MenuItem(Labels::SaveAs, nullptr, false, menuSaveAsEnabled()))
+				saveAsModal = true;
+
+			if (ImGui::MenuItem(Labels::Configuration))
+				showConfigWindow = true;
+
+			ImGui::Separator();
+
 			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q"))
 				nc::theApplication().quit();
 			ImGui::EndMenu();
@@ -398,61 +367,98 @@ void UserInterface::createMenuBar()
 	}
 }
 
-void UserInterface::createCanvasGui()
+void UserInterface::createGuiPopups()
 {
-	if (ImGui::CollapsingHeader(Labels::Canvas))
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+
+	if (openModal)
+		ImGui::OpenPopup("Open##Modal");
+	else if (saveAsModal)
+		ImGui::OpenPopup("Save As##Modal");
+
+	if (ImGui::BeginPopupModal("Open##Modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		static int canvasZoomRadio = CanvasGuiStatus::ZoomLevel::X1;
-		canvasZoomRadio = static_cast<int>(canvasGuiStatus_.zoomLevel);
+		ImGui::Text("Enter the name of the file to load");
+		ImGui::Separator();
 
-		ImGui::PushID("Canvas");
-		ImGui::Text("Zoom:");
-		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1_8);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1_4);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1_2);
-		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X1);
-		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X2);
-		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X4);
-		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasZoomRadio, CanvasGuiStatus::ZoomLevel::X8);
-		ImGui::PopID();
-		canvasGuiStatus_.zoomLevel = static_cast<CanvasGuiStatus::ZoomLevel>(canvasZoomRadio);
-
-		static int currentComboResize = 0;
-		currentComboResize = static_cast<int>(canvasGuiStatus_.resizePreset);
-		ImGui::Combo("Presets", &currentComboResize, canvasGuiStatus_.ResizeStrings, IM_ARRAYSIZE(canvasGuiStatus_.ResizeStrings));
-		canvasGuiStatus_.resizePreset = static_cast<CanvasGuiStatus::ResizePreset>(currentComboResize);
-		if (currentComboResize == CanvasGuiStatus::ResizePreset::CUSTOM)
-			ImGui::InputInt2("Custom Size", canvasGuiStatus_.customCanvasSize.data());
-		else
-			canvasGuiStatus_.customCanvasSize = canvas_.size();
-
-		nc::Vector2i desiredCanvasSize = canvasGuiStatus_.resizeVector();
-
-		if (desiredCanvasSize.x < 4)
-			desiredCanvasSize.x = 4;
-		else if (desiredCanvasSize.x > canvas_.maxTextureSize())
-			desiredCanvasSize.x = canvas_.maxTextureSize();
-		if (desiredCanvasSize.y < 4)
-			desiredCanvasSize.y = 4;
-		else if (desiredCanvasSize.y > canvas_.maxTextureSize())
-			desiredCanvasSize.y = canvas_.maxTextureSize();
-
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Apply) &&
-		    (canvas_.size().x != desiredCanvasSize.x || canvas_.size().y != desiredCanvasSize.y))
+		if (!ImGui::IsAnyItemActive())
+			ImGui::SetKeyboardFocusHere();
+		if (ImGui::InputText("", filename_.data(), ui::MaxStringLength,
+		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
+		                     ui::inputTextCallback, &filename_) || ImGui::Button(Labels::Ok))
 		{
-			canvas_.resizeTexture(desiredCanvasSize);
+			ui::filePath = filename_;
+			if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE))
+				ui::filePath = ui::joinPath(theCfg.scriptsPath, filename_);
+
+			if (openProject(ui::filePath.data()))
+				requestCloseModal = true;
+			else
+			{
+				filename_ = Labels::LoadingError;
+				ui::auxString.format("Could not load project file \"%s\"\n", ui::filePath.data());
+				pushStatusErrorMessage(ui::auxString.data());
+			}
+		}
+		ImGui::SetItemDefaultFocus();
+
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Cancel))
+			requestCloseModal = true;
+
+		if (requestCloseModal)
+		{
+			ImGui::CloseCurrentPopup();
+			openModal = false;
+			requestCloseModal = false;
 		}
 
-		ImGui::Text("Size: %d x %d", canvas_.texWidth(), canvas_.texHeight());
-		ImGui::ColorEdit4("Background", canvas_.backgroundColor.data(), ImGuiColorEditFlags_AlphaBar);
+		ImGui::EndPopup();
+	}
+
+	if (ImGui::BeginPopupModal("Save As##Modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text("Enter the name of the file to save");
+		ImGui::Separator();
+
+		if (!ImGui::IsAnyItemActive())
+			ImGui::SetKeyboardFocusHere();
+		if (ImGui::InputText("", filename_.data(), ui::MaxStringLength,
+		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
+		                     ui::inputTextCallback, &filename_) || ImGui::Button(Labels::Ok))
+		{
+			ui::filePath = filename_;
+			if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE))
+				ui::filePath = ui::joinPath(theCfg.scriptsPath, filename_);
+
+			if (nc::IFile::access(ui::filePath.data(), nc::IFile::AccessMode::READABLE) && allowOverwrite == false)
+			{
+				filename_ = Labels::FileExists;
+				ui::auxString.format("Could not overwrite existing file \"%s\"\n", ui::filePath.data());
+				pushStatusErrorMessage(ui::auxString.data());
+			}
+			else
+			{
+				theSaver->save(ui::filePath.data(), data);
+				requestCloseModal = true;
+			}
+		}
+		ImGui::SetItemDefaultFocus();
+
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Cancel))
+			requestCloseModal = true;
+		ImGui::SameLine();
+		ImGui::Checkbox("Allow Overwrite", &allowOverwrite);
+
+		if (requestCloseModal)
+		{
+			ImGui::CloseCurrentPopup();
+			saveAsModal = false;
+			requestCloseModal = false;
+		}
+
+		ImGui::EndPopup();
 	}
 }
 
@@ -461,75 +467,72 @@ void UserInterface::createSpritesGui()
 	static int selectedTextureIndex = 0;
 	if (ImGui::CollapsingHeader(Labels::Sprites))
 	{
-		if (spriteMgr_.textures().isEmpty() == false)
+		if (theSpriteMgr->textures().isEmpty() == false)
 		{
-			comboString_.clear();
-			for (unsigned int i = 0; i < spriteMgr_.textures().size(); i++)
+			ui::comboString.clear();
+			for (unsigned int i = 0; i < theSpriteMgr->textures().size(); i++)
 			{
-				Texture &texture = *spriteMgr_.textures()[i];
-				comboString_.formatAppend("#%u: \"%s\" (%d x %d)", i, texture.name().data(), texture.width(), texture.height());
-				comboString_.setLength(comboString_.length() + 1);
+				Texture &texture = *theSpriteMgr->textures()[i];
+				ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, texture.name().data(), texture.width(), texture.height());
+				ui::comboString.setLength(ui::comboString.length() + 1);
 			}
-			comboString_.setLength(comboString_.length() + 1);
+			ui::comboString.setLength(ui::comboString.length() + 1);
 			// Append a second '\0' to signal the end of the combo item list
-			comboString_[comboString_.length() - 1] = '\0';
+			ui::comboString[ui::comboString.length() - 1] = '\0';
 
-			ImGui::Combo("Texture", &selectedTextureIndex, comboString_.data());
+			ImGui::Combo("Texture", &selectedTextureIndex, ui::comboString.data());
 
 			ImGui::SameLine();
-			auxString_.format("%s##Texture", Labels::Remove);
-			if (ImGui::Button(auxString_.data()))
+			ui::auxString.format("%s##Texture", Labels::Remove);
+			if (ImGui::Button(ui::auxString.data()))
 			{
-				for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+				for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 				{
-					Sprite &sprite = *spriteMgr_.sprites()[i];
-					if (&sprite.texture() == spriteMgr_.textures()[selectedTextureIndex].get())
+					Sprite &sprite = *theSpriteMgr->sprites()[i];
+					if (&sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex].get())
 					{
-						animMgr_.removeSprite(&sprite);
-						spriteMgr_.sprites().removeAt(i);
+						theAnimMgr->removeSprite(&sprite);
+						theSpriteMgr->sprites().removeAt(i);
 					}
 				}
-				spriteMgr_.textures().removeAt(selectedTextureIndex);
+				theSpriteMgr->textures().removeAt(selectedTextureIndex);
 				if (selectedTextureIndex > 0)
 					selectedTextureIndex--;
 			}
 		}
-		ImGui::InputText("Filename", texFilename_.data(), MaxStringLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &texFilename_);
+		ImGui::InputText("Filename", texFilename_.data(), ui::MaxStringLength,
+		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &texFilename_);
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
 		{
-			if (nc::IFile::access((nc::IFile::dataPath() + texFilename_).data(), nc::IFile::AccessMode::READABLE))
+			ui::filePath = texFilename_;
+			if (nc::IFile::access(ui::filePath.data(), nc::IFile::AccessMode::READABLE) == false)
+				ui::filePath = ui::joinPath(theCfg.texturesPath, texFilename_);
+			if (nc::IFile::access(ui::filePath.data(), nc::IFile::AccessMode::READABLE))
 			{
-				spriteMgr_.textures().pushBack(nctl::makeUnique<Texture>((nc::IFile::dataPath() + texFilename_).data()));
-				auxString_.format("Loaded texture \"%s\"", (nc::IFile::dataPath() + texFilename_).data());
-				selectedTextureIndex = spriteMgr_.textures().size() - 1;
-			}
-			else if (nc::IFile::access(texFilename_.data(), nc::IFile::AccessMode::READABLE))
-			{
-				spriteMgr_.textures().pushBack(nctl::makeUnique<Texture>(texFilename_.data()));
-				auxString_.format("Loaded texture \"%s\"", texFilename_.data());
-				selectedTextureIndex = spriteMgr_.textures().size() - 1;
+				theSpriteMgr->textures().pushBack(nctl::makeUnique<Texture>(ui::filePath.data()));
+				ui::auxString.format("Loaded texture \"%s\"", ui::filePath.data());
+				selectedTextureIndex = theSpriteMgr->textures().size() - 1;
 			}
 			else
-				auxString_.format("Cannot load texture \"%s\"", texFilename_.data());
+				ui::auxString.format("Cannot load texture \"%s\"", ui::filePath.data());
 
-			pushStatusInfoMessage(auxString_.data());
+			pushStatusInfoMessage(ui::auxString.data());
 		}
 
 		ImGui::Spacing();
 		ImGui::Separator();
 		ImGui::Spacing();
 
-		if (spriteMgr_.textures().isEmpty() == false)
+		if (theSpriteMgr->textures().isEmpty() == false)
 		{
 			if (ImGui::Button(Labels::Add))
 			{
-				if (selectedTextureIndex >= 0 && selectedTextureIndex < spriteMgr_.textures().size())
+				if (selectedTextureIndex >= 0 && selectedTextureIndex < theSpriteMgr->textures().size())
 				{
-					Texture &tex = *spriteMgr_.textures()[selectedTextureIndex];
-					spriteMgr_.sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
-					selectedSpriteIndex_ = spriteMgr_.sprites().size() - 1;
+					Texture &tex = *theSpriteMgr->textures()[selectedTextureIndex];
+					theSpriteMgr->sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
+					selectedSpriteIndex_ = theSpriteMgr->sprites().size() - 1;
 				}
 			}
 			ImGui::SameLine();
@@ -539,82 +542,82 @@ void UserInterface::createSpritesGui()
 		else
 			ImGui::Text("Load at least one texture in order to add sprites");
 
-		if (spriteMgr_.sprites().isEmpty() == false)
+		if (theSpriteMgr->sprites().isEmpty() == false)
 		{
 			if (selectedSpriteIndex_ > 0)
 			{
 				ImGui::SameLine();
 				if (ImGui::Button(Labels::MoveUp))
 				{
-					nctl::swap(spriteMgr_.sprites()[selectedSpriteIndex_], spriteMgr_.sprites()[selectedSpriteIndex_ - 1]);
+					nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ - 1]);
 					selectedSpriteIndex_--;
 				}
 			}
-			if (selectedSpriteIndex_ < spriteMgr_.sprites().size() - 1)
+			if (selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1)
 			{
 				ImGui::SameLine();
 				if (ImGui::Button(Labels::MoveDown))
 				{
-					nctl::swap(spriteMgr_.sprites()[selectedSpriteIndex_], spriteMgr_.sprites()[selectedSpriteIndex_ + 1]);
+					nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ + 1]);
 					selectedSpriteIndex_++;
 				}
 			}
 
-			comboString_.clear();
-			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+			ui::comboString.clear();
+			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 			{
-				Sprite &sprite = *spriteMgr_.sprites()[i];
-				comboString_.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
-				comboString_.setLength(comboString_.length() + 1);
+				Sprite &sprite = *theSpriteMgr->sprites()[i];
+				ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+				ui::comboString.setLength(ui::comboString.length() + 1);
 			}
-			comboString_.setLength(comboString_.length() + 1);
+			ui::comboString.setLength(ui::comboString.length() + 1);
 			// Append a second '\0' to signal the end of the combo item list
-			comboString_[comboString_.length() - 1] = '\0';
+			ui::comboString[ui::comboString.length() - 1] = '\0';
 
-			ImGui::Combo("Sprite", &selectedSpriteIndex_, comboString_.data());
+			ImGui::Combo("Sprite", &selectedSpriteIndex_, ui::comboString.data());
 
-			Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+			Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
 
 			Texture &tex = sprite.texture();
 			ImGui::Text("Texture: %s (%dx%d)", tex.name().data(), tex.width(), tex.height());
 
 			ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
-			                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &sprite.name);
+			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sprite.name);
 			ImGui::SameLine();
 			ImGui::Checkbox("Visible", &sprite.visible);
 
 			// Create an array of sprites that can be a parent of the selected one
 			spriteGraph_.clear();
 			spriteGraph_.pushBack(SpriteStruct(-1, nullptr));
-			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
-				spriteMgr_.sprites()[i]->visited = false;
+			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+				theSpriteMgr->sprites()[i]->visited = false;
 			visitSprite(sprite);
-			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 			{
-				if (spriteMgr_.sprites()[i]->visited == false)
-					spriteGraph_.pushBack(SpriteStruct(i, spriteMgr_.sprites()[i].get()));
+				if (theSpriteMgr->sprites()[i]->visited == false)
+					spriteGraph_.pushBack(SpriteStruct(i, theSpriteMgr->sprites()[i].get()));
 			}
 
 			int currentParentCombo = 0; // None
-			comboString_.clear();
+			ui::comboString.clear();
 			for (unsigned int i = 0; i < spriteGraph_.size(); i++)
 			{
 				const int index = spriteGraph_[i].index;
 				const Sprite &currentSprite = *spriteGraph_[i].sprite;
 				if (index < 0)
-					comboString_.append("None");
+					ui::comboString.append("None");
 				else
-					comboString_.formatAppend("#%u: \"%s\" (%d x %d)", index, currentSprite.name.data(), currentSprite.width(), currentSprite.height());
-				comboString_.setLength(comboString_.length() + 1);
+					ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", index, currentSprite.name.data(), currentSprite.width(), currentSprite.height());
+				ui::comboString.setLength(ui::comboString.length() + 1);
 
 				if (sprite.parent() == &currentSprite)
 					currentParentCombo = i;
 			}
-			comboString_.setLength(comboString_.length() + 1);
+			ui::comboString.setLength(ui::comboString.length() + 1);
 			// Append a second '\0' to signal the end of the combo item list
-			comboString_[comboString_.length() - 1] = '\0';
+			ui::comboString[ui::comboString.length() - 1] = '\0';
 
-			ImGui::Combo("Parent", &currentParentCombo, comboString_.data());
+			ImGui::Combo("Parent", &currentParentCombo, ui::comboString.data());
 
 			const Sprite *prevParent = sprite.parent();
 			const nc::Vector2f absPosition = sprite.absPosition();
@@ -626,14 +629,14 @@ void UserInterface::createSpritesGui()
 			}
 
 			nc::Vector2f position(sprite.x, sprite.y);
-			ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(canvas_.texWidth()));
+			ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(theCanvas->texWidth()));
 			sprite.x = roundf(position.x);
 			sprite.y = roundf(position.y);
 			ImGui::SliderFloat("Rotation", &sprite.rotation, 0.0f, 360.0f);
 			ImGui::SliderFloat2("Scale", sprite.scaleFactor.data(), 0.0f, 8.0f);
 			ImGui::SameLine();
-			auxString_.format("%s##Scale", Labels::Reset);
-			if (ImGui::Button(auxString_.data()))
+			ui::auxString.format("%s##Scale", Labels::Reset);
+			if (ImGui::Button(ui::auxString.data()))
 				sprite.scaleFactor.set(1.0f, 1.0f);
 
 			const float halfBiggerDimension = sprite.width() > sprite.height() ? sprite.width() * 0.5f : sprite.height() * 0.5f;
@@ -685,8 +688,8 @@ void UserInterface::createSpritesGui()
 			texRect.y = minY;
 			texRect.h = maxY - minY;
 			ImGui::SameLine();
-			auxString_.format("%s##Rect", Labels::Reset);
-			if (ImGui::Button(auxString_.data()))
+			ui::auxString.format("%s##Rect", Labels::Reset);
+			if (ImGui::Button(ui::auxString.data()))
 				texRect = nc::Recti(0, 0, tex.width(), tex.height());
 
 			const nc::Recti currentTexRect = sprite.texRect();
@@ -712,8 +715,8 @@ void UserInterface::createSpritesGui()
 
 			ImGui::ColorEdit4("Color", sprite.color.data(), ImGuiColorEditFlags_AlphaBar);
 			ImGui::SameLine();
-			auxString_.format("%s##Color", Labels::Reset);
-			if (ImGui::Button(auxString_.data()))
+			ui::auxString.format("%s##Color", Labels::Reset);
+			if (ImGui::Button(ui::auxString.data()))
 				sprite.color = nc::Colorf::White;
 		}
 	}
@@ -749,20 +752,20 @@ void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAni
 
 	ImGui::SliderFloat("Shift", &anim.curve().shift(), limits.minShift, limits.maxShift);
 	ImGui::SameLine();
-	auxString_.format("%s##Shift", Labels::Reset);
-	if (ImGui::Button(auxString_.data()))
+	ui::auxString.format("%s##Shift", Labels::Reset);
+	if (ImGui::Button(ui::auxString.data()))
 		anim.curve().shift() = 0.0f;
 	ImGui::SliderFloat("Scale", &anim.curve().scale(), limits.minScale, limits.maxScale);
 	ImGui::SameLine();
-	auxString_.format("%s##Scale", Labels::Reset);
-	if (ImGui::Button(auxString_.data()))
+	ui::auxString.format("%s##Scale", Labels::Reset);
+	if (ImGui::Button(ui::auxString.data()))
 		anim.curve().scale() = 1.0f;
 
 	ImGui::Separator();
 	ImGui::SliderFloat("Speed", &anim.speed(), 0.0f, 5.0f);
 	ImGui::SameLine();
-	auxString_.format("%s##Speed", Labels::Reset);
-	if (ImGui::Button(auxString_.data()))
+	ui::auxString.format("%s##Speed", Labels::Reset);
+	if (ImGui::Button(ui::auxString.data()))
 		anim.speed() = 1.0f;
 	ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
 	ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
@@ -797,147 +800,35 @@ void UserInterface::createAnimationsGui()
 		static int currentComboAnimType = 0;
 		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
 		ImGui::SameLine();
-		auxString_.format("%s##Animations", Labels::Add);
-		if (ImGui::Button(auxString_.data()))
+		ui::auxString.format("%s##Animations", Labels::Add);
+		if (ImGui::Button(ui::auxString.data()))
 		{
 			switch (currentComboAnimType)
 			{
 				case AnimationTypesEnum::PARALLEL_GROUP:
-					animMgr_.anims().pushBack(nctl::makeUnique<ParallelAnimationGroup>());
+					theAnimMgr->anims().pushBack(nctl::makeUnique<ParallelAnimationGroup>());
 					break;
 				case AnimationTypesEnum::SEQUENTIAL_GROUP:
-					animMgr_.anims().pushBack(nctl::makeUnique<SequentialAnimationGroup>());
+					theAnimMgr->anims().pushBack(nctl::makeUnique<SequentialAnimationGroup>());
 					break;
 				case AnimationTypesEnum::PROPERTY:
-					animMgr_.anims().pushBack(nctl::makeUnique<PropertyAnimation>());
+					theAnimMgr->anims().pushBack(nctl::makeUnique<PropertyAnimation>());
 					break;
 				case AnimationTypesEnum::GRID:
-					animMgr_.anims().pushBack(nctl::makeUnique<GridAnimation>());
+					theAnimMgr->anims().pushBack(nctl::makeUnique<GridAnimation>());
 					break;
 			}
-			animMgr_.anims().back()->setParent(&animMgr_.animGroup());
+			theAnimMgr->anims().back()->setParent(&theAnimMgr->animGroup());
 		}
 
 		ImGui::SameLine();
-		auxString_.format("%s##Animations", Labels::Clear);
-		if (ImGui::Button(auxString_.data()))
-			animMgr_.clear();
+		ui::auxString.format("%s##Animations", Labels::Clear);
+		if (ImGui::Button(ui::auxString.data()))
+			theAnimMgr->clear();
 		ImGui::Separator();
 
-		for (unsigned int i = 0; i < animMgr_.anims().size(); i++)
-			createRecursiveAnimationsGui(animMgr_.animGroup(), i);
-	}
-}
-
-void UserInterface::createRenderGui()
-{
-	if (ImGui::CollapsingHeader(Labels::Render))
-	{
-		ImGui::InputText("Filename prefix", renderGuiStatus_.filename.data(), MaxStringLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &renderGuiStatus_.filename);
-
-		static int canvasResizeRadio = RenderGuiStatus::ResizeLevel::X1;
-		canvasResizeRadio = static_cast<int>(renderGuiStatus_.resizeLevel);
-
-		ImGui::PushID("Render");
-		ImGui::Text("Resize:");
-		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1_8);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1_4);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1_2);
-		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X1);
-		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X2);
-		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X4);
-		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasResizeRadio, RenderGuiStatus::ResizeLevel::X8);
-		ImGui::PopID();
-		renderGuiStatus_.resizeLevel = static_cast<RenderGuiStatus::ResizeLevel>(canvasResizeRadio);
-		saveAnimStatus_.canvasResize = renderGuiStatus_.resizeAmount();
-
-		ImGui::InputInt("FPS", &saveAnimStatus_.fps);
-		ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, 10 * saveAnimStatus_.fps); // Hard-coded limit
-		float duration = saveAnimStatus_.numFrames * saveAnimStatus_.inverseFps();
-		ImGui::SliderFloat("Duration", &duration, 0.0f, 10.0f, "%.3fs"); // Hard-coded limit
-
-		const nc::Vector2i uncappedFrameSize(canvas_.texWidth() * saveAnimStatus_.canvasResize, canvas_.texHeight() * saveAnimStatus_.canvasResize);
-		// Immediately-invoked function expression for const initialization
-		const nc::Vector2i frameSize = [&] {
-			nc::Vector2i size = uncappedFrameSize;
-			size.x = (size.x > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.x;
-			size.y = (size.y > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.y;
-			return size;
-		}();
-
-		auxString_.format("%d x %d", frameSize.x, frameSize.y);
-		if (uncappedFrameSize.x > frameSize.x || uncappedFrameSize.y > frameSize.y)
-			auxString_.formatAppend(" (capped from %d x %d)", uncappedFrameSize.x, uncappedFrameSize.y);
-		ImGui::Text("Frame size: %s", auxString_.data());
-
-		const int sideX = static_cast<int>(ceil(sqrt(saveAnimStatus_.numFrames)));
-		const int sideY = (sideX * (sideX - 1) > saveAnimStatus_.numFrames) ? sideX - 1 : sideX;
-		const nc::Vector2i uncappedSpritesheetSize(sideX * frameSize.x, sideY * frameSize.y);
-		// Immediately-invoked function expression for const initialization
-		const nc::Vector2i spritesheetSize = [&] {
-			nc::Vector2i size = uncappedSpritesheetSize;
-			size.x = (size.x > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.x;
-			size.y = (size.y > canvas_.maxTextureSize()) ? canvas_.maxTextureSize() : size.y;
-			return size;
-		}();
-
-		auxString_.format("%d x %d", spritesheetSize.x, spritesheetSize.y);
-		if (uncappedSpritesheetSize.x > spritesheetSize.x || uncappedSpritesheetSize.y > spritesheetSize.y)
-			auxString_.formatAppend(" (capped from %d x %d)", uncappedSpritesheetSize.x, uncappedSpritesheetSize.y);
-		ImGui::Text("Spritesheet size: %s", auxString_.data());
-
-		saveAnimStatus_.numFrames = static_cast<int>(duration * saveAnimStatus_.fps);
-		if (saveAnimStatus_.numFrames < 1)
-			saveAnimStatus_.numFrames = 1;
-
-		if (shouldSaveFrames_ || shouldSaveSpritesheet_)
-		{
-			const unsigned int numSavedFrames = saveAnimStatus_.numSavedFrames;
-			const float fraction = numSavedFrames / static_cast<float>(saveAnimStatus_.numFrames);
-			auxString_.format("Frame: %d/%d", numSavedFrames, saveAnimStatus_.numFrames);
-			ImGui::ProgressBar(fraction, ImVec2(0.0f, 0.0f), auxString_.data());
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::Cancel))
-				cancelRender();
-		}
-		else
-		{
-			if (ImGui::Button(Labels::SaveFrames))
-			{
-				if (renderGuiStatus_.filename.isEmpty())
-					pushStatusErrorMessage("Set a filename prefix before saving an animation");
-				else
-				{
-					animMgr_.play();
-					saveAnimStatus_.filename.format("%s_%03d.png", renderGuiStatus_.filename.data(), saveAnimStatus_.numSavedFrames);
-					shouldSaveFrames_ = true;
-					resizedCanvas_.resizeTexture(frameSize);
-				}
-			}
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::SaveSpritesheet))
-			{
-				if (renderGuiStatus_.filename.isEmpty())
-					pushStatusErrorMessage("Set a filename prefix before saving an animation");
-				else
-				{
-					animMgr_.play();
-					saveAnimStatus_.filename.format("%s.png", renderGuiStatus_.filename.data(), saveAnimStatus_.numSavedFrames);
-					shouldSaveSpritesheet_ = true;
-					saveAnimStatus_.sheetDestPos.set(0, 0);
-					resizedCanvas_.resizeTexture(canvas_.size() * saveAnimStatus_.canvasResize);
-					spritesheet_.resizeTexture(spritesheetSize);
-				}
-			}
-		}
+		for (unsigned int i = 0; i < theAnimMgr->anims().size(); i++)
+			createRecursiveAnimationsGui(theAnimMgr->animGroup(), i);
 	}
 }
 
@@ -978,21 +869,21 @@ void UserInterface::createAnimationGroupGui(AnimationGroup &parentGroup, unsigne
 	ASSERT(animGroup.type() == IAnimation::Type::PARALLEL_GROUP ||
 	       animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP);
 
-	auxString_.format("#%u: ", index);
+	ui::auxString.format("#%u: ", index);
 	if (animGroup.name.isEmpty() == false)
-		auxString_.formatAppend("\"%s\" (", animGroup.name.data());
+		ui::auxString.formatAppend("\"%s\" (", animGroup.name.data());
 	if (animGroup.type() == IAnimation::Type::PARALLEL_GROUP)
-		auxString_.append("Parallel Animation");
+		ui::auxString.append("Parallel Animation");
 	else if (animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP)
-		auxString_.append("Sequential Animation");
+		ui::auxString.append("Sequential Animation");
 	if (animGroup.name.isEmpty() == false)
-		auxString_.append(")");
-	auxString_.append("###AnimationGroup");
+		ui::auxString.append(")");
+	ui::auxString.append("###AnimationGroup");
 
-	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::TreeNodeEx(ui::auxString.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::InputText("Name", animGroup.name.data(), IAnimation::MaxNameLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &animGroup.name);
+		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &animGroup.name);
 
 		static int currentComboAnimType = 0;
 		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
@@ -1046,44 +937,44 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 	PropertyAnimation &anim = static_cast<PropertyAnimation &>(*parentGroup.anims()[index]);
 	ASSERT(anim.type() == IAnimation::Type::PROPERTY);
 
-	auxString_.format("#%u: ", index);
+	ui::auxString.format("#%u: ", index);
 	if (anim.name.isEmpty() == false)
-		auxString_.formatAppend("\"%s\" (", anim.name.data());
-	auxString_.formatAppend("%s property", anim.propertyName().data());
+		ui::auxString.formatAppend("\"%s\" (", anim.name.data());
+	ui::auxString.formatAppend("%s property", anim.propertyName().data());
 	if (anim.sprite() != nullptr && anim.sprite()->name.isEmpty() == false)
-		auxString_.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
+		ui::auxString.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
 	if (anim.name.isEmpty() == false)
-		auxString_.append(")");
-	auxString_.append("###PropertyAnimation");
+		ui::auxString.append(")");
+	ui::auxString.append("###PropertyAnimation");
 
 	static CurveAnimationGuiLimits limits;
-	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::TreeNodeEx(ui::auxString.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &anim.name);
+		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
 		ImGui::Separator();
 
-		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
-		if (spriteMgr_.sprites().isEmpty() == false)
+		int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
+		if (theSpriteMgr->sprites().isEmpty() == false)
 		{
 			if (spriteIndex < 0)
 				spriteIndex = selectedSpriteIndex_;
 
-			comboString_.clear();
-			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+			ui::comboString.clear();
+			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 			{
-				Sprite &sprite = *spriteMgr_.sprites()[i];
-				comboString_.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
-				comboString_.setLength(comboString_.length() + 1);
+				Sprite &sprite = *theSpriteMgr->sprites()[i];
+				ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+				ui::comboString.setLength(ui::comboString.length() + 1);
 			}
-			comboString_.setLength(comboString_.length() + 1);
+			ui::comboString.setLength(ui::comboString.length() + 1);
 			// Append a second '\0' to signal the end of the combo item list
-			comboString_[comboString_.length() - 1] = '\0';
+			ui::comboString[ui::comboString.length() - 1] = '\0';
 
-			ImGui::Combo("Sprite", &spriteIndex, comboString_.data());
-			anim.setSprite(spriteMgr_.sprites()[spriteIndex].get());
+			ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
+			anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
 
-			Sprite &sprite = *spriteMgr_.sprites()[spriteIndex];
+			Sprite &sprite = *theSpriteMgr->sprites()[spriteIndex];
 
 			static int currentComboProperty = -1;
 			const nctl::String &propertyName = anim.propertyName();
@@ -1111,15 +1002,15 @@ void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsi
 					break;
 				case Properties::Types::POSITION_X:
 					limits.minShift = -sprite.width() * 0.5f;
-					limits.maxShift = canvas_.texWidth() + sprite.width() * 0.5f;
-					limits.minScale = -canvas_.texWidth();
-					limits.maxScale = canvas_.texWidth();
+					limits.maxShift = theCanvas->texWidth() + sprite.width() * 0.5f;
+					limits.minScale = -theCanvas->texWidth();
+					limits.maxScale = theCanvas->texWidth();
 					break;
 				case Properties::Types::POSITION_Y:
 					limits.minShift = -sprite.height() * 0.5f;
-					limits.maxShift = canvas_.texHeight() + sprite.height() * 0.5f;
-					limits.minScale = -canvas_.texHeight();
-					limits.maxScale = canvas_.texHeight();
+					limits.maxShift = theCanvas->texHeight() + sprite.height() * 0.5f;
+					limits.minScale = -theCanvas->texHeight();
+					limits.maxScale = theCanvas->texHeight();
 					break;
 				case Properties::Types::ROTATION:
 					limits.minShift = 0.0f;
@@ -1195,47 +1086,47 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 	GridAnimation &anim = static_cast<GridAnimation &>(*parentGroup.anims()[index]);
 	ASSERT(anim.type() == IAnimation::Type::GRID);
 
-	auxString_.format("#%u: ", index);
+	ui::auxString.format("#%u: ", index);
 	if (anim.name.isEmpty() == false)
-		auxString_.formatAppend("\"%s\" (", anim.name.data());
+		ui::auxString.formatAppend("\"%s\" (", anim.name.data());
 	if (anim.function() != nullptr)
-		auxString_.formatAppend("%s grid", anim.function()->name().data());
+		ui::auxString.formatAppend("%s grid", anim.function()->name().data());
 	if (anim.sprite() != nullptr && anim.sprite()->name.isEmpty() == false)
-		auxString_.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
+		ui::auxString.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
 	if (anim.name.isEmpty() == false)
-		auxString_.append(")");
-	auxString_.append("###GridAnimation");
+		ui::auxString.append(")");
+	ui::auxString.append("###GridAnimation");
 
 	CurveAnimationGuiLimits limits;
 	limits.minScale = -10.0f;
 	limits.maxScale = 10.0f;
 	limits.minShift = -100.0f;
 	limits.maxShift = 100.0f;
-	if (ImGui::TreeNodeEx(auxString_.data(), ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::TreeNodeEx(ui::auxString.data(), ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
-		                 ImGuiInputTextFlags_CallbackResize, inputTextCallback, &anim.name);
+		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
 		ImGui::Separator();
 
-		int spriteIndex = spriteMgr_.spriteIndex(anim.sprite());
-		if (spriteMgr_.sprites().isEmpty() == false)
+		int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
+		if (theSpriteMgr->sprites().isEmpty() == false)
 		{
 			if (spriteIndex < 0)
 				spriteIndex = selectedSpriteIndex_;
 
-			comboString_.clear();
-			for (unsigned int i = 0; i < spriteMgr_.sprites().size(); i++)
+			ui::comboString.clear();
+			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 			{
-				Sprite &sprite = *spriteMgr_.sprites()[i];
-				comboString_.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
-				comboString_.setLength(comboString_.length() + 1);
+				Sprite &sprite = *theSpriteMgr->sprites()[i];
+				ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+				ui::comboString.setLength(ui::comboString.length() + 1);
 			}
-			comboString_.setLength(comboString_.length() + 1);
+			ui::comboString.setLength(ui::comboString.length() + 1);
 			// Append a second '\0' to signal the end of the combo item list
-			comboString_[comboString_.length() - 1] = '\0';
+			ui::comboString[ui::comboString.length() - 1] = '\0';
 
-			ImGui::Combo("Sprite", &spriteIndex, comboString_.data());
-			Sprite *sprite = spriteMgr_.sprites()[spriteIndex].get();
+			ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
+			Sprite *sprite = theSpriteMgr->sprites()[spriteIndex].get();
 			if (anim.sprite() != sprite)
 				anim.setSprite(sprite);
 		}
@@ -1243,22 +1134,22 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 			ImGui::TextDisabled("There are no sprites to animate");
 
 		static int currentComboFunction = -1;
-		comboString_.clear();
+		ui::comboString.clear();
 		for (unsigned int i = 0; i < GridFunctionLibrary::gridFunctions().size(); i++)
 		{
 			const nctl::String &functionName = GridFunctionLibrary::gridFunctions()[i].name();
-			comboString_.formatAppend("%s", functionName.data());
-			comboString_.setLength(comboString_.length() + 1);
+			ui::comboString.formatAppend("%s", functionName.data());
+			ui::comboString.setLength(ui::comboString.length() + 1);
 
 			if (anim.function() && functionName == anim.function()->name())
 				currentComboFunction = i;
 		}
-		comboString_.setLength(comboString_.length() + 1);
+		ui::comboString.setLength(ui::comboString.length() + 1);
 		// Append a second '\0' to signal the end of the combo item list
-		comboString_[comboString_.length() - 1] = '\0';
+		ui::comboString[ui::comboString.length() - 1] = '\0';
 		ASSERT(currentComboFunction > -1);
 
-		ImGui::Combo("Function", &currentComboFunction, comboString_.data());
+		ImGui::Combo("Function", &currentComboFunction, ui::comboString.data());
 		const GridFunction *gridFunction = &GridFunctionLibrary::gridFunctions()[currentComboFunction];
 		if (anim.function() != gridFunction)
 			anim.setFunction(gridFunction);
@@ -1268,7 +1159,7 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 			for (unsigned int i = 0; i < anim.function()->numParameters(); i++)
 			{
 				const GridFunction::ParameterInfo &paramInfo = anim.function()->parameterInfo(i);
-				auxString_.format("%s##GridFunction%u", paramInfo.name.data(), i);
+				ui::auxString.format("%s##GridFunction%u", paramInfo.name.data(), i);
 				float minValue = paramInfo.minValue.value0;
 				float maxValue = paramInfo.maxValue.value0;
 
@@ -1288,10 +1179,10 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 				switch (paramInfo.type)
 				{
 					case GridFunction::ParameterType::FLOAT:
-						ImGui::SliderFloat(auxString_.data(), &anim.parameters()[i].value0, minValue, maxValue);
+						ImGui::SliderFloat(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
 						break;
 					case GridFunction::ParameterType::VECTOR2F:
-						ImGui::SliderFloat2(auxString_.data(), &anim.parameters()[i].value0, minValue, maxValue);
+						ImGui::SliderFloat2(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
 						break;
 				}
 
@@ -1309,8 +1200,8 @@ void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned
 				}
 
 				ImGui::SameLine();
-				auxString_.format("%s##GridFunction%u", Labels::Reset, i);
-				if (ImGui::Button(auxString_.data()))
+				ui::auxString.format("%s##GridFunction%u", Labels::Reset, i);
+				if (ImGui::Button(ui::auxString.data()))
 				{
 					anim.parameters()[i].value0 = paramInfo.initialValue.value0;
 					anim.parameters()[i].value1 = paramInfo.initialValue.value1;
@@ -1369,20 +1260,20 @@ void UserInterface::SpriteProperties::restore(Sprite &sprite)
 
 void UserInterface::createCanvasWindow()
 {
-	const float canvasZoom = canvasGuiStatus_.zoomAmount();
+	const float canvasZoom = canvasGuiSection_.zoomAmount();
 
-	ImGui::SetNextWindowSize(ImVec2(canvas_.texWidth() * canvasZoom, canvas_.texHeight() * canvasZoom), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImGuiCond_Once);
 	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
-	ImGui::Image(canvas_.imguiTexId(), ImVec2(canvas_.texWidth() * canvasZoom, canvas_.texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	ImGui::Image(theCanvas->imguiTexId(), ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	hoveringOnCanvas = false;
-	if (ImGui::IsItemHovered() && spriteMgr_.sprites().isEmpty() == false)
+	if (ImGui::IsItemHovered() && theSpriteMgr->sprites().isEmpty() == false)
 	{
 		hoveringOnCanvas = true;
 		const ImVec2 mousePos = ImGui::GetMousePos();
 		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
-		Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+		Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
 		const nc::Vector2f newSpriteAbsPos(roundf(relativePos.x / canvasZoom), roundf(relativePos.y / canvasZoom));
 		const nc::Vector2f spriteRelativePos(newSpriteAbsPos - sprite.absPosition());
 
@@ -1426,7 +1317,7 @@ void UserInterface::createCanvasWindow()
 				{
 					// Update grid anchor point while pressing Ctrl, clicking and moving the mouse
 					sprite.gridAnchorPoint = spriteRelativePos;
-					animMgr_.assignGridAnchorToParameters(&sprite);
+					theAnimMgr->assignGridAnchorToParameters(&sprite);
 				}
 			}
 			if (ImGui::GetIO().KeyShift && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
@@ -1470,12 +1361,12 @@ void UserInterface::createCanvasWindow()
 
 void UserInterface::createTexRectWindow()
 {
-	const float canvasZoom = canvasGuiStatus_.zoomAmount();
+	const float canvasZoom = canvasGuiSection_.zoomAmount();
 	static MouseStatus mouseStatus_ = MouseStatus::IDLE;
 	static ImVec2 startPos(0.0f, 0.0f);
 	static ImVec2 endPos(0.0f, 0.0f);
 
-	Sprite &sprite = *spriteMgr_.sprites()[selectedSpriteIndex_];
+	Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
 	nc::Recti texRect = sprite.texRect();
 
 	ImVec2 size = ImVec2(sprite.texture().width() * canvasZoom, sprite.texture().height() * canvasZoom);
@@ -1648,9 +1539,9 @@ void UserInterface::mouseWheelCanvasZoom()
 		const float wheel = ImGui::GetIO().MouseWheel;
 
 		if (wheel > 0.0f)
-			canvasGuiStatus_.increaseZoom();
+			canvasGuiSection_.increaseZoom();
 		else if (wheel < 0.0f)
-			canvasGuiStatus_.decreaseZoom();
+			canvasGuiSection_.decreaseZoom();
 	}
 }
 
@@ -1663,11 +1554,11 @@ void UserInterface::visitSprite(Sprite &sprite)
 
 void UserInterface::removeSelectedSprite()
 {
-	if (spriteMgr_.sprites().isEmpty() == false)
+	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
-		animMgr_.removeSprite(spriteMgr_.sprites()[selectedSpriteIndex_].get());
-		if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < spriteMgr_.sprites().size())
-			spriteMgr_.sprites().removeAt(selectedSpriteIndex_);
+		theAnimMgr->removeSprite(theSpriteMgr->sprites()[selectedSpriteIndex_].get());
+		if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
+			theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
 		if (selectedSpriteIndex_ > 0)
 			selectedSpriteIndex_--;
 	}

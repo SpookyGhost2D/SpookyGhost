@@ -87,6 +87,36 @@ void serialize(LuaSerializer &ls, const char *name, const nc::Colorf &color)
 	ls.buffer().formatAppend("%s = {r = %f, g = %f, b = %f, a = %f},\n", name, color.r(), color.g(), color.b(), color.a());
 }
 
+void serializeGlobal(LuaSerializer &ls, const char *name, bool boolean)
+{
+	ls.buffer().formatAppend("%s = %s\n", name, boolean ? "true" : "false");
+}
+
+void serializeGlobal(LuaSerializer &ls, const char *name, int number)
+{
+	ls.buffer().formatAppend("%s = %d\n", name, number);
+}
+
+void serializeGlobal(LuaSerializer &ls, const char *name, unsigned int number)
+{
+	ls.buffer().formatAppend("%s = %u\n", name, number);
+}
+
+void serializeGlobal(LuaSerializer &ls, const char *name, float number)
+{
+	ls.buffer().formatAppend("%s = %f\n", name, number);
+}
+
+void serializeGlobal(LuaSerializer &ls, const char *name, const nctl::String &string)
+{
+	ls.buffer().formatAppend("%s = \"%s\"\n", name, string.data());
+}
+
+void serializeGlobal(LuaSerializer &ls, const char *name, const char *string)
+{
+	ls.buffer().formatAppend("%s = \"%s\"\n", name, string);
+}
+
 }
 
 namespace Deserializers {
@@ -147,12 +177,6 @@ float deserialize<float>(LuaSerializer &ls, const char *name)
 }
 
 template <>
-nctl::String deserialize<nctl::String>(LuaSerializer &ls, const char *name)
-{
-	return nc::LuaUtils::retrieveField<const char *>(ls.luaState(), -1, name);
-}
-
-template <>
 const char *deserialize<const char *>(LuaSerializer &ls, const char *name)
 {
 	return nc::LuaUtils::retrieveField<const char *>(ls.luaState(), -1, name);
@@ -198,6 +222,36 @@ template <>
 nc::Colorf deserialize<nc::Colorf>(LuaSerializer &ls, const char *name)
 {
 	return nc::LuaColorUtils::retrieveTableField(ls.luaState(), -1, name);
+}
+
+template <>
+bool deserializeGlobal<bool>(LuaSerializer &ls, const char *name)
+{
+	return nc::LuaUtils::retrieveGlobal<bool>(ls.luaState(), name);
+}
+
+template <>
+int deserializeGlobal<int>(LuaSerializer &ls, const char *name)
+{
+	return nc::LuaUtils::retrieveGlobal<int>(ls.luaState(), name);
+}
+
+template <>
+unsigned int deserializeGlobal<unsigned int>(LuaSerializer &ls, const char *name)
+{
+	return nc::LuaUtils::retrieveGlobal<unsigned int>(ls.luaState(), name);
+}
+
+template <>
+float deserializeGlobal<float>(LuaSerializer &ls, const char *name)
+{
+	return nc::LuaUtils::retrieveGlobal<float>(ls.luaState(), name);
+}
+
+template <>
+const char *deserializeGlobal<const char *>(LuaSerializer &ls, const char *name)
+{
+	return nc::LuaUtils::retrieveGlobal<const char *>(ls.luaState(), name);
 }
 
 void deserialize(LuaSerializer &ls, const char *name, bool &boolean)
@@ -266,14 +320,45 @@ void deserialize(LuaSerializer &ls, const char *name, nc::Colorf &color)
 	color = nc::LuaColorUtils::retrieveTableField(ls.luaState(), -1, name);
 }
 
+void deserializeGlobal(LuaSerializer &ls, const char *name, bool &boolean)
+{
+	boolean = nc::LuaUtils::retrieveGlobal<bool>(ls.luaState(), name);
+}
+
+void deserializeGlobal(LuaSerializer &ls, const char *name, int &number)
+{
+	number = nc::LuaUtils::retrieveGlobal<int>(ls.luaState(), name);
+}
+
+void deserializeGlobal(LuaSerializer &ls, const char *name, unsigned int &number)
+{
+	number = nc::LuaUtils::retrieveGlobal<unsigned int>(ls.luaState(), name);
+}
+
+void deserializeGlobal(LuaSerializer &ls, const char *name, float &number)
+{
+	number = nc::LuaUtils::retrieveGlobal<float>(ls.luaState(), name);
+}
+
+void deserializeGlobal(LuaSerializer &ls, const char *name, nctl::String &string)
+{
+	string = nc::LuaUtils::retrieveGlobal<const char *>(ls.luaState(), name);
+}
+
+void deserializeGlobal(LuaSerializer &ls, const char *name, char *string)
+{
+	size_t length;
+	nc::LuaUtils::retrieveGlobal(ls.luaState(), name, string, &length);
+}
+
 }
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-LuaSerializer::LuaSerializer()
-    : bufferString_(16 * 1024), context_(nullptr) // TODO: configure size
+LuaSerializer::LuaSerializer(unsigned int bufferSize)
+    : bufferString_(bufferSize), context_(nullptr)
 {
 }
 

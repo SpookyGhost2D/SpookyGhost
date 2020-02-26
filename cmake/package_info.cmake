@@ -9,13 +9,12 @@ set(PACKAGE_REVERSE_DNS "io.itch.encelo.spookyghost")
 set(PACKAGE_INCLUDE_DIRS include)
 
 set(PACKAGE_SOURCES
+	include/singletons.h
 	include/main.h
 	include/shader_strings.h
-	include/gui_labels.h
 	include/Canvas.h
 	include/Sprite.h
 	include/Texture.h
-	include/UserInterface.h
 	include/RenderingResources.h
 	include/EasingCurve.h
 	include/IAnimation.h
@@ -33,15 +32,19 @@ set(PACKAGE_SOURCES
 	include/LuaSerializer.h
 	include/LuaSaver.h
 	include/Serializers.h
-	include/CanvasGuiStatus.h
-	include/RenderGuiStatus.h
 
+	include/gui/gui_labels.h
+	include/gui/gui_common.h
+	include/gui/UserInterface.h
+	include/gui/CanvasGuiSection.h
+	include/gui/RenderGuiSection.h
+
+	src/singletons.cpp
 	src/main.cpp
 	src/shader_strings.cpp
 	src/Canvas.cpp
 	src/Sprite.cpp
 	src/Texture.cpp
-	src/UserInterface.cpp
 	src/RenderingResources.cpp
 	src/EasingCurve.cpp
 	src/CurveAnimation.cpp
@@ -57,8 +60,13 @@ set(PACKAGE_SOURCES
 	src/LuaSerializer.cpp
 	src/LuaSaver.cpp
 	src/Serializers.cpp
-	src/CanvasGuiStatus.cpp
-	src/RenderGuiStatus.cpp
+
+	src/gui/gui_common.cpp
+	src/gui/UserInterface.cpp
+	src/gui/CanvasGuiSection.cpp
+	src/gui/RenderGuiSection.cpp
+	src/gui/config_window.cpp
+	src/gui/style.cpp
 )
 
 function(callback_before_target)
@@ -82,6 +90,8 @@ function(callback_after_target)
 	endif()
 
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND IS_DIRECTORY ${PACKAGE_DATA_DIR})
+		generate_scripts_list()
+
 		include(custom_fontawesome)
 		include(custom_iconfontcppheaders)
 
@@ -103,4 +113,38 @@ function(callback_end)
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND IS_DIRECTORY ${PACKAGE_DATA_DIR}/docs)
 		install(DIRECTORY ${PACKAGE_DATA_DIR}/docs DESTINATION . PATTERN "*.adoc" EXCLUDE)
 	endif()
+endfunction()
+
+function(generate_scripts_list)
+	set(SCRIPTS_DIR ${PACKAGE_DATA_DIR}/data/scripts)
+	set(NUM_SCRIPTS 0)
+	if(IS_DIRECTORY ${SCRIPTS_DIR})
+		file(GLOB SCRIPT_FILES "${SCRIPTS_DIR}/*.lua")
+		list(LENGTH SCRIPT_FILES NUM_SCRIPTS)
+		set(SCRIPT_FILES ${SCRIPT_FILES} PARENT_SCOPE)
+	endif()
+
+	set(SCRIPTS_H_FILE "${GENERATED_INCLUDE_DIR}/script_strings.h")
+	set(SCRIPTS_CPP_FILE "${GENERATED_SOURCE_DIR}/script_strings.cpp")
+
+	get_filename_component(SCRIPTS_H_FILENAME ${SCRIPTS_H_FILE} NAME)
+	file(WRITE ${SCRIPTS_H_FILE} "#ifndef PACKAGE_SCRIPT_STRINGS\n")
+	file(APPEND ${SCRIPTS_H_FILE} "#define PACKAGE_SCRIPT_STRINGS\n\n")
+	file(APPEND ${SCRIPTS_H_FILE} "struct ScriptStrings\n{\n")
+	file(APPEND ${SCRIPTS_H_FILE} "\tstatic const int Count = ${NUM_SCRIPTS};\n")
+	file(APPEND ${SCRIPTS_H_FILE} "\tstatic char const * const Names[Count];\n};\n\n")
+	file(APPEND ${SCRIPTS_H_FILE} "#endif\n")
+
+	file(WRITE ${SCRIPTS_CPP_FILE} "#include \"${SCRIPTS_H_FILENAME}\"\n\n")
+	file(APPEND ${SCRIPTS_CPP_FILE} "char const * const ScriptStrings::Names[ScriptStrings::Count] =\n")
+	file(APPEND ${SCRIPTS_CPP_FILE} "{\n")
+	foreach(SCRIPT_FILE ${SCRIPT_FILES})
+		get_filename_component(SCRIPT_FILENAME ${SCRIPT_FILE} NAME)
+		file(APPEND ${SCRIPTS_CPP_FILE} "\t\"${SCRIPT_FILENAME}\",\n")
+	endforeach()
+	file(APPEND ${SCRIPTS_CPP_FILE} "};\n")
+
+	target_sources(${PACKAGE_EXE_NAME} PRIVATE ${SCRIPTS_H_FILE} ${SCRIPTS_CPP_FILE})
+	list(APPEND GENERATED_SOURCES ${SCRIPTS_CPP_FILE})
+	set(GENERATED_SOURCES ${GENERATED_SOURCES} PARENT_SCOPE)
 endfunction()
