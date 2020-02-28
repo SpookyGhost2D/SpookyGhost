@@ -9,6 +9,7 @@
 #include "AnimationManager.h"
 #include "gui/RenderGuiSection.h"
 #include "Configuration.h"
+#include "singletons.h"
 
 #include "Serializers.h"
 #include "LuaSerializer.h"
@@ -331,7 +332,11 @@ bool deserialize(LuaSerializer &ls, const char *name, Canvas &canvas)
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture)
 {
 	const char *textureName = deserialize<const char *>(ls, "name");
-	texture = nctl::makeUnique<Texture>(textureName);
+	static nctl::String texturePath(256);
+	ui::checkPathOrConcatenate(theCfg.texturesPath, textureName, texturePath);
+	texture = nctl::makeUnique<Texture>(texturePath.data());
+	// Set the relative path as the texture name to allow for relocatable project files
+	texture->setName(textureName);
 }
 
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite)

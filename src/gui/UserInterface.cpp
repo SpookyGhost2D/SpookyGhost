@@ -206,12 +206,12 @@ void UserInterface::menuOpen()
 bool UserInterface::openProject(const char *filename)
 {
 	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
-	if (nc::IFile::access(filename, nc::IFile::AccessMode::READABLE) &&
-	    theSaver->load(filename, data))
+	const bool fileExists = ui::checkPathOrConcatenate(theCfg.scriptsPath, filename, ui::filePath);
+	if (fileExists && theSaver->load(ui::filePath.data(), data))
 	{
 		canvasGuiSection_.setResize(theCanvas->size());
 		renderGuiSection_.setResize(renderGuiSection_.saveAnimStatus().canvasResize);
-		ui::auxString.format("Loaded project file \"%s\"\n",filename);
+		ui::auxString.format("Loaded project file \"%s\"\n",ui::filePath.data());
 		pushStatusInfoMessage(ui::auxString.data());
 
 		return true;
@@ -223,10 +223,10 @@ bool UserInterface::openProject(const char *filename)
 void UserInterface::menuSave()
 {
 	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
-	ui::filePath = filename_;
-	if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE))
-		ui::filePath = ui::joinPath(theCfg.scriptsPath, filename_);
+	ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
 	theSaver->save(ui::filePath.data(), data);
+	ui::auxString.format("Saved project file \"%s\"\n",ui::filePath.data());
+	pushStatusInfoMessage(ui::auxString.data());
 }
 
 bool UserInterface::openDocumentationEnabled()
@@ -347,8 +347,7 @@ void UserInterface::createMenuBar()
 				{
 					if (ImGui::MenuItem(ScriptStrings::Names[i]))
 					{
-						nctl::String filePath = ui::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]);
-						if (openProject(filePath.data()))
+						if (openProject(ScriptStrings::Names[i]))
 							filename_ = ScriptStrings::Names[i];
 					}
 				}
@@ -404,11 +403,7 @@ void UserInterface::createGuiPopups()
 		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
 		                     ui::inputTextCallback, &filename_) || ImGui::Button(Labels::Ok))
 		{
-			ui::filePath = filename_;
-			if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE))
-				ui::filePath = ui::joinPath(theCfg.scriptsPath, filename_);
-
-			if (openProject(ui::filePath.data()))
+			if (openProject(filename_.data()))
 				requestCloseModal = true;
 			else
 			{
@@ -444,11 +439,8 @@ void UserInterface::createGuiPopups()
 		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
 		                     ui::inputTextCallback, &filename_) || ImGui::Button(Labels::Ok))
 		{
-			ui::filePath = filename_;
-			if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE))
-				ui::filePath = ui::joinPath(theCfg.scriptsPath, filename_);
-
-			if (nc::IFile::access(ui::filePath.data(), nc::IFile::AccessMode::READABLE) && allowOverwrite == false)
+			const bool fileExists = ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
+			if (fileExists && allowOverwrite == false)
 			{
 				filename_ = Labels::FileExists;
 				ui::auxString.format("Could not overwrite existing file \"%s\"\n", ui::filePath.data());
@@ -457,6 +449,8 @@ void UserInterface::createGuiPopups()
 			else
 			{
 				theSaver->save(ui::filePath.data(), data);
+				ui::auxString.format("Saved project file \"%s\"\n",ui::filePath.data());
+				pushStatusInfoMessage(ui::auxString.data());
 				requestCloseModal = true;
 			}
 		}
@@ -503,7 +497,8 @@ void UserInterface::createSpritesGui()
 			ui::auxString.format("%s##Texture", Labels::Remove);
 			if (ImGui::Button(ui::auxString.data()))
 			{
-				for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+				// Deleting backwards without iterators
+				for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
 				{
 					Sprite &sprite = *theSpriteMgr->sprites()[i];
 					if (&sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex].get())
@@ -522,12 +517,12 @@ void UserInterface::createSpritesGui()
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
 		{
-			ui::filePath = texFilename_;
-			if (nc::IFile::access(ui::filePath.data(), nc::IFile::AccessMode::READABLE) == false)
-				ui::filePath = ui::joinPath(theCfg.texturesPath, texFilename_);
-			if (nc::IFile::access(ui::filePath.data(), nc::IFile::AccessMode::READABLE))
+			const bool fileExists = ui::checkPathOrConcatenate(theCfg.texturesPath, texFilename_, ui::filePath);
+			if (fileExists)
 			{
 				theSpriteMgr->textures().pushBack(nctl::makeUnique<Texture>(ui::filePath.data()));
+				// Set the relative path as the texture name to allow for relocatable project files
+				theSpriteMgr->textures().back()->setName(texFilename_);
 				ui::auxString.format("Loaded texture \"%s\"", ui::filePath.data());
 				selectedTextureIndex = theSpriteMgr->textures().size() - 1;
 			}
@@ -1287,6 +1282,9 @@ void UserInterface::createCanvasWindow()
 	hoveringOnCanvas = false;
 	if (ImGui::IsItemHovered() && theSpriteMgr->sprites().isEmpty() == false)
 	{
+		// Disable keyboard navigation for an easier sprite move with arrow keys
+		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
+
 		hoveringOnCanvas = true;
 		const ImVec2 mousePos = ImGui::GetMousePos();
 		const ImVec2 relativePos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
@@ -1369,6 +1367,11 @@ void UserInterface::createCanvasWindow()
 			shiftAndClick = false;
 			ctrlAndClick = false;
 		}
+	}
+	else
+	{
+		// Enable keyboard navigation again
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	}
 
 	mouseWheelCanvasZoom();

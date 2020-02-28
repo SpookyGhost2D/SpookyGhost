@@ -98,6 +98,7 @@ void LuaSaver::save(const char *filename, const Data &data)
 	serializer_->reset();
 
 	Serializers::serializeGlobal(*serializer_, "version", ProjectVersion);
+	serializer_->buffer().append("\n");
 	Serializers::serialize(*serializer_, "canvas", data.canvas);
 	serializer_->buffer().append("\n");
 

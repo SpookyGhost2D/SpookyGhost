@@ -100,8 +100,8 @@ class Sprite
 	inline Sprite *parent() { return parent_; }
 	void setParent(Sprite *parent);
 
-	inline int absWidth() const { return width_ * absScaleFactor_.x; }
-	inline int absHeight() const { return height_ * absScaleFactor_.y; }
+	inline int absWidth() const { return static_cast<int>(width_ * absScaleFactor_.x); }
+	inline int absHeight() const { return static_cast<int>(height_ * absScaleFactor_.y); }
 
 	inline const nc::Vector2f absPosition() const { return absPosition_; }
 	inline void setAbsPosition(const nc::Vector2f position) { setAbsPosition(position.x, position.y); }

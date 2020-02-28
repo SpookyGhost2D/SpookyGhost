@@ -4,6 +4,8 @@
 #include <ncine/imgui.h>
 #include <nctl/String.h>
 
+namespace nc = ncine;
+
 namespace ui {
 	static const unsigned int MaxStringLength = 256;
 
@@ -14,6 +16,7 @@ namespace ui {
 	int inputTextCallback(ImGuiInputTextCallbackData *data);
 
 	nctl::String joinPath(const nctl::String &first, const nctl::String &second);
+	bool checkPathOrConcatenate(const nctl::String &pathToConcatenate, const nctl::String &pathToCheck, nctl::String &destString);
 };
 
 #endif
