@@ -154,7 +154,10 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 		else if (event.sym == nc::KeySym::Q)
 			nc::theApplication().quit();
 	}
-	if (event.sym == nc::KeySym::DELETE)
+
+	if (event.sym == nc::KeySym::F1 && ui_->openDocumentationEnabled())
+		ui_->openDocumentation();
+	else if (event.sym == nc::KeySym::DELETE)
 		ui_->removeSelectedSpriteWithKey();
 	else if (event.sym == nc::KeySym::RIGHT)
 		ui_->moveSprite(1, 0);

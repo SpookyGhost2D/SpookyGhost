@@ -48,6 +48,9 @@ class UserInterface
 	bool openProject(const char *filename);
 	void menuOpen();
 	void menuSave();
+	bool openDocumentationEnabled();
+	void openDocumentation();
+
 	void createGui();
 
   private:
@@ -141,6 +144,7 @@ class UserInterface
 	void visitSprite(Sprite &sprite);
 	void removeSelectedSprite();
 	void sanitizeConfigValues();
+	void openFile(const char *filename);
 
 	friend class RenderGuiSection;
 };

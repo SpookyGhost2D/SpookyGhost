@@ -17,6 +17,7 @@
 #define TEXT_MENU_FILE_SAVEAS "Save as..."
 #define TEXT_MENU_FILE_CONFIGURATION "Configuration"
 #define TEXT_MENU_FILE_QUIT "Quit"
+#define TEXT_MENU_DOCUMENTATION "Documentation"
 #define TEXT_MENU_ABOUT "About"
 
 #define TEXT_HEADER_CANVAS "Canvas"
@@ -61,6 +62,7 @@ static const char *Save = TEXT_MENU_FILE_SAVE;
 static const char *SaveAs = TEXT_MENU_FILE_SAVEAS;
 static const char *Configuration = TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = TEXT_MENU_FILE_QUIT;
+static const char *Documentation = TEXT_MENU_DOCUMENTATION;
 static const char *About = TEXT_MENU_ABOUT;
 
 static const char *Canvas = TEXT_HEADER_CANVAS;
@@ -107,6 +109,7 @@ static const char *Save = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVE;
 static const char *SaveAs = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVEAS;
 static const char *Configuration = ICON_FA_TOOLS FA5_SPACING TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = ICON_FA_POWER_OFF FA5_SPACING TEXT_MENU_FILE_QUIT;
+static const char *Documentation = ICON_FA_QUESTION_CIRCLE FA5_SPACING TEXT_MENU_DOCUMENTATION;
 static const char *About = ICON_FA_INFO_CIRCLE FA5_SPACING TEXT_MENU_ABOUT;
 
 static const char *Canvas = ICON_FA_PAINT_ROLLER FA5_SPACING TEXT_HEADER_CANVAS;

@@ -37,6 +37,8 @@ const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 // clang-format on
 
+const char* docsFile = "../docs/documentation.html";
+
 static bool requestCloseModal = false;
 static bool openModal = false;
 static bool saveAsModal = false;
@@ -227,6 +229,18 @@ void UserInterface::menuSave()
 	theSaver->save(ui::filePath.data(), data);
 }
 
+bool UserInterface::openDocumentationEnabled()
+{
+	nctl::String docsPath = ui::joinPath(nc::IFile::dataPath(), docsFile);
+	return nc::IFile::access(docsPath.data(), nc::IFile::AccessMode::READABLE);
+}
+
+void UserInterface::openDocumentation()
+{
+	nctl::String docsPath = ui::joinPath(nc::IFile::dataPath(), docsFile);
+	openFile(docsPath.data());
+}
+
 void UserInterface::createGui()
 {
 	if (lastStatus_.secondsSince() >= 2.0f)
@@ -356,8 +370,11 @@ void UserInterface::createMenuBar()
 				nc::theApplication().quit();
 			ImGui::EndMenu();
 		}
-		if (ImGui::BeginMenu("?"))
+		if (ImGui::BeginMenu("Help"))
 		{
+			if (ImGui::MenuItem(Labels::Documentation, "F1", false, openDocumentationEnabled()))
+				openDocumentation();
+
 			if (ImGui::MenuItem(Labels::About))
 				showAboutWindow = true;
 

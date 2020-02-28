@@ -67,6 +67,7 @@ set(PACKAGE_SOURCES
 	src/gui/RenderGuiSection.cpp
 	src/gui/config_window.cpp
 	src/gui/style.cpp
+	src/gui/openfile.cpp
 )
 
 function(callback_before_target)
