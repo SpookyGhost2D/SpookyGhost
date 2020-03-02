@@ -8,7 +8,7 @@
 #include <ncine/TimeStamp.h>
 
 #include "gui/CanvasGuiSection.h"
-#include "gui/RenderGuiSection.h"
+#include "gui/RenderGuiWindow.h"
 
 class Canvas;
 class SpriteManager;
@@ -39,7 +39,7 @@ class UserInterface
 	void cancelRender();
 
 	void closeModalsAndAbout();
-	void removeSelectedSpriteWithKey();
+	void pressDeleteKey();
 	void moveSprite(int xDiff, int yDiff);
 	bool menuNewEnabled();
 	bool menuSaveEnabled();
@@ -50,6 +50,7 @@ class UserInterface
 	void menuSave();
 	bool openDocumentationEnabled();
 	void openDocumentation();
+	void toggleAnimation();
 
 	void createGui();
 
@@ -101,12 +102,14 @@ class UserInterface
 	};
 	SpriteProperties spriteProps_;
 	int selectedSpriteIndex_;
+	int selectedTextureIndex_;
+	IAnimation *selectedAnimation_;
 
 	/// Used to keep track of which node can be the parent of the selected one
 	nctl::Array<SpriteStruct> spriteGraph_;
 
 	CanvasGuiSection canvasGuiSection_;
-	RenderGuiSection renderGuiSection_;
+	RenderGuiWindow renderGuiWindow_;
 
 	nctl::String filename_ = nctl::String(ui::MaxStringLength);
 	nctl::String texFilename_ = nctl::String(ui::MaxStringLength);
@@ -122,17 +125,19 @@ class UserInterface
 	void createMenuBar();
 	void createGuiPopups();
 
-	void createSpritesGui();
-	void createAnimationsGui();
+	void createToolbarWindow();
+	void createTexturesWindow();
+	void createSpritesWindow();
+	void createAnimationListEntry(IAnimation &anim, unsigned int index);
+	void createAnimationsWindow();
+
+	void createSpriteWindow();
+	void createAnimationWindow();
 
 	void createAnimationStateGui(IAnimation &anim);
 	void createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits);
-	void createAnimationRemoveButton(AnimationGroup &parentGroup, unsigned int index);
-
-	void createRecursiveAnimationsGui(AnimationGroup &parentGroup, unsigned int index);
-	void createAnimationGroupGui(AnimationGroup &parentGroup, unsigned int index);
-	void createPropertyAnimationGui(AnimationGroup &parentGroup, unsigned int index);
-	void createGridAnimationGui(AnimationGroup &parentGroup, unsigned int index);
+	void createPropertyAnimationGui(PropertyAnimation &anim);
+	void createGridAnimationGui(GridAnimation &anim);
 
 	void createCanvasWindow();
 	void createTexRectWindow();
@@ -146,7 +151,7 @@ class UserInterface
 	void sanitizeConfigValues();
 	void openFile(const char *filename);
 
-	friend class RenderGuiSection;
+	friend class RenderGuiWindow;
 };
 
 #endif

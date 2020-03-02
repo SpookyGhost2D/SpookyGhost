@@ -3,7 +3,7 @@
 #include "Texture.h"
 #include "AnimationManager.h"
 #include "GridFunctionLibrary.h"
-#include "gui/RenderGuiSection.h"
+#include "gui/RenderGuiWindow.h"
 #include "Configuration.h"
 
 #include "Serializers.h"

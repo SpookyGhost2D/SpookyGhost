@@ -1,5 +1,6 @@
 #include <ncine/imgui.h>
 #include "gui/gui_labels.h"
+#include "gui/gui_common.h"
 #include "gui/CanvasGuiSection.h"
 #include "Canvas.h"
 
@@ -9,59 +10,73 @@
 
 void CanvasGuiSection::create(Canvas &canvas)
 {
-	if (ImGui::CollapsingHeader(Labels::Canvas))
+	ui::auxString.format("Zoom: %.2f" ,zoomAmount());
+	if (ImGui::Button(ui::auxString.data()))
+		resetZoom();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::PlusIcon))
+		increaseZoom();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::MinusIcon))
+		decreaseZoom();
+
+	ImGui::SameLine();
+	ImGui::ColorEdit4("Background", canvas.backgroundColor.data(), ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs);
+	ImGui::SameLine();
+
+	currentComboResize_ = static_cast<int>(resizePreset_);
+	ui::comboString.clear();
+	for (unsigned int i = 0; i < IM_ARRAYSIZE(ResizeStrings); i++)
 	{
-		canvasZoomRadio_ = static_cast<int>(zoomLevel_);
-
-		ImGui::PushID("Canvas");
-		ImGui::Text("Zoom:");
-		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasZoomRadio_, CanvasGuiSection::ZoomLevel::X1_8);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasZoomRadio_, CanvasGuiSection::ZoomLevel::X1_4);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasZoomRadio_, CanvasGuiSection::ZoomLevel::X1_2);
-		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasZoomRadio_, CanvasGuiSection::ZoomLevel::X1);
-		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasZoomRadio_, CanvasGuiSection::ZoomLevel::X2);
-		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasZoomRadio_, CanvasGuiSection::ZoomLevel::X4);
-		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasZoomRadio_, CanvasGuiSection::ZoomLevel::X8);
-		ImGui::PopID();
-		zoomLevel_ = static_cast<CanvasGuiSection::ZoomLevel>(canvasZoomRadio_);
-
-		static int currentComboResize = 0;
-		currentComboResize = static_cast<int>(resizePreset_);
-		ImGui::Combo("Presets", &currentComboResize, ResizeStrings, IM_ARRAYSIZE(ResizeStrings));
-		resizePreset_ = static_cast<CanvasGuiSection::ResizePreset>(currentComboResize);
-		if (currentComboResize == CanvasGuiSection::ResizePreset::CUSTOM)
-			ImGui::InputInt2("Custom Size", customCanvasSize_.data());
-		else
-			customCanvasSize_ = canvas.size();
-
-		nc::Vector2i desiredCanvasSize = resizeVector();
-
-		if (desiredCanvasSize.x < 4)
-			desiredCanvasSize.x = 4;
-		else if (desiredCanvasSize.x > canvas.maxTextureSize())
-			desiredCanvasSize.x = canvas.maxTextureSize();
-		if (desiredCanvasSize.y < 4)
-			desiredCanvasSize.y = 4;
-		else if (desiredCanvasSize.y > canvas.maxTextureSize())
-			desiredCanvasSize.y = canvas.maxTextureSize();
-
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Apply) &&
-			(canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y))
+		ui::comboString.formatAppend("%s", ResizeStrings[i]);
+		if (ResizePreset(i) != ResizePreset::CUSTOM &&
+		    canvas.size().x == resizeVector(ResizePreset(i)).x &&
+		    canvas.size().y == resizeVector(ResizePreset(i)).y)
 		{
-			canvas.resizeTexture(desiredCanvasSize);
+			ui::comboString.formatAppend(" %s", Labels::SelectedIcon);
 		}
-
-		ImGui::Text("Size: %d x %d", canvas.texWidth(), canvas.texHeight());
-		ImGui::ColorEdit4("Background", canvas.backgroundColor.data(), ImGuiColorEditFlags_AlphaBar);
+		ui::comboString.setLength(ui::comboString.length() + 1);
 	}
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	// Append a second '\0' to signal the end of the combo item list
+	ui::comboString[ui::comboString.length() - 1] = '\0';
+
+	ui::auxString.clear();
+	if (currentComboResize_ != static_cast<int>(ResizePreset::CUSTOM))
+		ui::auxString.append("Resize");
+
+	ImGui::PushItemWidth(100.0f);
+	ImGui::Combo(ui::auxString.data(), &currentComboResize_, ui::comboString.data());
+	ImGui::PopItemWidth();
+	resizePreset_ = static_cast<CanvasGuiSection::ResizePreset>(currentComboResize_);
+	if (currentComboResize_ == CanvasGuiSection::ResizePreset::CUSTOM)
+	{
+		ImGui::SameLine();
+		ImGui::PushItemWidth(80.0f);
+		ImGui::InputInt2("Resize", customCanvasSize_.data());
+		ImGui::PopItemWidth();
+	}
+	else
+		customCanvasSize_ = canvas.size();
+
+	nc::Vector2i desiredCanvasSize = resizeVector();
+
+	if (desiredCanvasSize.x < 4)
+		desiredCanvasSize.x = 4;
+	else if (desiredCanvasSize.x > canvas.maxTextureSize())
+		desiredCanvasSize.x = canvas.maxTextureSize();
+	if (desiredCanvasSize.y < 4)
+		desiredCanvasSize.y = 4;
+	else if (desiredCanvasSize.y > canvas.maxTextureSize())
+		desiredCanvasSize.y = canvas.maxTextureSize();
+
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Apply) &&
+		(canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y))
+	{
+		canvas.resizeTexture(desiredCanvasSize);
+	}
+	ImGui::Separator();
 }
 
 void CanvasGuiSection::setResize(const nc::Vector2i &size)
@@ -90,7 +105,6 @@ void CanvasGuiSection::setResize(int width, int height)
 
 float CanvasGuiSection::zoomAmount() const
 {
-	//return zoomAmount(zoomLevel);
 	switch (zoomLevel_)
 	{
 		case ZoomLevel::X1_8:
@@ -111,6 +125,11 @@ float CanvasGuiSection::zoomAmount() const
 	return 1.0f;
 }
 
+void CanvasGuiSection::resetZoom()
+{
+	zoomLevel_ = ZoomLevel::X1;
+}
+
 void CanvasGuiSection::increaseZoom()
 {
 	const unsigned int zoomIndex = static_cast<unsigned int>(zoomLevel_);
@@ -129,27 +148,9 @@ void CanvasGuiSection::decreaseZoom()
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void CanvasGuiSection::setZoom(float zoomAmount)
+nc::Vector2i CanvasGuiSection::resizeVector(ResizePreset resizePreset)
 {
-	if (zoomAmount <= 0.125f)
-		zoomLevel_ = ZoomLevel::X1_8;
-	else if (zoomAmount <= 0.25f)
-		zoomLevel_ = ZoomLevel::X1_4;
-	else if (zoomAmount <= 0.5f)
-		zoomLevel_ = ZoomLevel::X1_2;
-	else if (zoomAmount <= 1.0f)
-		zoomLevel_ = ZoomLevel::X1;
-	else if (zoomAmount <= 2.0f)
-		zoomLevel_ = ZoomLevel::X2;
-	else if (zoomAmount <= 4.0f)
-		zoomLevel_ = ZoomLevel::X4;
-	else
-		zoomLevel_ = ZoomLevel::X8;
-}
-
-nc::Vector2i CanvasGuiSection::resizeVector()
-{
-	switch (resizePreset_)
+	switch (resizePreset)
 	{
 		case ResizePreset::SIZE16:
 			return nc::Vector2i(16, 16);
@@ -168,4 +169,9 @@ nc::Vector2i CanvasGuiSection::resizeVector()
 	}
 
 	return customCanvasSize_;
+}
+
+nc::Vector2i CanvasGuiSection::resizeVector()
+{
+	return resizeVector(resizePreset_);
 }

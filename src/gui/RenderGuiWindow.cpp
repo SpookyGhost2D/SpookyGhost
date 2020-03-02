@@ -2,7 +2,7 @@
 #include "singletons.h"
 #include "gui/gui_labels.h"
 #include "gui/gui_common.h"
-#include "gui/RenderGuiSection.h"
+#include "gui/RenderGuiWindow.h"
 #include "gui/UserInterface.h"
 #include "Canvas.h"
 #include "AnimationManager.h"
@@ -11,7 +11,7 @@
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-float RenderGuiSection::resizeAmount(ResizeLevel rl)
+float RenderGuiWindow::resizeAmount(ResizeLevel rl)
 {
 	switch (rl)
 	{
@@ -33,12 +33,12 @@ float RenderGuiSection::resizeAmount(ResizeLevel rl)
 	return 1.0f;
 }
 
-float RenderGuiSection::resizeAmount() const
+float RenderGuiWindow::resizeAmount() const
 {
 	return resizeAmount(resizeLevel);
 }
 
-void RenderGuiSection::setResize(float resizeAmount)
+void RenderGuiWindow::setResize(float resizeAmount)
 {
 	if (resizeAmount <= 0.125f)
 		resizeLevel = ResizeLevel::X1_8;
@@ -56,34 +56,17 @@ void RenderGuiSection::setResize(float resizeAmount)
 		resizeLevel = ResizeLevel::X8;
 }
 
-void RenderGuiSection::create()
+void RenderGuiWindow::create()
 {
-	if (ImGui::CollapsingHeader(Labels::Render))
+	if (ImGui::Begin(Labels::Render, nullptr));
 	{
 		ImGui::InputText("Filename prefix", filename.data(), ui::MaxStringLength,
 		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &filename);
 
-		static int canvasResizeRadio = RenderGuiSection::ResizeLevel::X1;
-		canvasResizeRadio = static_cast<int>(resizeLevel);
+		currentComboResize_ = static_cast<int>(resizeLevel);
+		ImGui::Combo("Resize Level", &currentComboResize_, ResizeStrings, IM_ARRAYSIZE(ResizeStrings));
 
-		ImGui::PushID("Render");
-		ImGui::Text("Resize:");
-		ImGui::SameLine();
-		ImGui::RadioButton("1/8x", &canvasResizeRadio, RenderGuiSection::ResizeLevel::X1_8);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/4x", &canvasResizeRadio, RenderGuiSection::ResizeLevel::X1_4);
-		ImGui::SameLine();
-		ImGui::RadioButton("1/2x", &canvasResizeRadio, RenderGuiSection::ResizeLevel::X1_2);
-		ImGui::SameLine();
-		ImGui::RadioButton("1x", &canvasResizeRadio, RenderGuiSection::ResizeLevel::X1);
-		ImGui::SameLine();
-		ImGui::RadioButton("2x", &canvasResizeRadio, RenderGuiSection::ResizeLevel::X2);
-		ImGui::SameLine();
-		ImGui::RadioButton("4x", &canvasResizeRadio, RenderGuiSection::ResizeLevel::X4);
-		ImGui::SameLine();
-		ImGui::RadioButton("8x", &canvasResizeRadio, RenderGuiSection::ResizeLevel::X8);
-		ImGui::PopID();
-		resizeLevel = static_cast<RenderGuiSection::ResizeLevel>(canvasResizeRadio);
+		resizeLevel = static_cast<RenderGuiWindow::ResizeLevel>(currentComboResize_);
 		saveAnimStatus_.canvasResize = resizeAmount();
 
 		ImGui::InputInt("FPS", &saveAnimStatus_.fps);
@@ -165,10 +148,11 @@ void RenderGuiSection::create()
 				}
 			}
 		}
+		ImGui::End();
 	}
 }
 
-void RenderGuiSection::signalFrameSaved()
+void RenderGuiWindow::signalFrameSaved()
 {
 	ASSERT(shouldSaveFrames_ || shouldSaveSpritesheet_);
 
@@ -194,7 +178,7 @@ void RenderGuiSection::signalFrameSaved()
 	}
 }
 
-void RenderGuiSection::cancelRender()
+void RenderGuiWindow::cancelRender()
 {
 	if (shouldSaveFrames_ || shouldSaveSpritesheet_)
 	{

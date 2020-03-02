@@ -1,5 +1,5 @@
-#ifndef CLASS_RENDERGUISECTION
-#define CLASS_RENDERGUISECTION
+#ifndef CLASS_RENDERGUIWINDOW
+#define CLASS_RENDERGUIWINDOW
 
 #include <ncine/Vector2.h>
 #include "gui/gui_common.h"
@@ -20,8 +20,8 @@ struct SaveAnim
 	nc::Vector2i sheetDestPos;
 };
 
-/// The render gui section class
-class RenderGuiSection
+/// The render gui window class
+class RenderGuiWindow
 {
 public:
 	enum ResizeLevel
@@ -38,7 +38,7 @@ public:
 	ResizeLevel resizeLevel = ResizeLevel::X1;
 	nctl::String filename = nctl::String(ui::MaxStringLength);
 
-	RenderGuiSection(UserInterface &ui)
+	RenderGuiWindow(UserInterface &ui)
 	    : ui_(ui) {}
 
 	inline const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
@@ -59,6 +59,8 @@ public:
 	SaveAnim saveAnimStatus_;
 	bool shouldSaveFrames_ = false;
 	bool shouldSaveSpritesheet_ = false;
+	int currentComboResize_ = RenderGuiWindow::ResizeLevel::X1;
+	const char *ResizeStrings[7] = { "1/8X", "1/4X", "1/2X", "1X", "2X", "4X", "8X" };
 };
 
 #endif

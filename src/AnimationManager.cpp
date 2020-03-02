@@ -7,6 +7,36 @@
 
 namespace {
 
+void recursiveRemoveAnimation(IAnimation &anim)
+{
+	if (anim.isGroup())
+	{
+		AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
+		// Deleting backwards without iterators
+		for (int i = animGroup.anims().size() - 1; i >= 0; i--)
+		{
+			animGroup.anims()[i]->stop();
+			recursiveRemoveAnimation(*animGroup.anims()[i]);
+			animGroup.anims()[i].reset(nullptr);
+		}
+		animGroup.anims().clear();
+	}
+
+	if (anim.parent() != nullptr)
+	{
+		nctl::Array<nctl::UniquePtr<IAnimation>> &anims = anim.parent()->anims();
+		for (unsigned int i = 0; i < anims.size(); i++)
+		{
+			if (anims[i].get() == &anim)
+			{
+				anims[i].reset(nullptr);
+				anims.removeAt(i);
+				break;
+			}
+		}
+	}
+}
+
 void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 {
 	// Deleting backwards without iterators
@@ -119,6 +149,14 @@ void AnimationManager::reset()
 void AnimationManager::clear()
 {
 	animGroup_->anims().clear();
+}
+
+void AnimationManager::removeAnimation(IAnimation *anim)
+{
+	if (anim == nullptr)
+		return;
+
+	recursiveRemoveAnimation(*anim);
 }
 
 void AnimationManager::removeSprite(Sprite *sprite)

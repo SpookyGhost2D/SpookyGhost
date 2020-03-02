@@ -45,19 +45,8 @@ static bool saveAsModal = false;
 static bool allowOverwrite = false;
 
 static bool showAboutWindow = false;
-static bool showTexrectWindow = false;
 static bool hoveringOnCanvas = false;
-
-const char *animStateToString(IAnimation::State state)
-{
-	switch (state)
-	{
-		case IAnimation::State::STOPPED: return "Stopped";
-		case IAnimation::State::PAUSED: return "Paused";
-		case IAnimation::State::PLAYING: return "Playing";
-	}
-	return "Unknown";
-}
+static bool deleteKeyPressed = false;
 
 }
 
@@ -66,7 +55,8 @@ const char *animStateToString(IAnimation::State state)
 ///////////////////////////////////////////////////////////
 
 UserInterface::UserInterface()
-    : selectedSpriteIndex_(0), spriteGraph_(4), renderGuiSection_(*this)
+    : selectedSpriteIndex_(0), selectedTextureIndex_(0), selectedAnimation_(nullptr),
+      spriteGraph_(4), renderGuiWindow_(*this)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -123,27 +113,27 @@ void UserInterface::pushStatusErrorMessage(const char *message)
 
 const SaveAnim &UserInterface::saveAnimStatus() const
 {
-	return renderGuiSection_.saveAnimStatus();
+	return renderGuiWindow_.saveAnimStatus();
 }
 
 bool UserInterface::shouldSaveFrames() const
 {
-	return renderGuiSection_.shouldSaveFrames();
+	return renderGuiWindow_.shouldSaveFrames();
 }
 
 bool UserInterface::shouldSaveSpritesheet() const
 {
-	return renderGuiSection_.shouldSaveSpritesheet();
+	return renderGuiWindow_.shouldSaveSpritesheet();
 }
 
 void UserInterface::signalFrameSaved()
 {
-	renderGuiSection_.signalFrameSaved();
+	renderGuiWindow_.signalFrameSaved();
 }
 
 void UserInterface::cancelRender()
 {
-	renderGuiSection_.cancelRender();
+	renderGuiWindow_.cancelRender();
 }
 
 void UserInterface::closeModalsAndAbout()
@@ -152,10 +142,9 @@ void UserInterface::closeModalsAndAbout()
 	requestCloseModal = true;
 }
 
-void UserInterface::removeSelectedSpriteWithKey()
+void UserInterface::pressDeleteKey()
 {
-	if (hoveringOnCanvas)
-		removeSelectedSprite();
+	deleteKeyPressed = true;
 }
 
 void UserInterface::moveSprite(int xDiff, int yDiff)
@@ -192,6 +181,7 @@ bool UserInterface::menuSaveAsEnabled()
 
 void UserInterface::menuNew()
 {
+	selectedAnimation_ = nullptr;
 	// Always clear animations before sprites
 	theAnimMgr->clear();
 	theSpriteMgr->sprites().clear();
@@ -205,12 +195,13 @@ void UserInterface::menuOpen()
 
 bool UserInterface::openProject(const char *filename)
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
 	const bool fileExists = ui::checkPathOrConcatenate(theCfg.scriptsPath, filename, ui::filePath);
 	if (fileExists && theSaver->load(ui::filePath.data(), data))
 	{
+		selectedAnimation_ = nullptr;
 		canvasGuiSection_.setResize(theCanvas->size());
-		renderGuiSection_.setResize(renderGuiSection_.saveAnimStatus().canvasResize);
+		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
 		ui::auxString.format("Loaded project file \"%s\"\n",ui::filePath.data());
 		pushStatusInfoMessage(ui::auxString.data());
 
@@ -222,7 +213,7 @@ bool UserInterface::openProject(const char *filename)
 
 void UserInterface::menuSave()
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
 	ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
 	theSaver->save(ui::filePath.data(), data);
 	ui::auxString.format("Saved project file \"%s\"\n",ui::filePath.data());
@@ -241,22 +232,36 @@ void UserInterface::openDocumentation()
 	openFile(docsPath.data());
 }
 
+void UserInterface::toggleAnimation()
+{
+	if (selectedAnimation_)
+	{
+		if (selectedAnimation_->state() != IAnimation::State::PLAYING)
+			selectedAnimation_->play();
+		else
+			selectedAnimation_->pause();
+	}
+}
+
 void UserInterface::createGui()
 {
 	if (lastStatus_.secondsSince() >= 2.0f)
 		statusMessage_.clear();
 
 	createDockingSpace();
+	createGuiPopups();
+	//createToolbarWindow();
 
-	ImGui::Begin("SpookyGhost");
-	canvasGuiSection_.create(*theCanvas);
-	createSpritesGui();
-	createAnimationsGui();
-	renderGuiSection_.create();
-	ImGui::End();
+	createTexturesWindow();
+	createSpritesWindow();
+	createAnimationsWindow();
+
+	createSpriteWindow();
+	createAnimationWindow();
+	renderGuiWindow_.create();
 
 	createCanvasWindow();
-	if (theSpriteMgr->sprites().isEmpty() == false && showTexrectWindow)
+	if (theSpriteMgr->sprites().isEmpty() == false)
 		createTexRectWindow();
 
 	ImGui::Begin("Status");
@@ -267,6 +272,8 @@ void UserInterface::createGui()
 		createAboutWindow();
 
 	createConfigWindow();
+
+	deleteKeyPressed = false;
 }
 
 ///////////////////////////////////////////////////////////
@@ -297,14 +304,13 @@ void UserInterface::createDockingSpace()
 
 	createInitialDocking();
 	createMenuBar();
-	createGuiPopups();
 
 	ImGui::End();
 }
 
 void UserInterface::createInitialDocking()
 {
-	const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_AutoHideTabBar;
+	const ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
 	const ImGuiID dockspaceId = ImGui::GetID("TheDockSpace");
 
 	if (ImGui::DockBuilderGetNode(dockspaceId) != nullptr)
@@ -317,13 +323,36 @@ void UserInterface::createInitialDocking()
 	ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
 
 	ImGuiID dockMainId = dockspaceId;
-	ImGuiID dockIdLeft = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.3f, nullptr, &dockMainId);
-	ImGuiID dockIdDown = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Down, 0.3f, nullptr, &dockMainId);
+	ImGuiID dockIdUp = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Up, 0.02f, nullptr, &dockMainId);
+	ImGuiID dockIdDown = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Down, 0.02f, nullptr, &dockMainId);
+	ImGuiID dockIdLeft = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.275f, nullptr, &dockMainId);
+	ImGuiID dockIdRight = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Right, 0.5f, nullptr, &dockMainId);
+	ImGuiViewport *viewport = ImGui::GetMainViewport();
+	ImGui::DockBuilderSetNodeSize(dockIdRight, ImVec2(viewport->Size.x * 0.275f, viewport->Size.y));
+	ImGuiID dockIdLeftDown = ImGui::DockBuilderSplitNode(dockIdLeft, ImGuiDir_Down, 0.35f, nullptr, &dockIdLeft);
+	ImGuiID dockIdRightDown = ImGui::DockBuilderSplitNode(dockIdRight, ImGuiDir_Down, 0.29f, nullptr, &dockIdRight);
 
-	ImGui::DockBuilderDockWindow("SpookyGhost", dockIdLeft);
-	ImGui::DockBuilderDockWindow("Canvas", dockMainId);
-	ImGui::DockBuilderDockWindow("TexRect", dockMainId);
+	ImGui::DockBuilderDockWindow("Toolbar", dockIdUp);
+
+	ImGui::DockBuilderDockWindow(Labels::Textures, dockIdLeft);
+	ImGui::DockBuilderDockWindow(Labels::Sprites, dockIdLeft);
+	ImGui::DockBuilderDockWindow(Labels::Animations, dockIdLeftDown);
+
+	ImGui::DockBuilderDockWindow(Labels::Canvas, dockMainId);
+	ImGui::DockBuilderDockWindow(Labels::TexRect, dockMainId);
+
+	ImGui::DockBuilderDockWindow(Labels::Sprite, dockIdRight);
+	ImGui::DockBuilderDockWindow(Labels::Animation, dockIdRight);
+	ImGui::DockBuilderDockWindow(Labels::Render, dockIdRightDown);
+
 	ImGui::DockBuilderDockWindow("Status", dockIdDown);
+
+	ImGuiDockNode *node = ImGui::DockBuilderGetNode(dockIdUp);
+	node->LocalFlags |= (ImGuiDockNodeFlags_NoTabBar);
+
+	node = ImGui::DockBuilderGetNode(dockIdDown);
+	node->LocalFlags |= (ImGuiDockNodeFlags_NoTabBar);
+
 	ImGui::DockBuilderFinish(dockspaceId);
 }
 
@@ -333,7 +362,7 @@ void UserInterface::createMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+			LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
 			if (ImGui::MenuItem(Labels::New, "CTRL + N", false, menuNewEnabled()))
 				menuNew();
 
@@ -385,7 +414,7 @@ void UserInterface::createMenuBar()
 
 void UserInterface::createGuiPopups()
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiSection_.saveAnimStatus());
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
 
 	if (openModal)
 		ImGui::OpenPopup("Open##Modal");
@@ -473,279 +502,441 @@ void UserInterface::createGuiPopups()
 	}
 }
 
-void UserInterface::createSpritesGui()
+void UserInterface::createToolbarWindow()
 {
-	static int selectedTextureIndex = 0;
-	if (ImGui::CollapsingHeader(Labels::Sprites))
+	const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse;
+	ImGui::Begin("Toolbar", nullptr, windowFlags);
+
+	if (ImGui::Button(Labels::New) && menuNewEnabled())
+		menuNew();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Open))
+		openModal = true;
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Save) && menuSaveEnabled())
+		menuSave();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::SaveAs) && menuSaveAsEnabled())
+		saveAsModal = true;
+
+	ImGui::End();
+}
+
+void UserInterface::createTexturesWindow()
+{
+	ImGui::Begin(Labels::Textures);
+
+	ImGui::InputText("##Filename", texFilename_.data(), ui::MaxStringLength,
+	                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &texFilename_);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
 	{
-		if (theSpriteMgr->textures().isEmpty() == false)
+		const bool fileExists = ui::checkPathOrConcatenate(theCfg.texturesPath, texFilename_, ui::filePath);
+		if (fileExists)
 		{
-			ui::comboString.clear();
-			for (unsigned int i = 0; i < theSpriteMgr->textures().size(); i++)
-			{
-				Texture &texture = *theSpriteMgr->textures()[i];
-				ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, texture.name().data(), texture.width(), texture.height());
-				ui::comboString.setLength(ui::comboString.length() + 1);
-			}
-			ui::comboString.setLength(ui::comboString.length() + 1);
-			// Append a second '\0' to signal the end of the combo item list
-			ui::comboString[ui::comboString.length() - 1] = '\0';
-
-			ImGui::Combo("Texture", &selectedTextureIndex, ui::comboString.data());
-
-			ImGui::SameLine();
-			ui::auxString.format("%s##Texture", Labels::Remove);
-			if (ImGui::Button(ui::auxString.data()))
-			{
-				// Deleting backwards without iterators
-				for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
-				{
-					Sprite &sprite = *theSpriteMgr->sprites()[i];
-					if (&sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex].get())
-					{
-						theAnimMgr->removeSprite(&sprite);
-						theSpriteMgr->sprites().removeAt(i);
-					}
-				}
-				theSpriteMgr->textures().removeAt(selectedTextureIndex);
-				if (selectedTextureIndex > 0)
-					selectedTextureIndex--;
-			}
-		}
-		ImGui::InputText("Filename", texFilename_.data(), ui::MaxStringLength,
-		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &texFilename_);
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
-		{
-			const bool fileExists = ui::checkPathOrConcatenate(theCfg.texturesPath, texFilename_, ui::filePath);
-			if (fileExists)
-			{
-				theSpriteMgr->textures().pushBack(nctl::makeUnique<Texture>(ui::filePath.data()));
-				// Set the relative path as the texture name to allow for relocatable project files
-				theSpriteMgr->textures().back()->setName(texFilename_);
-				ui::auxString.format("Loaded texture \"%s\"", ui::filePath.data());
-				selectedTextureIndex = theSpriteMgr->textures().size() - 1;
-			}
-			else
-				ui::auxString.format("Cannot load texture \"%s\"", ui::filePath.data());
-
-			pushStatusInfoMessage(ui::auxString.data());
-		}
-
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::Spacing();
-
-		if (theSpriteMgr->textures().isEmpty() == false)
-		{
-			if (ImGui::Button(Labels::Add))
-			{
-				if (selectedTextureIndex >= 0 && selectedTextureIndex < theSpriteMgr->textures().size())
-				{
-					Texture &tex = *theSpriteMgr->textures()[selectedTextureIndex];
-					theSpriteMgr->sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
-					selectedSpriteIndex_ = theSpriteMgr->sprites().size() - 1;
-				}
-			}
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::Remove))
-				removeSelectedSprite();
+			theSpriteMgr->textures().pushBack(nctl::makeUnique<Texture>(ui::filePath.data()));
+			// Set the relative path as the texture name to allow for relocatable project files
+			theSpriteMgr->textures().back()->setName(texFilename_);
+			ui::auxString.format("Loaded texture \"%s\"", ui::filePath.data());
+			selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
 		}
 		else
-			ImGui::Text("Load at least one texture in order to add sprites");
+			ui::auxString.format("Cannot load texture \"%s\"", ui::filePath.data());
 
-		if (theSpriteMgr->sprites().isEmpty() == false)
+		pushStatusInfoMessage(ui::auxString.data());
+	}
+
+	if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+	{
+		// Deleting backwards without iterators
+		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
+		{
+			Sprite &sprite = *theSpriteMgr->sprites()[i];
+			if (&sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get())
+			{
+				theAnimMgr->removeSprite(&sprite);
+				theSpriteMgr->sprites().removeAt(i);
+			}
+		}
+		theSpriteMgr->textures().removeAt(selectedTextureIndex_);
+		if (selectedTextureIndex_ > 0)
+			selectedTextureIndex_--;
+	}
+
+	if (theSpriteMgr->textures().isEmpty() == false)
+	{
+		ImGui::Separator();
+		for (unsigned int i = 0; i < theSpriteMgr->textures().size(); i++)
+		{
+			Texture &texture = *theSpriteMgr->textures()[i];
+			ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+			if (i == selectedTextureIndex_)
+				nodeFlags |= ImGuiTreeNodeFlags_Selected;
+
+			ImGui::TreeNodeEx(static_cast<void *>(&texture), nodeFlags, "#%u: \"%s\" (%d x %d)",
+							  i, texture.name().data(), texture.width(), texture.height());
+			if (ImGui::IsItemClicked())
+				selectedTextureIndex_ = i;
+		}
+	}
+
+	ImGui::End();
+}
+void UserInterface::createSpritesWindow()
+{
+	ImGui::Begin(Labels::Sprites);
+
+	if (theSpriteMgr->textures().isEmpty() == false)
+	{
+		if (ImGui::Button(Labels::Add))
+		{
+			if (selectedTextureIndex_ >= 0 && selectedTextureIndex_ < theSpriteMgr->textures().size())
+			{
+				Texture &tex = *theSpriteMgr->textures()[selectedTextureIndex_];
+				theSpriteMgr->sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
+				selectedSpriteIndex_ = theSpriteMgr->sprites().size() - 1;
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+			removeSelectedSprite();
+	}
+	else
+		ImGui::Text("Load at least one texture in order to add sprites");
+
+	if (theSpriteMgr->sprites().isEmpty() == false)
+	{
+		if (selectedSpriteIndex_ > 0)
+		{
+			if (ImGui::Button(Labels::MoveUp))
+			{
+				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ - 1]);
+				selectedSpriteIndex_--;
+			}
+		}
+		if (selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1)
 		{
 			if (selectedSpriteIndex_ > 0)
-			{
 				ImGui::SameLine();
-				if (ImGui::Button(Labels::MoveUp))
-				{
-					nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ - 1]);
-					selectedSpriteIndex_--;
-				}
-			}
-			if (selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1)
+			if (ImGui::Button(Labels::MoveDown))
 			{
-				ImGui::SameLine();
-				if (ImGui::Button(Labels::MoveDown))
-				{
-					nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ + 1]);
-					selectedSpriteIndex_++;
-				}
+				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ + 1]);
+				selectedSpriteIndex_++;
 			}
-
-			ui::comboString.clear();
-			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
-			{
-				Sprite &sprite = *theSpriteMgr->sprites()[i];
-				ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
-				ui::comboString.setLength(ui::comboString.length() + 1);
-			}
-			ui::comboString.setLength(ui::comboString.length() + 1);
-			// Append a second '\0' to signal the end of the combo item list
-			ui::comboString[ui::comboString.length() - 1] = '\0';
-
-			ImGui::Combo("Sprite", &selectedSpriteIndex_, ui::comboString.data());
-
-			Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
-
-			Texture &tex = sprite.texture();
-			ImGui::Text("Texture: %s (%dx%d)", tex.name().data(), tex.width(), tex.height());
-
-			ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
-			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sprite.name);
-			ImGui::SameLine();
-			ImGui::Checkbox("Visible", &sprite.visible);
-
-			// Create an array of sprites that can be a parent of the selected one
-			spriteGraph_.clear();
-			spriteGraph_.pushBack(SpriteStruct(-1, nullptr));
-			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
-				theSpriteMgr->sprites()[i]->visited = false;
-			visitSprite(sprite);
-			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
-			{
-				if (theSpriteMgr->sprites()[i]->visited == false)
-					spriteGraph_.pushBack(SpriteStruct(i, theSpriteMgr->sprites()[i].get()));
-			}
-
-			int currentParentCombo = 0; // None
-			ui::comboString.clear();
-			for (unsigned int i = 0; i < spriteGraph_.size(); i++)
-			{
-				const int index = spriteGraph_[i].index;
-				const Sprite &currentSprite = *spriteGraph_[i].sprite;
-				if (index < 0)
-					ui::comboString.append("None");
-				else
-					ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", index, currentSprite.name.data(), currentSprite.width(), currentSprite.height());
-				ui::comboString.setLength(ui::comboString.length() + 1);
-
-				if (sprite.parent() == &currentSprite)
-					currentParentCombo = i;
-			}
-			ui::comboString.setLength(ui::comboString.length() + 1);
-			// Append a second '\0' to signal the end of the combo item list
-			ui::comboString[ui::comboString.length() - 1] = '\0';
-
-			ImGui::Combo("Parent", &currentParentCombo, ui::comboString.data());
-
-			const Sprite *prevParent = sprite.parent();
-			const nc::Vector2f absPosition = sprite.absPosition();
-			Sprite *parent = spriteGraph_[currentParentCombo].sprite;
-			if (prevParent != parent)
-			{
-				sprite.setParent(parent);
-				sprite.setAbsPosition(absPosition);
-			}
-
-			nc::Vector2f position(sprite.x, sprite.y);
-			ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(theCanvas->texWidth()));
-			sprite.x = roundf(position.x);
-			sprite.y = roundf(position.y);
-			ImGui::SliderFloat("Rotation", &sprite.rotation, 0.0f, 360.0f);
-			ImGui::SliderFloat2("Scale", sprite.scaleFactor.data(), 0.0f, 8.0f);
-			ImGui::SameLine();
-			ui::auxString.format("%s##Scale", Labels::Reset);
-			if (ImGui::Button(ui::auxString.data()))
-				sprite.scaleFactor.set(1.0f, 1.0f);
-
-			const float halfBiggerDimension = sprite.width() > sprite.height() ? sprite.width() * 0.5f : sprite.height() * 0.5f;
-			ImGui::SliderFloat2("Anchor Point", sprite.anchorPoint.data(), -halfBiggerDimension, halfBiggerDimension);
-			static int currentAnchorSelection = 0;
-			if (ImGui::Combo("Anchor Presets", &currentAnchorSelection, anchorPointItems, IM_ARRAYSIZE(anchorPointItems)))
-			{
-				switch (currentAnchorSelection)
-				{
-					case AnchorPointsEnum::CENTER:
-						sprite.anchorPoint.set(0.0f, 0.0f);
-						break;
-					case AnchorPointsEnum::BOTTOM_LEFT:
-						sprite.anchorPoint.set(-sprite.width() * 0.5f, sprite.height() * 0.5f);
-						break;
-					case AnchorPointsEnum::TOP_LEFT:
-						sprite.anchorPoint.set(-sprite.width() * 0.5f, -sprite.height() * 0.5f);
-						break;
-					case AnchorPointsEnum::BOTTOM_RIGHT:
-						sprite.anchorPoint.set(sprite.width() * 0.5f, sprite.height() * 0.5f);
-						break;
-					case AnchorPointsEnum::TOP_RIGHT:
-						sprite.anchorPoint.set(sprite.width() * 0.5f, -sprite.height() * 0.5f);
-						break;
-				}
-			}
-			if (sprite.parent() != nullptr)
-			{
-				ImGui::Text("Abs Position: %f, %f", sprite.absPosition().x, sprite.absPosition().y);
-				ImGui::Text("Abs Rotation: %f", sprite.absRotation());
-				ImGui::Text("Abs Scale: %f, %f", sprite.absScaleFactor().x, sprite.absScaleFactor().y);
-			}
-
-			ImGui::Separator();
-			nc::Recti texRect = sprite.texRect();
-			int minX = texRect.x;
-			int maxX = minX + texRect.w;
-			ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
-
-			ImGui::SameLine();
-			ImGui::Checkbox("Show Preview", &showTexrectWindow);
-
-			int minY = texRect.y;
-			int maxY = minY + texRect.h;
-			ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, tex.height());
-
-			texRect.x = minX;
-			texRect.w = maxX - minX;
-			texRect.y = minY;
-			texRect.h = maxY - minY;
-			ImGui::SameLine();
-			ui::auxString.format("%s##Rect", Labels::Reset);
-			if (ImGui::Button(ui::auxString.data()))
-				texRect = nc::Recti(0, 0, tex.width(), tex.height());
-
-			const nc::Recti currentTexRect = sprite.texRect();
-			if (texRect.x != currentTexRect.x || texRect.y != currentTexRect.y ||
-			    texRect.w != currentTexRect.w || texRect.h != currentTexRect.h)
-				sprite.setTexRect(texRect);
-
-			bool isFlippedX = sprite.isFlippedX();
-			ImGui::Checkbox("Flipped X", &isFlippedX);
-			ImGui::SameLine();
-			bool isFlippedY = sprite.isFlippedY();
-			ImGui::Checkbox("Flipped Y", &isFlippedY);
-
-			if (isFlippedX != sprite.isFlippedX())
-				sprite.setFlippedX(isFlippedX);
-			if (isFlippedY != sprite.isFlippedY())
-				sprite.setFlippedY(isFlippedY);
-
-			ImGui::Separator();
-			int currentBlendingPreset = static_cast<int>(sprite.blendingPreset());
-			ImGui::Combo("Blending", &currentBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
-			sprite.setBlendingPreset(static_cast<Sprite::BlendingPreset>(currentBlendingPreset));
-
-			ImGui::ColorEdit4("Color", sprite.color.data(), ImGuiColorEditFlags_AlphaBar);
-			ImGui::SameLine();
-			ui::auxString.format("%s##Color", Labels::Reset);
-			if (ImGui::Button(ui::auxString.data()))
-				sprite.color = nc::Colorf::White;
 		}
+	}
+
+	if (theSpriteMgr->sprites().isEmpty() == false)
+	{
+		ImGui::Separator();
+		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+		{
+			Sprite &sprite = *theSpriteMgr->sprites()[i];
+			ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+			if (i == selectedSpriteIndex_)
+				nodeFlags |= ImGuiTreeNodeFlags_Selected;
+
+			ui::auxString.format("%s###Sprite%d", sprite.visible ? Labels::VisibleIcon : Labels::InvisibleIcon, i);
+			ImGui::Checkbox(ui::auxString.data(), &sprite.visible);
+			ImGui::SameLine();
+			ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "#%u: \"%s\" (%d x %d) %s",
+							  i, sprite.name.data(), sprite.width(), sprite.height(),
+							  &sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get() ? Labels::SelectedTextureIcon : "");
+			if (ImGui::IsItemClicked())
+				selectedSpriteIndex_ = i;
+		}
+	}
+
+	ImGui::End();
+}
+
+void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int index)
+{
+	ImGuiTreeNodeFlags nodeFlags = anim.isGroup() ? (ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick)
+	                                              : (ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+	if (&anim == selectedAnimation_)
+		nodeFlags |= ImGuiTreeNodeFlags_Selected;
+
+	ui::auxString.format("#%u: ", index);
+	if (anim.name.isEmpty() == false)
+		ui::auxString.formatAppend("\"%s\" (", anim.name.data());
+	if (anim.type() == IAnimation::Type::PARALLEL_GROUP)
+		ui::auxString.append("Parallel Group");
+	else if (anim.type() == IAnimation::Type::SEQUENTIAL_GROUP)
+		ui::auxString.append("Sequential Group");
+	if (anim.type() == IAnimation::Type::PROPERTY)
+	{
+		PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
+		ui::auxString.formatAppend("%s property", propertyAnim.propertyName().data());
+		if (propertyAnim.sprite() != nullptr)
+		{
+			if (propertyAnim.sprite()->name.isEmpty() == false)
+				ui::auxString.formatAppend(" for sprite \"%s\"", propertyAnim.sprite()->name.data());
+			if (propertyAnim.sprite() == theSpriteMgr->sprites()[selectedSpriteIndex_].get())
+				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
+		}
+	}
+	else if (anim.type() == IAnimation::Type::GRID)
+	{
+		GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+		if (gridAnim.function() != nullptr)
+			ui::auxString.formatAppend("%s grid", gridAnim.function()->name().data());
+		if (gridAnim.sprite() != nullptr)
+		{
+			if (gridAnim.sprite()->name.isEmpty() == false)
+				ui::auxString.formatAppend(" for sprite \"%s\"", gridAnim.sprite()->name.data());
+			if (gridAnim.sprite() == theSpriteMgr->sprites()[selectedSpriteIndex_].get())
+				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
+		}
+	}
+	if (anim.name.isEmpty() == false)
+		ui::auxString.append(")");
+
+	if (anim.state() == IAnimation::State::STOPPED)
+		ui::auxString.formatAppend(" %s", Labels::StopIcon);
+	else if (anim.state() == IAnimation::State::PAUSED)
+		ui::auxString.formatAppend(" %s", Labels::PauseIcon);
+	else if (anim.state() == IAnimation::State::PLAYING)
+		ui::auxString.formatAppend(" %s", Labels::PlayIcon);
+
+	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&anim), nodeFlags, "%s", ui::auxString.data());
+	if (ImGui::IsItemClicked())
+		selectedAnimation_ = &anim;
+
+	if (anim.isGroup() && treeIsOpen)
+	{
+		AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
+
+		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
+			createAnimationListEntry(*animGroup.anims()[i], i);
+
+		ImGui::TreePop();
 	}
 }
 
-void UserInterface::createAnimationStateGui(IAnimation &anim)
+void UserInterface::createAnimationsWindow()
 {
-	ImGui::Separator();
-	ImGui::Text("State: %s", animStateToString(anim.state()));
-	if (ImGui::Button(Labels::Stop))
-		anim.stop();
+	ImGui::Begin(Labels::Animations);
+
+	static int currentComboAnimType = 0;
+	ImGui::PushItemWidth(150.0f);
+	ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
+	ImGui::PopItemWidth();
 	ImGui::SameLine();
-	if (ImGui::Button(Labels::Pause))
-		anim.pause();
-	ImGui::SameLine();
-	if (ImGui::Button(Labels::Play))
-		anim.play();
+	if (ImGui::Button(Labels::Add))
+	{
+		nctl::Array<nctl::UniquePtr<IAnimation>> *anims = &theAnimMgr->anims();
+		AnimationGroup *parent = &theAnimMgr->animGroup();
+		if (selectedAnimation_)
+		{
+			if (selectedAnimation_->isGroup())
+			{
+				AnimationGroup *animGroup = static_cast<AnimationGroup *>(selectedAnimation_);
+				anims = &animGroup->anims();
+				parent = animGroup;
+			}
+			else if (selectedAnimation_->parent() != nullptr)
+			{
+				anims = &selectedAnimation_->parent()->anims();
+				parent = selectedAnimation_->parent();
+			}
+		}
+		switch (currentComboAnimType)
+		{
+			case AnimationTypesEnum::PARALLEL_GROUP:
+				anims->pushBack(nctl::makeUnique<ParallelAnimationGroup>());
+				break;
+			case AnimationTypesEnum::SEQUENTIAL_GROUP:
+				anims->pushBack(nctl::makeUnique<SequentialAnimationGroup>());
+				break;
+			case AnimationTypesEnum::PROPERTY:
+				anims->pushBack(nctl::makeUnique<PropertyAnimation>());
+				break;
+			case AnimationTypesEnum::GRID:
+				anims->pushBack(nctl::makeUnique<GridAnimation>());
+				break;
+		}
+		anims->back()->setParent(parent);
+	}
+
+	if (theAnimMgr->anims().isEmpty() == false)
+	{
+		if (selectedAnimation_)
+			ImGui::SameLine();
+		if (selectedAnimation_ && (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
+		{
+			AnimationGroup* parent = nullptr;
+			if (selectedAnimation_->parent())
+				parent = selectedAnimation_->parent();
+			theAnimMgr->removeAnimation(selectedAnimation_);
+			selectedAnimation_ = parent;
+		}
+
+		if (ImGui::Button(Labels::Stop) && selectedAnimation_)
+			selectedAnimation_->stop();
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Pause) && selectedAnimation_)
+			selectedAnimation_->pause();
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Play) && selectedAnimation_)
+			selectedAnimation_->play();
+
+		ImGui::Separator();
+
+		for (unsigned int i = 0; i < theAnimMgr->anims().size(); i++)
+			createAnimationListEntry(*theAnimMgr->anims()[i], i);
+	}
+	ImGui::End();
+}
+
+void UserInterface::createSpriteWindow()
+{
+	ImGui::Begin(Labels::Sprite);
+
+	if (theSpriteMgr->sprites().isEmpty() == false)
+	{
+		Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
+
+		Texture &tex = sprite.texture();
+		ImGui::Text("Texture: %s (%dx%d)", tex.name().data(), tex.width(), tex.height());
+
+		ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
+						 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sprite.name);
+		ImGui::SameLine();
+		ImGui::Checkbox("Visible", &sprite.visible);
+
+		// Create an array of sprites that can be a parent of the selected one
+		spriteGraph_.clear();
+		spriteGraph_.pushBack(SpriteStruct(-1, nullptr));
+		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+			theSpriteMgr->sprites()[i]->visited = false;
+		visitSprite(sprite);
+		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+		{
+			if (theSpriteMgr->sprites()[i]->visited == false)
+				spriteGraph_.pushBack(SpriteStruct(i, theSpriteMgr->sprites()[i].get()));
+		}
+
+		int currentParentCombo = 0; // None
+		ui::comboString.clear();
+		for (unsigned int i = 0; i < spriteGraph_.size(); i++)
+		{
+			const int index = spriteGraph_[i].index;
+			const Sprite &currentSprite = *spriteGraph_[i].sprite;
+			if (index < 0)
+				ui::comboString.append("None");
+			else
+				ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", index, currentSprite.name.data(), currentSprite.width(), currentSprite.height());
+			ui::comboString.setLength(ui::comboString.length() + 1);
+
+			if (sprite.parent() == &currentSprite)
+				currentParentCombo = i;
+		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		ImGui::Combo("Parent", &currentParentCombo, ui::comboString.data());
+
+		const Sprite *prevParent = sprite.parent();
+		const nc::Vector2f absPosition = sprite.absPosition();
+		Sprite *parent = spriteGraph_[currentParentCombo].sprite;
+		if (prevParent != parent)
+		{
+			sprite.setParent(parent);
+			sprite.setAbsPosition(absPosition);
+		}
+
+		nc::Vector2f position(sprite.x, sprite.y);
+		ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(theCanvas->texWidth()));
+		sprite.x = roundf(position.x);
+		sprite.y = roundf(position.y);
+		ImGui::SliderFloat("Rotation", &sprite.rotation, 0.0f, 360.0f);
+		ImGui::SliderFloat2("Scale", sprite.scaleFactor.data(), 0.0f, 8.0f);
+		ImGui::SameLine();
+		ui::auxString.format("%s##Scale", Labels::Reset);
+		if (ImGui::Button(ui::auxString.data()))
+			sprite.scaleFactor.set(1.0f, 1.0f);
+
+		const float halfBiggerDimension = sprite.width() > sprite.height() ? sprite.width() * 0.5f : sprite.height() * 0.5f;
+		ImGui::SliderFloat2("Anchor Point", sprite.anchorPoint.data(), -halfBiggerDimension, halfBiggerDimension);
+		static int currentAnchorSelection = 0;
+		if (ImGui::Combo("Anchor Presets", &currentAnchorSelection, anchorPointItems, IM_ARRAYSIZE(anchorPointItems)))
+		{
+			switch (currentAnchorSelection)
+			{
+				case AnchorPointsEnum::CENTER:
+					sprite.anchorPoint.set(0.0f, 0.0f);
+					break;
+				case AnchorPointsEnum::BOTTOM_LEFT:
+					sprite.anchorPoint.set(-sprite.width() * 0.5f, sprite.height() * 0.5f);
+					break;
+				case AnchorPointsEnum::TOP_LEFT:
+					sprite.anchorPoint.set(-sprite.width() * 0.5f, -sprite.height() * 0.5f);
+					break;
+				case AnchorPointsEnum::BOTTOM_RIGHT:
+					sprite.anchorPoint.set(sprite.width() * 0.5f, sprite.height() * 0.5f);
+					break;
+				case AnchorPointsEnum::TOP_RIGHT:
+					sprite.anchorPoint.set(sprite.width() * 0.5f, -sprite.height() * 0.5f);
+					break;
+			}
+		}
+		if (sprite.parent() != nullptr)
+		{
+			ImGui::Text("Abs Position: %f, %f", sprite.absPosition().x, sprite.absPosition().y);
+			ImGui::Text("Abs Rotation: %f", sprite.absRotation());
+			ImGui::Text("Abs Scale: %f, %f", sprite.absScaleFactor().x, sprite.absScaleFactor().y);
+		}
+
+		ImGui::Separator();
+		nc::Recti texRect = sprite.texRect();
+		int minX = texRect.x;
+		int maxX = minX + texRect.w;
+		ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
+
+		int minY = texRect.y;
+		int maxY = minY + texRect.h;
+		ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, tex.height());
+
+		texRect.x = minX;
+		texRect.w = maxX - minX;
+		texRect.y = minY;
+		texRect.h = maxY - minY;
+		ImGui::SameLine();
+		ui::auxString.format("%s##Rect", Labels::Reset);
+		if (ImGui::Button(ui::auxString.data()))
+			texRect = nc::Recti(0, 0, tex.width(), tex.height());
+
+		const nc::Recti currentTexRect = sprite.texRect();
+		if (texRect.x != currentTexRect.x || texRect.y != currentTexRect.y ||
+			texRect.w != currentTexRect.w || texRect.h != currentTexRect.h)
+			sprite.setTexRect(texRect);
+
+		bool isFlippedX = sprite.isFlippedX();
+		ImGui::Checkbox("Flipped X", &isFlippedX);
+		ImGui::SameLine();
+		bool isFlippedY = sprite.isFlippedY();
+		ImGui::Checkbox("Flipped Y", &isFlippedY);
+
+		if (isFlippedX != sprite.isFlippedX())
+			sprite.setFlippedX(isFlippedX);
+		if (isFlippedY != sprite.isFlippedY())
+			sprite.setFlippedY(isFlippedY);
+
+		ImGui::Separator();
+		int currentBlendingPreset = static_cast<int>(sprite.blendingPreset());
+		ImGui::Combo("Blending", &currentBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
+		sprite.setBlendingPreset(static_cast<Sprite::BlendingPreset>(currentBlendingPreset));
+
+		ImGui::ColorEdit4("Color", sprite.color.data(), ImGuiColorEditFlags_AlphaBar);
+		ImGui::SameLine();
+		ui::auxString.format("%s##Color", Labels::Reset);
+		if (ImGui::Button(ui::auxString.data()))
+			sprite.color = nc::Colorf::White;
+	}
+
+	ImGui::End();
 }
 
 void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits)
@@ -796,437 +987,280 @@ void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAni
 	ImGui::Text("Value: %f", anim.curve().value());
 }
 
-void UserInterface::createAnimationRemoveButton(AnimationGroup &parentGroup, unsigned int index)
+void UserInterface::createAnimationWindow()
 {
-	if (ImGui::Button(Labels::Remove))
+	ImGui::Begin(Labels::Animation);
+
+	if (theAnimMgr->anims().isEmpty() == false && selectedAnimation_ != nullptr)
 	{
-		parentGroup.anims()[index]->stop();
-		parentGroup.anims().removeAt(index);
-	}
-}
-
-void UserInterface::createAnimationsGui()
-{
-	if (ImGui::CollapsingHeader(Labels::Animations))
-	{
-		static int currentComboAnimType = 0;
-		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
-		ImGui::SameLine();
-		ui::auxString.format("%s##Animations", Labels::Add);
-		if (ImGui::Button(ui::auxString.data()))
+		IAnimation &anim = *selectedAnimation_;
+		if (anim.type() == IAnimation::Type::PROPERTY)
 		{
-			switch (currentComboAnimType)
-			{
-				case AnimationTypesEnum::PARALLEL_GROUP:
-					theAnimMgr->anims().pushBack(nctl::makeUnique<ParallelAnimationGroup>());
-					break;
-				case AnimationTypesEnum::SEQUENTIAL_GROUP:
-					theAnimMgr->anims().pushBack(nctl::makeUnique<SequentialAnimationGroup>());
-					break;
-				case AnimationTypesEnum::PROPERTY:
-					theAnimMgr->anims().pushBack(nctl::makeUnique<PropertyAnimation>());
-					break;
-				case AnimationTypesEnum::GRID:
-					theAnimMgr->anims().pushBack(nctl::makeUnique<GridAnimation>());
-					break;
-			}
-			theAnimMgr->anims().back()->setParent(&theAnimMgr->animGroup());
+			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(*selectedAnimation_);
+			createPropertyAnimationGui(propertyAnim);
 		}
-
-		ImGui::SameLine();
-		ui::auxString.format("%s##Animations", Labels::Clear);
-		if (ImGui::Button(ui::auxString.data()))
-			theAnimMgr->clear();
-		ImGui::Separator();
-
-		for (unsigned int i = 0; i < theAnimMgr->anims().size(); i++)
-			createRecursiveAnimationsGui(theAnimMgr->animGroup(), i);
-	}
-}
-
-void UserInterface::createRecursiveAnimationsGui(AnimationGroup &parentGroup, unsigned int index)
-{
-	IAnimation &anim = *parentGroup.anims()[index];
-
-	ImGui::PushID(reinterpret_cast<const void *>(&anim));
-	switch (anim.type())
-	{
-		case IAnimation::Type::PROPERTY:
+		else if (anim.type() == IAnimation::Type::GRID)
 		{
-			createPropertyAnimationGui(parentGroup, index);
-			break;
-		}
-		case IAnimation::Type::GRID:
-		{
-			createGridAnimationGui(parentGroup, index);
-			break;
-		}
-		case IAnimation::Type::PARALLEL_GROUP:
-		{
-			createAnimationGroupGui(parentGroup, index);
-			break;
-		}
-		case IAnimation::Type::SEQUENTIAL_GROUP:
-		{
-			createAnimationGroupGui(parentGroup, index);
-			break;
-		}
-	}
-	ImGui::PopID();
-}
-
-void UserInterface::createAnimationGroupGui(AnimationGroup &parentGroup, unsigned int index)
-{
-	AnimationGroup &animGroup = static_cast<AnimationGroup &>(*parentGroup.anims()[index]);
-	ASSERT(animGroup.type() == IAnimation::Type::PARALLEL_GROUP ||
-	       animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP);
-
-	ui::auxString.format("#%u: ", index);
-	if (animGroup.name.isEmpty() == false)
-		ui::auxString.formatAppend("\"%s\" (", animGroup.name.data());
-	if (animGroup.type() == IAnimation::Type::PARALLEL_GROUP)
-		ui::auxString.append("Parallel Animation");
-	else if (animGroup.type() == IAnimation::Type::SEQUENTIAL_GROUP)
-		ui::auxString.append("Sequential Animation");
-	if (animGroup.name.isEmpty() == false)
-		ui::auxString.append(")");
-	ui::auxString.append("###AnimationGroup");
-
-	if (ImGui::TreeNodeEx(ui::auxString.data(), ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		ImGui::InputText("Name", animGroup.name.data(), IAnimation::MaxNameLength,
-		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &animGroup.name);
-
-		static int currentComboAnimType = 0;
-		ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Add))
-		{
-			switch (currentComboAnimType)
-			{
-				case AnimationTypesEnum::PARALLEL_GROUP:
-				{
-					animGroup.anims().pushBack(nctl::makeUnique<ParallelAnimationGroup>());
-					break;
-				}
-				case AnimationTypesEnum::SEQUENTIAL_GROUP:
-				{
-					animGroup.anims().pushBack(nctl::makeUnique<SequentialAnimationGroup>());
-					break;
-				}
-				case AnimationTypesEnum::PROPERTY:
-				{
-					animGroup.anims().pushBack(nctl::makeUnique<PropertyAnimation>());
-					break;
-				}
-				case AnimationTypesEnum::GRID:
-				{
-					animGroup.anims().pushBack(nctl::makeUnique<GridAnimation>());
-					break;
-				}
-			}
-			animGroup.anims().back()->setParent(&animGroup);
-		}
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Clear))
-		{
-			animGroup.stop();
-			animGroup.anims().clear();
-		}
-
-		createAnimationStateGui(animGroup);
-		createAnimationRemoveButton(parentGroup, index);
-
-		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
-			createRecursiveAnimationsGui(animGroup, i);
-
-		ImGui::TreePop();
-	}
-}
-
-void UserInterface::createPropertyAnimationGui(AnimationGroup &parentGroup, unsigned int index)
-{
-	PropertyAnimation &anim = static_cast<PropertyAnimation &>(*parentGroup.anims()[index]);
-	ASSERT(anim.type() == IAnimation::Type::PROPERTY);
-
-	ui::auxString.format("#%u: ", index);
-	if (anim.name.isEmpty() == false)
-		ui::auxString.formatAppend("\"%s\" (", anim.name.data());
-	ui::auxString.formatAppend("%s property", anim.propertyName().data());
-	if (anim.sprite() != nullptr && anim.sprite()->name.isEmpty() == false)
-		ui::auxString.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
-	if (anim.name.isEmpty() == false)
-		ui::auxString.append(")");
-	ui::auxString.append("###PropertyAnimation");
-
-	static CurveAnimationGuiLimits limits;
-	if (ImGui::TreeNodeEx(ui::auxString.data(), ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
-		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
-		ImGui::Separator();
-
-		int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
-		if (theSpriteMgr->sprites().isEmpty() == false)
-		{
-			if (spriteIndex < 0)
-				spriteIndex = selectedSpriteIndex_;
-
-			ui::comboString.clear();
-			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
-			{
-				Sprite &sprite = *theSpriteMgr->sprites()[i];
-				ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
-				ui::comboString.setLength(ui::comboString.length() + 1);
-			}
-			ui::comboString.setLength(ui::comboString.length() + 1);
-			// Append a second '\0' to signal the end of the combo item list
-			ui::comboString[ui::comboString.length() - 1] = '\0';
-
-			ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
-			anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
-
-			Sprite &sprite = *theSpriteMgr->sprites()[spriteIndex];
-
-			static int currentComboProperty = -1;
-			const nctl::String &propertyName = anim.propertyName();
-			currentComboProperty = Properties::Types::NONE;
-			if (anim.property() != nullptr)
-			{
-				for (unsigned int i = 0; i < IM_ARRAYSIZE(Properties::Strings); i++)
-				{
-					if (propertyName == Properties::Strings[i])
-					{
-						currentComboProperty = static_cast<Properties::Types>(i);
-						break;
-					}
-				}
-			}
-
-			bool setCurveShift = false;
-			if (ImGui::Combo("Property", &currentComboProperty, Properties::Strings, IM_ARRAYSIZE(Properties::Strings)))
-				setCurveShift = true;
-			anim.setPropertyName(Properties::Strings[currentComboProperty]);
-			Properties::assign(anim, static_cast<Properties::Types>(currentComboProperty));
-			switch (currentComboProperty)
-			{
-				case Properties::Types::NONE:
-					break;
-				case Properties::Types::POSITION_X:
-					limits.minShift = -sprite.width() * 0.5f;
-					limits.maxShift = theCanvas->texWidth() + sprite.width() * 0.5f;
-					limits.minScale = -theCanvas->texWidth();
-					limits.maxScale = theCanvas->texWidth();
-					break;
-				case Properties::Types::POSITION_Y:
-					limits.minShift = -sprite.height() * 0.5f;
-					limits.maxShift = theCanvas->texHeight() + sprite.height() * 0.5f;
-					limits.minScale = -theCanvas->texHeight();
-					limits.maxScale = theCanvas->texHeight();
-					break;
-				case Properties::Types::ROTATION:
-					limits.minShift = 0.0f;
-					limits.maxShift = 360.0f;
-					limits.minScale = -360.0f;
-					limits.maxScale = 360.0f;
-					break;
-				case Properties::Types::SCALE_X:
-					limits.minShift = -8.0f;
-					limits.maxShift = 8.0f;
-					limits.minScale = -8.0f;
-					limits.maxScale = 8.0f;
-					break;
-				case Properties::Types::SCALE_Y:
-					limits.minShift = -8.0f;
-					limits.maxShift = 8.0f;
-					limits.minScale = -8.0f;
-					limits.maxScale = 8.0f;
-					break;
-				case Properties::Types::ANCHOR_X:
-					limits.minShift = -sprite.width() * 0.5f;
-					limits.maxShift = sprite.width() * 0.5f;
-					limits.minScale = -sprite.width();
-					limits.maxScale = sprite.width();
-					break;
-				case Properties::Types::ANCHOR_Y:
-					limits.minShift = -sprite.height() * 0.5f;
-					limits.maxShift = sprite.height() * 0.5f;
-					limits.minScale = -sprite.height();
-					limits.maxScale = sprite.height();
-					break;
-				case Properties::Types::OPACITY:
-					limits.minShift = 0.0f;
-					limits.maxShift = 1.0f;
-					limits.minScale = -1.0f;
-					limits.maxScale = 1.0f;
-					break;
-				case Properties::Types::COLOR_R:
-					limits.minShift = 0.0f;
-					limits.maxShift = 1.0f;
-					limits.minScale = -1.0f;
-					limits.maxScale = 1.0f;
-					break;
-				case Properties::Types::COLOR_G:
-					limits.minShift = 0.0f;
-					limits.maxShift = 1.0f;
-					limits.minScale = -1.0f;
-					limits.maxScale = 1.0f;
-					break;
-				case Properties::Types::COLOR_B:
-					limits.minShift = 0.0f;
-					limits.maxShift = 1.0f;
-					limits.minScale = -1.0f;
-					limits.maxScale = 1.0f;
-					break;
-			}
-			if (setCurveShift && anim.property())
-				anim.curve().setShift(*anim.property());
+			GridAnimation &gridAnim = static_cast<GridAnimation &>(*selectedAnimation_);
+			createGridAnimationGui(gridAnim);
 		}
 		else
-			ImGui::TextDisabled("There are no sprites to animate");
-
-		createCurveAnimationGui(anim, limits);
-		createAnimationStateGui(anim);
-		createAnimationRemoveButton(parentGroup, index);
-
-		ImGui::TreePop();
+		{
+			// The only editable property for animation groups is their name
+			ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
+			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+		}
 	}
+
+	ImGui::End();
 }
 
-void UserInterface::createGridAnimationGui(AnimationGroup &parentGroup, unsigned int index)
+void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 {
-	GridAnimation &anim = static_cast<GridAnimation &>(*parentGroup.anims()[index]);
-	ASSERT(anim.type() == IAnimation::Type::GRID);
+	static CurveAnimationGuiLimits limits;
 
-	ui::auxString.format("#%u: ", index);
-	if (anim.name.isEmpty() == false)
-		ui::auxString.formatAppend("\"%s\" (", anim.name.data());
-	if (anim.function() != nullptr)
-		ui::auxString.formatAppend("%s grid", anim.function()->name().data());
-	if (anim.sprite() != nullptr && anim.sprite()->name.isEmpty() == false)
-		ui::auxString.formatAppend(" for sprite \"%s\"", anim.sprite()->name.data());
-	if (anim.name.isEmpty() == false)
-		ui::auxString.append(")");
-	ui::auxString.append("###GridAnimation");
+	ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
+					 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+	ImGui::Separator();
 
+	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
+	if (theSpriteMgr->sprites().isEmpty() == false)
+	{
+		if (spriteIndex < 0)
+			spriteIndex = selectedSpriteIndex_;
+
+		ui::comboString.clear();
+		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+		{
+			Sprite &sprite = *theSpriteMgr->sprites()[i];
+			ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+			ui::comboString.setLength(ui::comboString.length() + 1);
+		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
+		anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
+		selectedSpriteIndex_ = spriteIndex;
+
+		Sprite &sprite = *theSpriteMgr->sprites()[spriteIndex];
+
+		static int currentComboProperty = -1;
+		const nctl::String &propertyName = anim.propertyName();
+		currentComboProperty = Properties::Types::NONE;
+		if (anim.property() != nullptr)
+		{
+			for (unsigned int i = 0; i < IM_ARRAYSIZE(Properties::Strings); i++)
+			{
+				if (propertyName == Properties::Strings[i])
+				{
+					currentComboProperty = static_cast<Properties::Types>(i);
+					break;
+				}
+			}
+		}
+
+		bool setCurveShift = false;
+		if (ImGui::Combo("Property", &currentComboProperty, Properties::Strings, IM_ARRAYSIZE(Properties::Strings)))
+			setCurveShift = true;
+		anim.setPropertyName(Properties::Strings[currentComboProperty]);
+		Properties::assign(anim, static_cast<Properties::Types>(currentComboProperty));
+		switch (currentComboProperty)
+		{
+			case Properties::Types::NONE:
+				break;
+			case Properties::Types::POSITION_X:
+				limits.minShift = -sprite.width() * 0.5f;
+				limits.maxShift = theCanvas->texWidth() + sprite.width() * 0.5f;
+				limits.minScale = -theCanvas->texWidth();
+				limits.maxScale = theCanvas->texWidth();
+				break;
+			case Properties::Types::POSITION_Y:
+				limits.minShift = -sprite.height() * 0.5f;
+				limits.maxShift = theCanvas->texHeight() + sprite.height() * 0.5f;
+				limits.minScale = -theCanvas->texHeight();
+				limits.maxScale = theCanvas->texHeight();
+				break;
+			case Properties::Types::ROTATION:
+				limits.minShift = 0.0f;
+				limits.maxShift = 360.0f;
+				limits.minScale = -360.0f;
+				limits.maxScale = 360.0f;
+				break;
+			case Properties::Types::SCALE_X:
+				limits.minShift = -8.0f;
+				limits.maxShift = 8.0f;
+				limits.minScale = -8.0f;
+				limits.maxScale = 8.0f;
+				break;
+			case Properties::Types::SCALE_Y:
+				limits.minShift = -8.0f;
+				limits.maxShift = 8.0f;
+				limits.minScale = -8.0f;
+				limits.maxScale = 8.0f;
+				break;
+			case Properties::Types::ANCHOR_X:
+				limits.minShift = -sprite.width() * 0.5f;
+				limits.maxShift = sprite.width() * 0.5f;
+				limits.minScale = -sprite.width();
+				limits.maxScale = sprite.width();
+				break;
+			case Properties::Types::ANCHOR_Y:
+				limits.minShift = -sprite.height() * 0.5f;
+				limits.maxShift = sprite.height() * 0.5f;
+				limits.minScale = -sprite.height();
+				limits.maxScale = sprite.height();
+				break;
+			case Properties::Types::OPACITY:
+				limits.minShift = 0.0f;
+				limits.maxShift = 1.0f;
+				limits.minScale = -1.0f;
+				limits.maxScale = 1.0f;
+				break;
+			case Properties::Types::COLOR_R:
+				limits.minShift = 0.0f;
+				limits.maxShift = 1.0f;
+				limits.minScale = -1.0f;
+				limits.maxScale = 1.0f;
+				break;
+			case Properties::Types::COLOR_G:
+				limits.minShift = 0.0f;
+				limits.maxShift = 1.0f;
+				limits.minScale = -1.0f;
+				limits.maxScale = 1.0f;
+				break;
+			case Properties::Types::COLOR_B:
+				limits.minShift = 0.0f;
+				limits.maxShift = 1.0f;
+				limits.minScale = -1.0f;
+				limits.maxScale = 1.0f;
+				break;
+		}
+		if (setCurveShift && anim.property())
+			anim.curve().setShift(*anim.property());
+	}
+	else
+		ImGui::TextDisabled("There are no sprites to animate");
+
+	createCurveAnimationGui(anim, limits);
+}
+
+void UserInterface::createGridAnimationGui(GridAnimation &anim)
+{
 	CurveAnimationGuiLimits limits;
 	limits.minScale = -10.0f;
 	limits.maxScale = 10.0f;
 	limits.minShift = -100.0f;
 	limits.maxShift = 100.0f;
-	if (ImGui::TreeNodeEx(ui::auxString.data(), ImGuiTreeNodeFlags_DefaultOpen))
+
+	ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
+					 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+	ImGui::Separator();
+
+	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
+	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
-		ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
-		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
-		ImGui::Separator();
+		if (spriteIndex < 0)
+			spriteIndex = selectedSpriteIndex_;
 
-		int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
-		if (theSpriteMgr->sprites().isEmpty() == false)
-		{
-			if (spriteIndex < 0)
-				spriteIndex = selectedSpriteIndex_;
-
-			ui::comboString.clear();
-			for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
-			{
-				Sprite &sprite = *theSpriteMgr->sprites()[i];
-				ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
-				ui::comboString.setLength(ui::comboString.length() + 1);
-			}
-			ui::comboString.setLength(ui::comboString.length() + 1);
-			// Append a second '\0' to signal the end of the combo item list
-			ui::comboString[ui::comboString.length() - 1] = '\0';
-
-			ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
-			Sprite *sprite = theSpriteMgr->sprites()[spriteIndex].get();
-			if (anim.sprite() != sprite)
-				anim.setSprite(sprite);
-		}
-		else
-			ImGui::TextDisabled("There are no sprites to animate");
-
-		static int currentComboFunction = -1;
 		ui::comboString.clear();
-		for (unsigned int i = 0; i < GridFunctionLibrary::gridFunctions().size(); i++)
+		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 		{
-			const nctl::String &functionName = GridFunctionLibrary::gridFunctions()[i].name();
-			ui::comboString.formatAppend("%s", functionName.data());
+			Sprite &sprite = *theSpriteMgr->sprites()[i];
+			ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
 			ui::comboString.setLength(ui::comboString.length() + 1);
-
-			if (anim.function() && functionName == anim.function()->name())
-				currentComboFunction = i;
 		}
 		ui::comboString.setLength(ui::comboString.length() + 1);
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
-		ASSERT(currentComboFunction > -1);
 
-		ImGui::Combo("Function", &currentComboFunction, ui::comboString.data());
-		const GridFunction *gridFunction = &GridFunctionLibrary::gridFunctions()[currentComboFunction];
-		if (anim.function() != gridFunction)
-			anim.setFunction(gridFunction);
+		ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
+		Sprite *sprite = theSpriteMgr->sprites()[spriteIndex].get();
+		selectedSpriteIndex_ = spriteIndex;
+		if (anim.sprite() != sprite)
+			anim.setSprite(sprite);
+	}
+	else
+		ImGui::TextDisabled("There are no sprites to animate");
 
-		if (anim.function() != nullptr)
+	static int currentComboFunction = -1;
+	ui::comboString.clear();
+	for (unsigned int i = 0; i < GridFunctionLibrary::gridFunctions().size(); i++)
+	{
+		const nctl::String &functionName = GridFunctionLibrary::gridFunctions()[i].name();
+		ui::comboString.formatAppend("%s", functionName.data());
+		ui::comboString.setLength(ui::comboString.length() + 1);
+
+		if (anim.function() && functionName == anim.function()->name())
+			currentComboFunction = i;
+	}
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	// Append a second '\0' to signal the end of the combo item list
+	ui::comboString[ui::comboString.length() - 1] = '\0';
+	ASSERT(currentComboFunction > -1);
+
+	ImGui::Combo("Function", &currentComboFunction, ui::comboString.data());
+	const GridFunction *gridFunction = &GridFunctionLibrary::gridFunctions()[currentComboFunction];
+	if (anim.function() != gridFunction)
+		anim.setFunction(gridFunction);
+
+	if (anim.function() != nullptr)
+	{
+		for (unsigned int i = 0; i < anim.function()->numParameters(); i++)
 		{
-			for (unsigned int i = 0; i < anim.function()->numParameters(); i++)
+			const GridFunction::ParameterInfo &paramInfo = anim.function()->parameterInfo(i);
+			ui::auxString.format("%s##GridFunction%u", paramInfo.name.data(), i);
+			float minValue = paramInfo.minValue.value0;
+			float maxValue = paramInfo.maxValue.value0;
+
+			if (anim.sprite())
 			{
-				const GridFunction::ParameterInfo &paramInfo = anim.function()->parameterInfo(i);
-				ui::auxString.format("%s##GridFunction%u", paramInfo.name.data(), i);
-				float minValue = paramInfo.minValue.value0;
-				float maxValue = paramInfo.maxValue.value0;
+				if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
+					minValue *= anim.sprite()->width();
+				else if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
+					minValue *= anim.sprite()->height();
 
-				if (anim.sprite())
+				if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
+					maxValue *= anim.sprite()->width();
+				else if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
+					maxValue *= anim.sprite()->height();
+			}
+
+			switch (paramInfo.type)
+			{
+				case GridFunction::ParameterType::FLOAT:
+					ImGui::SliderFloat(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
+					break;
+				case GridFunction::ParameterType::VECTOR2F:
+					ImGui::SliderFloat2(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
+					break;
+			}
+
+			if (anim.sprite())
+			{
+				if (paramInfo.anchorType == GridFunction::AnchorType::X)
+					anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
+				else if (paramInfo.anchorType == GridFunction::AnchorType::Y)
+					anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value0;
+				else if (paramInfo.anchorType == GridFunction::AnchorType::XY)
 				{
-					if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
-						minValue *= anim.sprite()->width();
-					else if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
-						minValue *= anim.sprite()->height();
-
-					if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
-						maxValue *= anim.sprite()->width();
-					else if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
-						maxValue *= anim.sprite()->height();
-				}
-
-				switch (paramInfo.type)
-				{
-					case GridFunction::ParameterType::FLOAT:
-						ImGui::SliderFloat(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
-						break;
-					case GridFunction::ParameterType::VECTOR2F:
-						ImGui::SliderFloat2(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
-						break;
-				}
-
-				if (anim.sprite())
-				{
-					if (paramInfo.anchorType == GridFunction::AnchorType::X)
-						anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
-					else if (paramInfo.anchorType == GridFunction::AnchorType::Y)
-						anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value0;
-					else if (paramInfo.anchorType == GridFunction::AnchorType::XY)
-					{
-						anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
-						anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value1;
-					}
-				}
-
-				ImGui::SameLine();
-				ui::auxString.format("%s##GridFunction%u", Labels::Reset, i);
-				if (ImGui::Button(ui::auxString.data()))
-				{
-					anim.parameters()[i].value0 = paramInfo.initialValue.value0;
-					anim.parameters()[i].value1 = paramInfo.initialValue.value1;
+					anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
+					anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value1;
 				}
 			}
+
+			ImGui::SameLine();
+			ui::auxString.format("%s##GridFunction%u", Labels::Reset, i);
+			if (ImGui::Button(ui::auxString.data()))
+			{
+				anim.parameters()[i].value0 = paramInfo.initialValue.value0;
+				anim.parameters()[i].value1 = paramInfo.initialValue.value1;
+			}
 		}
-
-		createCurveAnimationGui(anim, limits);
-		createAnimationStateGui(anim);
-		createAnimationRemoveButton(parentGroup, index);
-
-		ImGui::TreePop();
 	}
+
+	createCurveAnimationGui(anim, limits);
 }
 
 void UserInterface::SpriteProperties::save(Sprite &sprite)
@@ -1275,13 +1309,19 @@ void UserInterface::createCanvasWindow()
 	const float canvasZoom = canvasGuiSection_.zoomAmount();
 
 	ImGui::SetNextWindowSize(ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImGuiCond_Once);
-	ImGui::Begin("Canvas", nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::Begin(Labels::Canvas, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+
+	canvasGuiSection_.create(*theCanvas);
+
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 	ImGui::Image(theCanvas->imguiTexId(), ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	hoveringOnCanvas = false;
 	if (ImGui::IsItemHovered() && theSpriteMgr->sprites().isEmpty() == false)
 	{
+		if (deleteKeyPressed)
+			removeSelectedSprite();
+
 		// Disable keyboard navigation for an easier sprite move with arrow keys
 		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
 
@@ -1391,7 +1431,20 @@ void UserInterface::createTexRectWindow()
 
 	ImVec2 size = ImVec2(sprite.texture().width() * canvasZoom, sprite.texture().height() * canvasZoom);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Once);
-	ImGui::Begin("TexRect", &showTexrectWindow, ImGuiWindowFlags_HorizontalScrollbar);
+
+	ImGui::Begin(Labels::TexRect, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+
+	ui::auxString.format("Zoom: %.2f", canvasGuiSection_.zoomAmount());
+	if (ImGui::Button(ui::auxString.data()))
+		canvasGuiSection_.resetZoom();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::PlusIcon))
+		canvasGuiSection_.increaseZoom();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::MinusIcon))
+		canvasGuiSection_.decreaseZoom();
+	ImGui::Separator();
+
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 	ImGui::Image(sprite.imguiTexId(), size);
 
@@ -1409,14 +1462,18 @@ void UserInterface::createTexRectWindow()
 		statusMessage_.format("Coordinates: %d, %d", static_cast<int>(relPos.x), static_cast<int>(relPos.y));
 	}
 
-	if (ImGui::IsWindowHovered())
+	if (ImGui::IsItemHovered())
 	{
 		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 		{
 			mouseStatus_ = MouseStatus::CLICKED;
 			startPos = ImGui::GetMousePos();
 		}
-		else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+	}
+
+	if (ImGui::IsWindowHovered() && mouseStatus_ != MouseStatus::IDLE && mouseStatus_ != MouseStatus::RELEASED)
+	{
+		if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 		{
 			mouseStatus_ = MouseStatus::DRAGGING;
 			endPos = ImGui::GetMousePos();

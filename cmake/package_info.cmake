@@ -37,7 +37,7 @@ set(PACKAGE_SOURCES
 	include/gui/gui_common.h
 	include/gui/UserInterface.h
 	include/gui/CanvasGuiSection.h
-	include/gui/RenderGuiSection.h
+	include/gui/RenderGuiWindow.h
 
 	src/singletons.cpp
 	src/main.cpp
@@ -64,7 +64,7 @@ set(PACKAGE_SOURCES
 	src/gui/gui_common.cpp
 	src/gui/UserInterface.cpp
 	src/gui/CanvasGuiSection.cpp
-	src/gui/RenderGuiSection.cpp
+	src/gui/RenderGuiWindow.cpp
 	src/gui/config_window.cpp
 	src/gui/style.cpp
 	src/gui/openfile.cpp

@@ -28,6 +28,7 @@ class AnimationManager
 	void reset();
 	void clear();
 
+	void removeAnimation(IAnimation *anim);
 	void removeSprite(Sprite *sprite);
 	void assignGridAnchorToParameters(Sprite *sprite);
 

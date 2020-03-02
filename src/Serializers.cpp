@@ -7,7 +7,7 @@
 #include "GridAnimation.h"
 #include "GridFunction.h"
 #include "AnimationManager.h"
-#include "gui/RenderGuiSection.h"
+#include "gui/RenderGuiWindow.h"
 #include "Configuration.h"
 #include "singletons.h"
 
