@@ -37,6 +37,10 @@ const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 // clang-format on
 
+static const int PlotArraySize = 512;
+static float plotArray[PlotArraySize];
+static int plotValueIndex = 0;
+
 const char *docsFile = "../docs/documentation.html";
 
 static bool requestCloseModal = false;
@@ -47,6 +51,8 @@ static bool allowOverwrite = false;
 static bool showAboutWindow = false;
 static bool hoveringOnCanvas = false;
 static bool deleteKeyPressed = false;
+
+static int numFrames = 0;
 
 }
 
@@ -195,7 +201,7 @@ void UserInterface::menuOpen()
 
 bool UserInterface::openProject(const char *filename)
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 	const bool fileExists = ui::checkPathOrConcatenate(theCfg.scriptsPath, filename, ui::filePath);
 	if (fileExists && theSaver->load(ui::filePath.data(), data))
 	{
@@ -213,7 +219,7 @@ bool UserInterface::openProject(const char *filename)
 
 void UserInterface::menuSave()
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 	ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
 	theSaver->save(ui::filePath.data(), data);
 	ui::auxString.format("Saved project file \"%s\"\n", ui::filePath.data());
@@ -253,13 +259,19 @@ void UserInterface::createGui()
 	//createToolbarWindow();
 
 	createTexturesWindow();
+	if (numFrames == 1)
+		ImGui::SetNextWindowFocus();
 	createSpritesWindow();
 	createAnimationsWindow();
 
+	if (numFrames == 1)
+		ImGui::SetNextWindowFocus();
 	createSpriteWindow();
 	createAnimationWindow();
 	renderGuiWindow_.create();
 
+	if (numFrames == 1)
+		ImGui::SetNextWindowFocus();
 	createCanvasWindow();
 	if (theSpriteMgr->sprites().isEmpty() == false)
 		createTexRectWindow();
@@ -274,6 +286,8 @@ void UserInterface::createGui()
 	createConfigWindow();
 
 	deleteKeyPressed = false;
+	if (numFrames < 2)
+		numFrames++;
 }
 
 ///////////////////////////////////////////////////////////
@@ -362,7 +376,7 @@ void UserInterface::createMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
+			LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 			if (ImGui::MenuItem(Labels::New, "CTRL + N", false, menuNewEnabled()))
 				menuNew();
 
@@ -377,7 +391,10 @@ void UserInterface::createMenuBar()
 					if (ImGui::MenuItem(ScriptStrings::Names[i]))
 					{
 						if (openProject(ScriptStrings::Names[i]))
+						{
 							filename_ = ScriptStrings::Names[i];
+							numFrames = 0; // force focus on the canvas
+						}
 					}
 				}
 				ImGui::EndMenu();
@@ -414,7 +431,7 @@ void UserInterface::createMenuBar()
 
 void UserInterface::createGuiPopups()
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
+	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 
 	if (openModal)
 		ImGui::OpenPopup("Open##Modal");
@@ -434,7 +451,10 @@ void UserInterface::createGuiPopups()
 		    ImGui::Button(Labels::Ok))
 		{
 			if (openProject(filename_.data()))
+			{
 				requestCloseModal = true;
+				numFrames = 0; // force focus on the canvas
+			}
 			else
 			{
 				filename_ = Labels::LoadingError;
@@ -507,8 +527,10 @@ void UserInterface::createGuiPopups()
 void UserInterface::createToolbarWindow()
 {
 	const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	ImGui::Begin("Toolbar", nullptr, windowFlags);
 
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 	if (ImGui::Button(Labels::New) && menuNewEnabled())
 		menuNew();
 	ImGui::SameLine();
@@ -520,6 +542,7 @@ void UserInterface::createToolbarWindow()
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::SaveAs) && menuSaveAsEnabled())
 		saveAsModal = true;
+	ImGui::PopStyleVar(2);
 
 	ImGui::End();
 }
@@ -595,6 +618,9 @@ void UserInterface::createSpritesWindow()
 		{
 			if (selectedTextureIndex_ >= 0 && selectedTextureIndex_ < theSpriteMgr->textures().size())
 			{
+				if (theSpriteMgr->sprites().isEmpty())
+					numFrames = 0; // force focus on the canvas
+
 				Texture &tex = *theSpriteMgr->textures()[selectedTextureIndex_];
 				theSpriteMgr->sprites().pushBack(nctl::makeUnique<Sprite>(&tex));
 				selectedSpriteIndex_ = theSpriteMgr->sprites().size() - 1;
@@ -704,7 +730,22 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 
 	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&anim), nodeFlags, "%s", ui::auxString.data());
 	if (ImGui::IsItemClicked())
+	{
 		selectedAnimation_ = &anim;
+		int spriteIndex = -1;
+		if (anim.type() == IAnimation::Type::PROPERTY)
+		{
+			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
+			spriteIndex = theSpriteMgr->spriteIndex(propertyAnim.sprite());
+		}
+		else if (anim.type() == IAnimation::Type::GRID)
+		{
+			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+			spriteIndex = theSpriteMgr->spriteIndex(gridAnim.sprite());
+		}
+		if (spriteIndex >= 0)
+			selectedSpriteIndex_ = spriteIndex;
+	}
 
 	if (anim.isGroup() && treeIsOpen)
 	{
@@ -805,8 +846,6 @@ void UserInterface::createSpriteWindow()
 
 		ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
 		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sprite.name);
-		ImGui::SameLine();
-		ImGui::Checkbox("Visible", &sprite.visible);
 
 		// Create an array of sprites that can be a parent of the selected one
 		spriteGraph_.clear();
@@ -987,7 +1026,24 @@ void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAni
 	else if (anim.curve().time() > anim.curve().end())
 		anim.curve().time() = anim.curve().end();
 
-	ImGui::Text("Value: %f", anim.curve().value());
+	plotArray[plotValueIndex] = anim.curve().value();
+	ui::auxString.format("%f", plotArray[plotValueIndex]);
+	ImGui::PlotLines("Values", plotArray, PlotArraySize, 0, ui::auxString.data());
+	ImGui::SameLine();
+	ui::auxString.format("%s##Values", Labels::Reset);
+	if (ImGui::Button(ui::auxString.data()))
+	{
+		plotValueIndex = 0;
+		for (unsigned int i = 0; i < PlotArraySize; i++)
+			plotArray[i] = 0.0f;
+	}
+
+	if (anim.state() == IAnimation::State::PLAYING)
+	{
+		plotValueIndex++;
+		if (plotValueIndex >= PlotArraySize)
+			plotValueIndex = 0;
+	}
 }
 
 void UserInterface::createAnimationWindow()
@@ -1043,9 +1099,11 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
 
-		ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
-		anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
-		selectedSpriteIndex_ = spriteIndex;
+		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()))
+		{
+			anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
+			selectedSpriteIndex_ = spriteIndex;
+		}
 
 		Sprite &sprite = *theSpriteMgr->sprites()[spriteIndex];
 
@@ -1178,11 +1236,13 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
 
-		ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data());
-		Sprite *sprite = theSpriteMgr->sprites()[spriteIndex].get();
-		selectedSpriteIndex_ = spriteIndex;
-		if (anim.sprite() != sprite)
-			anim.setSprite(sprite);
+		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()))
+		{
+			Sprite *sprite = theSpriteMgr->sprites()[spriteIndex].get();
+			selectedSpriteIndex_ = spriteIndex;
+			if (anim.sprite() != sprite)
+				anim.setSprite(sprite);
+		}
 	}
 	else
 		ImGui::TextDisabled("There are no sprites to animate");
@@ -1313,11 +1373,18 @@ void UserInterface::createCanvasWindow()
 
 	ImGui::SetNextWindowSize(ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImGuiCond_Once);
 	ImGui::Begin(Labels::Canvas, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
-
 	canvasGuiSection_.create(*theCanvas);
 
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 	ImGui::Image(theCanvas->imguiTexId(), ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+
+	ImDrawList *drawList = ImGui::GetWindowDrawList();
+	const float lineThickness = (canvasZoom < 1.0f) ? 1.0f : canvasZoom;
+	if (canvasGuiSection_.showBorders())
+	{
+		const ImRect borderRect(cursorScreenPos.x, cursorScreenPos.y, cursorScreenPos.x + theCanvas->texWidth() * canvasZoom, cursorScreenPos.y + theCanvas->texHeight() * canvasZoom);
+		drawList->AddRect(borderRect.Min, borderRect.Max, ImColor(1.0f, 0.0f, 1.0f, 1.0f), 0.0f, ImDrawCornerFlags_All, lineThickness);
+	}
 
 	hoveringOnCanvas = false;
 	if (ImGui::IsItemHovered() && theSpriteMgr->sprites().isEmpty() == false)
@@ -1353,17 +1420,15 @@ void UserInterface::createCanvasWindow()
 				if (ImGui::GetIO().KeyCtrl)
 					color |= 0x00FF0000; // blue
 
-				ImDrawList *drawList = ImGui::GetWindowDrawList();
-
 				const ImRect spriteRect(cursorScreenPos.x + (sprite.absPosition().x - sprite.absWidth() / 2) * canvasZoom,
 				                        cursorScreenPos.y + (sprite.absPosition().y - sprite.absHeight() / 2) * canvasZoom,
 				                        cursorScreenPos.x + (sprite.absPosition().x + sprite.absWidth() / 2) * canvasZoom,
 				                        cursorScreenPos.y + (sprite.absPosition().y + sprite.absHeight() / 2) * canvasZoom);
-				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawCornerFlags_All, canvasZoom);
+				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawCornerFlags_All, lineThickness);
 				if (spriteRect.Contains(mousePos))
 				{
-					drawList->AddLine(ImVec2(spriteRect.Min.x, mousePos.y), ImVec2(spriteRect.Max.x, mousePos.y), color, canvasZoom);
-					drawList->AddLine(ImVec2(mousePos.x, spriteRect.Min.y), ImVec2(mousePos.x, spriteRect.Max.y), color, canvasZoom);
+					drawList->AddLine(ImVec2(spriteRect.Min.x, mousePos.y), ImVec2(spriteRect.Max.x, mousePos.y), color, lineThickness);
+					drawList->AddLine(ImVec2(mousePos.x, spriteRect.Min.y), ImVec2(mousePos.x, spriteRect.Max.y), color, lineThickness);
 				}
 
 				spriteProps_.save(sprite);
@@ -1438,14 +1503,16 @@ void UserInterface::createTexRectWindow()
 	ImGui::Begin(Labels::TexRect, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 
 	ui::auxString.format("Zoom: %.2f", canvasGuiSection_.zoomAmount());
-	if (ImGui::Button(ui::auxString.data()))
-		canvasGuiSection_.resetZoom();
-	ImGui::SameLine();
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 	if (ImGui::Button(Labels::PlusIcon))
 		canvasGuiSection_.increaseZoom();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::MinusIcon))
 		canvasGuiSection_.decreaseZoom();
+	ImGui::PopStyleVar();
+	ImGui::SameLine();
+	if (ImGui::Button(ui::auxString.data()))
+		canvasGuiSection_.resetZoom();
 	ImGui::Separator();
 
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();

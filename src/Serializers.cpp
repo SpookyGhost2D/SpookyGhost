@@ -7,7 +7,6 @@
 #include "GridAnimation.h"
 #include "GridFunction.h"
 #include "AnimationManager.h"
-#include "gui/RenderGuiWindow.h"
 #include "Configuration.h"
 #include "singletons.h"
 
@@ -258,20 +257,6 @@ void serialize(LuaSerializer &ls, const GridAnimation &anim)
 		ls.unindent();
 		ls.buffer().append("},\n");
 	}
-}
-
-void serialize(LuaSerializer &ls, const char *name, const SaveAnim &saveAnim)
-{
-	ls.buffer().formatAppend("%s =\n", name);
-	ls.buffer().append("{\n");
-	ls.indent();
-
-	serialize(ls, "num_frames", saveAnim.numFrames);
-	serialize(ls, "fps", saveAnim.fps);
-	serialize(ls, "canvas_resize", saveAnim.canvasResize);
-
-	ls.unindent();
-	ls.buffer().append("}\n");
 }
 
 void serialize(LuaSerializer &ls, const Configuration &cfg)
@@ -545,20 +530,6 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 	if (parent == nullptr)
 		parent = &theAnimMgr->animGroup();
 	anim->setParent(parent);
-}
-
-bool deserialize(LuaSerializer &ls, const char *name, SaveAnim &saveAnim)
-{
-	lua_State *L = ls.luaState();
-	if (nc::LuaUtils::tryRetrieveGlobalTable(L, name) == false)
-		return false;
-
-	saveAnim.numFrames = deserialize<int>(ls, "num_frames");
-	saveAnim.fps = deserialize<int>(ls, "fps");
-	saveAnim.canvasResize = deserialize<float>(ls, "canvas_resize");
-
-	nc::LuaUtils::pop(L);
-	return true;
 }
 
 void deserialize(LuaSerializer &ls, Configuration &cfg)

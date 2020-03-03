@@ -11,8 +11,8 @@ namespace nc = ncine;
 struct Configuration
 {
 	int version = 1;
-	int width = 1920;
-	int height = 1080;
+	int width = 1280;
+	int height = 720;
 	bool fullscreen = false;
 	bool resizable = true;
 

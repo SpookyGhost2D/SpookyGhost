@@ -25,7 +25,7 @@ class IAnimation
 	};
 
 	IAnimation()
-	    : state_(State::PAUSED), parent_(nullptr) {}
+	    : state_(State::STOPPED), parent_(nullptr) {}
 	virtual ~IAnimation() {}
 
 	static const unsigned int MaxNameLength = 64;

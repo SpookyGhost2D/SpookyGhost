@@ -36,8 +36,8 @@ void CurveAnimation::update(float deltaTime)
 	if (state_ == State::PLAYING &&
 	    curve_.loopMode() == EasingCurve::LoopMode::DISABLED)
 	{
-		if ((curve_.direction() == EasingCurve::Direction::FORWARD && curve().time() >= 1.0f) ||
-		    (curve_.direction() == EasingCurve::Direction::BACKWARD && curve().time() <= 0.0f))
+		if ((curve_.direction() == EasingCurve::Direction::FORWARD && curve().time() >= curve().end()) ||
+		    (curve_.direction() == EasingCurve::Direction::BACKWARD && curve().time() <= curve().start()))
 		{
 			state_ = State::STOPPED;
 		}

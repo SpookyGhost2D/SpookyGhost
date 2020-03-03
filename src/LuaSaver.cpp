@@ -3,7 +3,6 @@
 #include "Texture.h"
 #include "AnimationManager.h"
 #include "GridFunctionLibrary.h"
-#include "gui/RenderGuiWindow.h"
 #include "Configuration.h"
 
 #include "Serializers.h"
@@ -60,7 +59,6 @@ bool LuaSaver::load(const char *filename, Data &data)
 	Deserializers::deserialize(*serializer_, "textures", data.spriteMgr.textures());
 	Deserializers::deserialize(*serializer_, "sprites", data.spriteMgr.sprites());
 	Deserializers::deserialize(*serializer_, "animations", data.animMgr.anims());
-	Deserializers::deserialize(*serializer_, "render", data.saveAnim);
 
 	// Deleting backwards without iterators
 	for (int i = data.animMgr.anims().size() - 1; i >= 0; i--)
@@ -140,8 +138,6 @@ void LuaSaver::save(const char *filename, const Data &data)
 		Serializers::serialize(*serializer_, "animations", anims);
 		serializer_->buffer().append("\n");
 	}
-
-	Serializers::serialize(*serializer_, "render", data.saveAnim);
 
 	serializer_->save(filename);
 }

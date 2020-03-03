@@ -11,14 +11,16 @@
 void CanvasGuiSection::create(Canvas &canvas)
 {
 	ui::auxString.format("Zoom: %.2f", zoomAmount());
-	if (ImGui::Button(ui::auxString.data()))
-		resetZoom();
-	ImGui::SameLine();
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 	if (ImGui::Button(Labels::PlusIcon))
 		increaseZoom();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::MinusIcon))
 		decreaseZoom();
+	ImGui::PopStyleVar();
+	ImGui::SameLine();
+	if (ImGui::Button(ui::auxString.data()))
+		resetZoom();
 
 	ImGui::SameLine();
 	ImGui::ColorEdit4("Background", canvas.backgroundColor.data(), ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs);
@@ -44,6 +46,7 @@ void CanvasGuiSection::create(Canvas &canvas)
 	ui::auxString.clear();
 	if (currentComboResize_ != static_cast<int>(ResizePreset::CUSTOM))
 		ui::auxString.append("Resize");
+	ui::auxString.append("##ResizeCombo");
 
 	ImGui::PushItemWidth(100.0f);
 	ImGui::Combo(ui::auxString.data(), &currentComboResize_, ui::comboString.data());
@@ -53,7 +56,7 @@ void CanvasGuiSection::create(Canvas &canvas)
 	{
 		ImGui::SameLine();
 		ImGui::PushItemWidth(80.0f);
-		ImGui::InputInt2("Resize", customCanvasSize_.data());
+		ImGui::InputInt2("Resize", customCanvasSize_.data(), ImGuiInputTextFlags_EnterReturnsTrue);
 		ImGui::PopItemWidth();
 	}
 	else
@@ -70,12 +73,12 @@ void CanvasGuiSection::create(Canvas &canvas)
 	else if (desiredCanvasSize.y > canvas.maxTextureSize())
 		desiredCanvasSize.y = canvas.maxTextureSize();
 
-	ImGui::SameLine();
-	if (ImGui::Button(Labels::Apply) &&
-	    (canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y))
-	{
+	if (canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y)
 		canvas.resizeTexture(desiredCanvasSize);
-	}
+
+	ImGui::SameLine();
+	ImGui::Checkbox("Borders", &showBorders_);
+
 	ImGui::Separator();
 }
 

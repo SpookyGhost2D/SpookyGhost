@@ -21,6 +21,8 @@ class CanvasGuiSection
 	void increaseZoom();
 	void decreaseZoom();
 
+	inline bool showBorders() const { return showBorders_; }
+
   private:
 	enum ZoomLevel
 	{
@@ -50,6 +52,7 @@ class CanvasGuiSection
 	const char *ResizeStrings[7] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "Custom" };
 	int currentComboResize_ = 0;
 	int canvasZoomRadio_ = CanvasGuiSection::ZoomLevel::X1;
+	bool showBorders_ = false;
 
 	nc::Vector2i resizeVector(ResizePreset resizePreset);
 	nc::Vector2i resizeVector();

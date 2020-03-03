@@ -19,7 +19,7 @@ void UserInterface::createConfigWindow()
 	if (showConfigWindow == false)
 		return;
 
-	const ImVec2 windowSize = ImVec2(450.0f, 450.0f);
+	const ImVec2 windowSize = ImVec2(500.0f, 375.0f);
 	ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
 	ImGui::Begin("Configuration", &showConfigWindow, ImGuiWindowFlags_NoDocking);
 
@@ -113,14 +113,8 @@ void UserInterface::createConfigWindow()
 
 	sanitizeConfigValues();
 
-	ImGui::NewLine();
-	if (ImGui::Button(Labels::Load))
-	{
-		if (nc::IFile::access("config.lua", nc::IFile::AccessMode::READABLE))
-			theSaver->loadCfg("config.lua", theCfg);
-	}
-	ImGui::SameLine();
-	if (ImGui::Button(Labels::Save))
+	// Auto-save on window close
+	if (showConfigWindow == false)
 		theSaver->saveCfg("config.lua", theCfg);
 
 	ImGui::End();

@@ -8,7 +8,6 @@ class UserInterface;
 class Canvas;
 class SpriteManager;
 class AnimationManager;
-class SaveAnim;
 struct Configuration;
 
 /// The class that helps with Lua serialization
@@ -17,13 +16,12 @@ class LuaSaver
   public:
 	struct Data
 	{
-		Data(Canvas &ca, SpriteManager &sm, AnimationManager &am, SaveAnim &sa)
-		    : canvas(ca), spriteMgr(sm), animMgr(am), saveAnim(sa) {}
+		Data(Canvas &ca, SpriteManager &sm, AnimationManager &am)
+		    : canvas(ca), spriteMgr(sm), animMgr(am) {}
 
 		Canvas &canvas;
 		SpriteManager &spriteMgr;
 		AnimationManager &animMgr;
-		SaveAnim &saveAnim;
 	};
 
 	LuaSaver(unsigned int bufferSize);
