@@ -162,4 +162,3 @@ void LuaSaver::saveCfg(const char *filename, const Configuration &cfg)
 	Serializers::serialize(*serializer_, cfg);
 	serializer_->save(filename);
 }
-

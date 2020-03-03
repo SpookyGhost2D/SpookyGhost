@@ -10,7 +10,7 @@
 
 void CanvasGuiSection::create(Canvas &canvas)
 {
-	ui::auxString.format("Zoom: %.2f" ,zoomAmount());
+	ui::auxString.format("Zoom: %.2f", zoomAmount());
 	if (ImGui::Button(ui::auxString.data()))
 		resetZoom();
 	ImGui::SameLine();
@@ -72,7 +72,7 @@ void CanvasGuiSection::create(Canvas &canvas)
 
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Apply) &&
-		(canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y))
+	    (canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y))
 	{
 		canvas.resizeTexture(desiredCanvasSize);
 	}

@@ -102,14 +102,14 @@ void UserInterface::createConfigWindow()
 
 	ImGui::NewLine();
 	ImGui::InputText("Start-up Script Name", theCfg.startupScriptName.data(), ui::MaxStringLength,
-					 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.startupScriptName);
+	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.startupScriptName);
 	ImGui::Checkbox("Auto Play On Start", &theCfg.autoPlayOnStart);
 
 	ImGui::NewLine();
 	ImGui::InputText("Scripts Path", theCfg.scriptsPath.data(), ui::MaxStringLength,
-					 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.scriptsPath);
+	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.scriptsPath);
 	ImGui::InputText("Textures Path", theCfg.texturesPath.data(), ui::MaxStringLength,
-					 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.texturesPath);
+	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.texturesPath);
 
 	sanitizeConfigValues();
 

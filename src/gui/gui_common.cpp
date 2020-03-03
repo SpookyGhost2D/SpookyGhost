@@ -18,7 +18,7 @@ int inputTextCallback(ImGuiInputTextCallbackData *data)
 
 nctl::String joinPath(const nctl::String &first, const nctl::String &second)
 {
-	const char *pathSeparator = (first.isEmpty() ==false && first[first.length() - 1] != '/') ? "/" : "";
+	const char *pathSeparator = (first.isEmpty() == false && first[first.length() - 1] != '/') ? "/" : "";
 	return nctl::String(first + pathSeparator + second);
 }
 

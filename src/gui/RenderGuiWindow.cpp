@@ -58,7 +58,7 @@ void RenderGuiWindow::setResize(float resizeAmount)
 
 void RenderGuiWindow::create()
 {
-	if (ImGui::Begin(Labels::Render, nullptr));
+	if (ImGui::Begin(Labels::Render, nullptr))
 	{
 		ImGui::InputText("Filename prefix", filename.data(), ui::MaxStringLength,
 		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &filename);

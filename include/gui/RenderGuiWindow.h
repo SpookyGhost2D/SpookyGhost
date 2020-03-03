@@ -23,7 +23,7 @@ struct SaveAnim
 /// The render gui window class
 class RenderGuiWindow
 {
-public:
+  public:
 	enum ResizeLevel
 	{
 		X1_8,

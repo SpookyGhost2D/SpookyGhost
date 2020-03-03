@@ -37,7 +37,7 @@ const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 // clang-format on
 
-const char* docsFile = "../docs/documentation.html";
+const char *docsFile = "../docs/documentation.html";
 
 static bool requestCloseModal = false;
 static bool openModal = false;
@@ -168,8 +168,8 @@ bool UserInterface::menuSaveEnabled()
 {
 	return (filename_.isEmpty() == false &&
 	        (theSpriteMgr->textures().isEmpty() == false ||
-	        theSpriteMgr->sprites().isEmpty() == false ||
-	        theAnimMgr->anims().isEmpty() == false));
+	         theSpriteMgr->sprites().isEmpty() == false ||
+	         theAnimMgr->anims().isEmpty() == false));
 }
 
 bool UserInterface::menuSaveAsEnabled()
@@ -202,7 +202,7 @@ bool UserInterface::openProject(const char *filename)
 		selectedAnimation_ = nullptr;
 		canvasGuiSection_.setResize(theCanvas->size());
 		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
-		ui::auxString.format("Loaded project file \"%s\"\n",ui::filePath.data());
+		ui::auxString.format("Loaded project file \"%s\"\n", ui::filePath.data());
 		pushStatusInfoMessage(ui::auxString.data());
 
 		return true;
@@ -216,7 +216,7 @@ void UserInterface::menuSave()
 	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr, renderGuiWindow_.saveAnimStatus());
 	ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
 	theSaver->save(ui::filePath.data(), data);
-	ui::auxString.format("Saved project file \"%s\"\n",ui::filePath.data());
+	ui::auxString.format("Saved project file \"%s\"\n", ui::filePath.data());
 	pushStatusInfoMessage(ui::auxString.data());
 }
 
@@ -430,7 +430,8 @@ void UserInterface::createGuiPopups()
 			ImGui::SetKeyboardFocusHere();
 		if (ImGui::InputText("", filename_.data(), ui::MaxStringLength,
 		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
-		                     ui::inputTextCallback, &filename_) || ImGui::Button(Labels::Ok))
+		                     ui::inputTextCallback, &filename_) ||
+		    ImGui::Button(Labels::Ok))
 		{
 			if (openProject(filename_.data()))
 				requestCloseModal = true;
@@ -466,7 +467,8 @@ void UserInterface::createGuiPopups()
 			ImGui::SetKeyboardFocusHere();
 		if (ImGui::InputText("", filename_.data(), ui::MaxStringLength,
 		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
-		                     ui::inputTextCallback, &filename_) || ImGui::Button(Labels::Ok))
+		                     ui::inputTextCallback, &filename_) ||
+		    ImGui::Button(Labels::Ok))
 		{
 			const bool fileExists = ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
 			if (fileExists && allowOverwrite == false)
@@ -478,7 +480,7 @@ void UserInterface::createGuiPopups()
 			else
 			{
 				theSaver->save(ui::filePath.data(), data);
-				ui::auxString.format("Saved project file \"%s\"\n",ui::filePath.data());
+				ui::auxString.format("Saved project file \"%s\"\n", ui::filePath.data());
 				pushStatusInfoMessage(ui::auxString.data());
 				requestCloseModal = true;
 			}
@@ -574,7 +576,7 @@ void UserInterface::createTexturesWindow()
 				nodeFlags |= ImGuiTreeNodeFlags_Selected;
 
 			ImGui::TreeNodeEx(static_cast<void *>(&texture), nodeFlags, "#%u: \"%s\" (%d x %d)",
-							  i, texture.name().data(), texture.width(), texture.height());
+			                  i, texture.name().data(), texture.width(), texture.height());
 			if (ImGui::IsItemClicked())
 				selectedTextureIndex_ = i;
 		}
@@ -582,6 +584,7 @@ void UserInterface::createTexturesWindow()
 
 	ImGui::End();
 }
+
 void UserInterface::createSpritesWindow()
 {
 	ImGui::Begin(Labels::Sprites);
@@ -640,8 +643,8 @@ void UserInterface::createSpritesWindow()
 			ImGui::Checkbox(ui::auxString.data(), &sprite.visible);
 			ImGui::SameLine();
 			ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "#%u: \"%s\" (%d x %d) %s",
-							  i, sprite.name.data(), sprite.width(), sprite.height(),
-							  &sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get() ? Labels::SelectedTextureIcon : "");
+			                  i, sprite.name.data(), sprite.width(), sprite.height(),
+			                  &sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get() ? Labels::SelectedTextureIcon : "");
 			if (ImGui::IsItemClicked())
 				selectedSpriteIndex_ = i;
 		}
@@ -765,7 +768,7 @@ void UserInterface::createAnimationsWindow()
 			ImGui::SameLine();
 		if (selectedAnimation_ && (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
 		{
-			AnimationGroup* parent = nullptr;
+			AnimationGroup *parent = nullptr;
 			if (selectedAnimation_->parent())
 				parent = selectedAnimation_->parent();
 			theAnimMgr->removeAnimation(selectedAnimation_);
@@ -801,7 +804,7 @@ void UserInterface::createSpriteWindow()
 		ImGui::Text("Texture: %s (%dx%d)", tex.name().data(), tex.width(), tex.height());
 
 		ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
-						 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sprite.name);
+		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sprite.name);
 		ImGui::SameLine();
 		ImGui::Checkbox("Visible", &sprite.visible);
 
@@ -910,7 +913,7 @@ void UserInterface::createSpriteWindow()
 
 		const nc::Recti currentTexRect = sprite.texRect();
 		if (texRect.x != currentTexRect.x || texRect.y != currentTexRect.y ||
-			texRect.w != currentTexRect.w || texRect.h != currentTexRect.h)
+		    texRect.w != currentTexRect.w || texRect.h != currentTexRect.h)
 			sprite.setTexRect(texRect);
 
 		bool isFlippedX = sprite.isFlippedX();
@@ -1020,7 +1023,7 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 	static CurveAnimationGuiLimits limits;
 
 	ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
-					 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+	                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
 	ImGui::Separator();
 
 	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
@@ -1155,7 +1158,7 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 	limits.maxShift = 100.0f;
 
 	ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
-					 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+	                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
 	ImGui::Separator();
 
 	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
