@@ -126,10 +126,14 @@ void RenderGuiWindow::create()
 					ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
+#ifdef DEMO_VERSION
+					ui_.pushStatusInfoMessage("Saving frames is not possible in the demo version");
+#else
 					theAnimMgr->play();
 					saveAnimStatus_.filename.format("%s_%03d.png", filename.data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveFrames_ = true;
 					theResizedCanvas->resizeTexture(frameSize);
+#endif
 				}
 			}
 			ImGui::SameLine();
@@ -139,12 +143,16 @@ void RenderGuiWindow::create()
 					ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
+#ifdef DEMO_VERSION
+					ui_.pushStatusInfoMessage("Saving frames is not possible in the demo version");
+#else
 					theAnimMgr->play();
 					saveAnimStatus_.filename.format("%s.png", filename.data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveSpritesheet_ = true;
 					saveAnimStatus_.sheetDestPos.set(0, 0);
 					theResizedCanvas->resizeTexture(theCanvas->size() * saveAnimStatus_.canvasResize);
 					theSpritesheet->resizeTexture(spritesheetSize);
+#endif
 				}
 			}
 		}

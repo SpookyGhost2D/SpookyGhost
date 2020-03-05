@@ -147,7 +147,6 @@ class UserInterface
 	void applyDarkStyle();
 	void mouseWheelCanvasZoom();
 	void visitSprite(Sprite &sprite);
-	void removeSelectedSprite();
 	void sanitizeConfigValues();
 	void openFile(const char *filename);
 

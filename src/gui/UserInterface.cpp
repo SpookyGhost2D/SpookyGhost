@@ -33,8 +33,8 @@ const char *easingCurveTypes[] = { "Linear", "Quadratic", "Cubic", "Quartic", "Q
 const char *easingCurveDirections[] = { "Forward", "Backward" };
 const char *easingCurveLoopModes[] = { "Disabled", "Rewind", "Ping Pong" };
 
-const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid" };
-enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
+const char *animationTypes[] = { "Parallel Group", "Property", "Grid" };
+enum AnimationTypesEnum { PARALLEL_GROUP, PROPERTY, GRID };
 // clang-format on
 
 static const int PlotArraySize = 512;
@@ -401,10 +401,18 @@ void UserInterface::createMenuBar()
 			}
 
 			if (ImGui::MenuItem(Labels::Save, "CTRL + S", false, menuSaveEnabled()))
+#ifdef DEMO_VERSION
+				pushStatusInfoMessage("Saving a project file is not possible in the demo version");
+#else
 				menuSave();
+#endif
 
 			if (ImGui::MenuItem(Labels::SaveAs, nullptr, false, menuSaveAsEnabled()))
+#ifdef DEMO_VERSION
+				pushStatusInfoMessage("Saving a project file is not possible in the demo version");
+#else
 				saveAsModal = true;
+#endif
 
 			if (ImGui::MenuItem(Labels::Configuration))
 				showConfigWindow = true;
@@ -434,11 +442,18 @@ void UserInterface::createGuiPopups()
 	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 
 	if (openModal)
-		ImGui::OpenPopup("Open##Modal");
+	{
+		ui::auxString.format("%s##Modal", Labels::Open);
+		ImGui::OpenPopup(ui::auxString.data());
+	}
 	else if (saveAsModal)
-		ImGui::OpenPopup("Save As##Modal");
+	{
+		ui::auxString.format("%s##Modal", Labels::SaveAs);
+		ImGui::OpenPopup(ui::auxString.data());
+	}
 
-	if (ImGui::BeginPopupModal("Open##Modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	ui::auxString.format("%s##Modal", Labels::Open);
+	if (ImGui::BeginPopupModal(ui::auxString.data(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::Text("Enter the name of the file to load");
 		ImGui::Separator();
@@ -478,7 +493,8 @@ void UserInterface::createGuiPopups()
 		ImGui::EndPopup();
 	}
 
-	if (ImGui::BeginPopupModal("Save As##Modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	ui::auxString.format("%s##Modal", Labels::SaveAs);
+	if (ImGui::BeginPopupModal(ui::auxString.data(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::Text("Enter the name of the file to save");
 		ImGui::Separator();
@@ -628,7 +644,13 @@ void UserInterface::createSpritesWindow()
 		}
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
-			removeSelectedSprite();
+		{
+			theAnimMgr->removeSprite(theSpriteMgr->sprites()[selectedSpriteIndex_].get());
+			if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
+				theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
+			if (selectedSpriteIndex_ > 0)
+				selectedSpriteIndex_--;
+		}
 	}
 	else
 		ImGui::Text("Load at least one texture in order to add sprites");
@@ -789,9 +811,6 @@ void UserInterface::createAnimationsWindow()
 		{
 			case AnimationTypesEnum::PARALLEL_GROUP:
 				anims->pushBack(nctl::makeUnique<ParallelAnimationGroup>());
-				break;
-			case AnimationTypesEnum::SEQUENTIAL_GROUP:
-				anims->pushBack(nctl::makeUnique<SequentialAnimationGroup>());
 				break;
 			case AnimationTypesEnum::PROPERTY:
 				anims->pushBack(nctl::makeUnique<PropertyAnimation>());
@@ -1389,9 +1408,6 @@ void UserInterface::createCanvasWindow()
 	hoveringOnCanvas = false;
 	if (ImGui::IsItemHovered() && theSpriteMgr->sprites().isEmpty() == false)
 	{
-		if (deleteKeyPressed)
-			removeSelectedSprite();
-
 		// Disable keyboard navigation for an easier sprite move with arrow keys
 		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
 
@@ -1659,6 +1675,10 @@ void UserInterface::createAboutWindow()
 	ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
 	ImGui::Spacing();
 	ImGui::Text("https://encelo.itch.io/spookyghost");
+#ifdef DEMO_VERSION
+	ImGui::Spacing();
+	ImGui::TextColored(ImColor(182, 27, 255), "DEMO VERSION");
+#endif
 	for (unsigned int i = 0; i < 4; i++)
 		ImGui::Spacing();
 
@@ -1697,16 +1717,4 @@ void UserInterface::visitSprite(Sprite &sprite)
 	sprite.visited = true;
 	for (unsigned int i = 0; i < sprite.children().size(); i++)
 		visitSprite(*sprite.children()[i]);
-}
-
-void UserInterface::removeSelectedSprite()
-{
-	if (theSpriteMgr->sprites().isEmpty() == false)
-	{
-		theAnimMgr->removeSprite(theSpriteMgr->sprites()[selectedSpriteIndex_].get());
-		if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
-			theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
-		if (selectedSpriteIndex_ > 0)
-			selectedSpriteIndex_--;
-	}
 }

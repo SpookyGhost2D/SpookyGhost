@@ -21,7 +21,7 @@ void UserInterface::createConfigWindow()
 
 	const ImVec2 windowSize = ImVec2(500.0f, 375.0f);
 	ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
-	ImGui::Begin("Configuration", &showConfigWindow, ImGuiWindowFlags_NoDocking);
+	ImGui::Begin(Labels::Configuration, &showConfigWindow, ImGuiWindowFlags_NoDocking);
 
 #ifdef __ANDROID__
 	ImGui::Text("Screen Width: %d", nc::theApplication().widthInt());
@@ -101,7 +101,7 @@ void UserInterface::createConfigWindow()
 	theCfg.saveFileMaxSize = saveFileSize * 1024;
 
 	ImGui::NewLine();
-	ImGui::InputText("Start-up Script Name", theCfg.startupScriptName.data(), ui::MaxStringLength,
+	ImGui::InputText("Start-up Script", theCfg.startupScriptName.data(), ui::MaxStringLength,
 	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.startupScriptName);
 	ImGui::Checkbox("Auto Play On Start", &theCfg.autoPlayOnStart);
 

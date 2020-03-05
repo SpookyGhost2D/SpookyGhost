@@ -70,21 +70,29 @@ set(PACKAGE_SOURCES
 	src/gui/openfile.cpp
 )
 
+option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)
+option(CUSTOM_WITH_FONTAWESOME "Download FontAwesome and include it in ImGui atlas" ON)
+option(CUSTOM_DEMO_VERSION "Create a build for the demo version" OFF)
+
 function(callback_before_target)
-	option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)
 	if(CUSTOM_ITCHIO_BUILD)
 		if(NOT APPLE)
 			install(FILES .itch.toml DESTINATION .)
 		endif()
 	endif()
 
-	option(CUSTOM_WITH_FONTAWESOME "Download FontAwesome and include it in ImGui atlas" ON)
 	if(PACKAGE_OPTIONS_PRESETS STREQUAL BinDist)
 		set(CUSTOM_WITH_FONTAWESOME ON CACHE BOOL "Download FontAwesome and include it in ImGui atlas" FORCE)
 	endif()
 endfunction()
 
 function(callback_after_target)
+	if(CUSTOM_DEMO_VERSION)
+		message(STATUS "Building the DEMO VERSION of SpookyGhost")
+		target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "DEMO_VERSION")
+		set(PACKAGE_NAME "${PACKAGE_NAME}-Demo" PARENT_SCOPE)
+	endif()
+
 	if(MSVC)
 		target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "WITH_GLEW")
 		target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${EXTERNAL_MSVC_DIR}/include)
