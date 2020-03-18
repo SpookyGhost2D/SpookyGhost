@@ -36,6 +36,7 @@ class RenderGuiWindow
 	};
 
 	ResizeLevel resizeLevel = ResizeLevel::X1;
+	nctl::String directory = nctl::String(ui::MaxStringLength);
 	nctl::String filename = nctl::String(ui::MaxStringLength);
 
 	RenderGuiWindow(UserInterface &ui)

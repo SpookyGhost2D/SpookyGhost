@@ -38,6 +38,7 @@ set(PACKAGE_SOURCES
 	include/gui/UserInterface.h
 	include/gui/CanvasGuiSection.h
 	include/gui/RenderGuiWindow.h
+	include/gui/FileDialog.h
 
 	src/singletons.cpp
 	src/main.cpp
@@ -68,6 +69,7 @@ set(PACKAGE_SOURCES
 	src/gui/config_window.cpp
 	src/gui/style.cpp
 	src/gui/openfile.cpp
+	src/gui/FileDialog.cpp
 )
 
 option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)
@@ -79,9 +81,14 @@ function(callback_before_target)
 		if(NOT APPLE)
 			install(FILES .itch.toml DESTINATION .)
 		endif()
+		if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+			install(FILES launch.sh
+				PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE
+				DESTINATION .)
+		endif()
 	endif()
 
-	if(PACKAGE_OPTIONS_PRESETS STREQUAL BinDist)
+	if(PACKAGE_OPTIONS_PRESETS STREQUAL "BinDist")
 		set(CUSTOM_WITH_FONTAWESOME ON CACHE BOOL "Download FontAwesome and include it in ImGui atlas" FORCE)
 	endif()
 endfunction()
@@ -120,7 +127,23 @@ endfunction()
 
 function(callback_end)
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND IS_DIRECTORY ${PACKAGE_DATA_DIR}/docs)
-		install(DIRECTORY ${PACKAGE_DATA_DIR}/docs DESTINATION . PATTERN "*.adoc" EXCLUDE)
+		get_filename_component(PARENT_DATA_INSTALL_DESTINATION ${DATA_INSTALL_DESTINATION} DIRECTORY)
+		if(PARENT_DATA_INSTALL_DESTINATION STREQUAL "")
+			set(PARENT_DATA_INSTALL_DESTINATION .)
+		endif()
+		install(DIRECTORY ${PACKAGE_DATA_DIR}/docs DESTINATION ${PARENT_DATA_INSTALL_DESTINATION} PATTERN "*.adoc" EXCLUDE)
+	endif()
+
+	if(CUSTOM_ITCHIO_BUILD AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND PACKAGE_OPTIONS_PRESETS STREQUAL "BinDist")
+		# Set a relative data directory when building for Itch.io on Linux
+		file(RELATIVE_PATH PACKAGE_DEFAULT_DATA_DIR_NEW
+				${CMAKE_INSTALL_PREFIX}/${RUNTIME_INSTALL_DESTINATION}
+				${CMAKE_INSTALL_PREFIX}/${DATA_INSTALL_DESTINATION}) # Always strips trailing slash
+		set(PACKAGE_DEFAULT_DATA_DIR_NEW "${PACKAGE_DEFAULT_DATA_DIR_NEW}/")
+
+		get_target_property(COMPILE_DEFS ${PACKAGE_EXE_NAME} COMPILE_DEFINITIONS)
+		string(REPLACE ${PACKAGE_DEFAULT_DATA_DIR} ${PACKAGE_DEFAULT_DATA_DIR_NEW} COMPILE_DEFS "${COMPILE_DEFS}")
+		set_property(TARGET ${PACKAGE_EXE_NAME} PROPERTY COMPILE_DEFINITIONS ${COMPILE_DEFS})
 	endif()
 endfunction()
 

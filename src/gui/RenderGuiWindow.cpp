@@ -1,9 +1,11 @@
 #include <ncine/imgui.h>
+#include <ncine/Application.h>
 #include "singletons.h"
 #include "gui/gui_labels.h"
 #include "gui/gui_common.h"
 #include "gui/RenderGuiWindow.h"
 #include "gui/UserInterface.h"
+#include "gui/FileDialog.h"
 #include "Canvas.h"
 #include "AnimationManager.h"
 
@@ -60,8 +62,31 @@ void RenderGuiWindow::create()
 {
 	if (ImGui::Begin(Labels::Render, nullptr))
 	{
+		if (directory.isEmpty())
+			directory.assign(nc::fs::currentDir());
+		if (shouldSaveFrames_ == false && shouldSaveSpritesheet_ == false)
+		{
+			ui::auxString.format("Save to: %s%s", Labels::FileDialog_SelectDirIcon, directory.data());
+			if (ImGui::Button(ui::auxString.data()))
+			{
+				FileDialog::config.directory = directory;
+				FileDialog::config.windowIcon = Labels::FileDialog_SelectDirIcon;
+				FileDialog::config.windowTitle = "Render save directory";
+				FileDialog::config.okButton = Labels::Ok;
+				FileDialog::config.selectionType = FileDialog::SelectionType::DIRECTORY;
+				FileDialog::config.extensions = nullptr;
+				FileDialog::config.action = FileDialog::Action::RENDER_DIR;
+				FileDialog::config.windowOpen = true;
+			}
+		}
+		else
+			ImGui::Text("%s", directory.data());
+
+		int inputTextFlags = ImGuiInputTextFlags_CallbackResize;
+		if (shouldSaveFrames_ || shouldSaveSpritesheet_)
+			inputTextFlags |= ImGuiInputTextFlags_ReadOnly;
 		ImGui::InputText("Filename prefix", filename.data(), ui::MaxStringLength,
-		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &filename);
+		                 inputTextFlags, ui::inputTextCallback, &filename);
 
 		currentComboResize_ = static_cast<int>(resizeLevel);
 		ImGui::Combo("Resize Level", &currentComboResize_, ResizeStrings, IM_ARRAYSIZE(ResizeStrings));
@@ -130,9 +155,11 @@ void RenderGuiWindow::create()
 					ui_.pushStatusInfoMessage("Saving frames is not possible in the demo version");
 #else
 					theAnimMgr->play();
-					saveAnimStatus_.filename.format("%s_%03d.png", filename.data(), saveAnimStatus_.numSavedFrames);
+					saveAnimStatus_.filename.format("%s_%03d.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveFrames_ = true;
 					theResizedCanvas->resizeTexture(frameSize);
+					// Disabling V-Sync for faster render times
+					nc::theApplication().gfxDevice().setSwapInterval(0);
 #endif
 				}
 			}
@@ -147,11 +174,13 @@ void RenderGuiWindow::create()
 					ui_.pushStatusInfoMessage("Saving frames is not possible in the demo version");
 #else
 					theAnimMgr->play();
-					saveAnimStatus_.filename.format("%s.png", filename.data(), saveAnimStatus_.numSavedFrames);
+					saveAnimStatus_.filename.format("%s.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveSpritesheet_ = true;
 					saveAnimStatus_.sheetDestPos.set(0, 0);
 					theResizedCanvas->resizeTexture(theCanvas->size() * saveAnimStatus_.canvasResize);
 					theSpritesheet->resizeTexture(spritesheetSize);
+					// Disabling V-Sync for faster render times
+					nc::theApplication().gfxDevice().setSwapInterval(0);
 #endif
 				}
 			}
@@ -166,7 +195,7 @@ void RenderGuiWindow::signalFrameSaved()
 
 	saveAnimStatus_.numSavedFrames++;
 	if (shouldSaveFrames_)
-		saveAnimStatus_.filename.format("%s_%03d.png", filename.data(), saveAnimStatus_.numSavedFrames);
+		saveAnimStatus_.filename.format("%s_%03d.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 	else if (shouldSaveSpritesheet_)
 	{
 		Canvas &sourceCanvas = (saveAnimStatus_.canvasResize != 1.0f) ? *theResizedCanvas : *theCanvas;
@@ -183,6 +212,10 @@ void RenderGuiWindow::signalFrameSaved()
 		shouldSaveSpritesheet_ = false;
 		saveAnimStatus_.numSavedFrames = 0;
 		ui_.pushStatusInfoMessage("Animation saved");
+
+		// Re-enabling V-Sync if it was enabled in the configuration
+		if (theCfg.withVSync)
+			nc::theApplication().gfxDevice().setSwapInterval(1);
 	}
 }
 
@@ -198,5 +231,9 @@ void RenderGuiWindow::cancelRender()
 		saveAnimStatus_.numSavedFrames = 0;
 		shouldSaveFrames_ = false;
 		shouldSaveSpritesheet_ = false;
+
+		// Re-enabling V-Sync if it was enabled in the configuration
+		if (theCfg.withVSync)
+			nc::theApplication().gfxDevice().setSwapInterval(1);
 	}
 }

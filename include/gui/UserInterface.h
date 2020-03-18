@@ -48,6 +48,7 @@ class UserInterface
 	bool openProject(const char *filename);
 	void menuOpen();
 	void menuSave();
+	void menuSaveAs();
 	bool openDocumentationEnabled();
 	void openDocumentation();
 	void toggleAnimation();
@@ -111,8 +112,7 @@ class UserInterface
 	CanvasGuiSection canvasGuiSection_;
 	RenderGuiWindow renderGuiWindow_;
 
-	nctl::String filename_ = nctl::String(ui::MaxStringLength);
-	nctl::String texFilename_ = nctl::String(ui::MaxStringLength);
+	nctl::String lastLoadedProject_ = nctl::String(ui::MaxStringLength);
 
 	nctl::String statusMessage_ = nctl::String(ui::MaxStringLength);
 	nc::TimeStamp lastStatus_;
@@ -123,7 +123,6 @@ class UserInterface
 	void createDockingSpace();
 	void createInitialDocking();
 	void createMenuBar();
-	void createGuiPopups();
 
 	void createToolbarWindow();
 	void createTexturesWindow();
@@ -139,6 +138,7 @@ class UserInterface
 	void createPropertyAnimationGui(PropertyAnimation &anim);
 	void createGridAnimationGui(GridAnimation &anim);
 
+	void createFileDialog();
 	void createCanvasWindow();
 	void createTexRectWindow();
 	void createConfigWindow();

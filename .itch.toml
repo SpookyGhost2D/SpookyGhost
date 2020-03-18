@@ -10,7 +10,7 @@ platform = "osx"
 
 [[actions]]
 name = "play"
-path = "bin/spookyghost"
+path = "launch.sh"
 platform = "linux"
 
 [[prereqs]]

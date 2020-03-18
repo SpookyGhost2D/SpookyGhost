@@ -17,6 +17,7 @@
 #include "LuaSaver.h"
 
 #include <ncine/Application.h>
+#include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
 
 nc::IAppEventHandler *createAppEventHandler()
@@ -38,16 +39,16 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	#endif
 #endif
 
-	if (nc::IFile::access("config.lua", nc::IFile::AccessMode::READABLE))
+	if (nc::fs::isReadableFile("config.lua"))
 	{
 		LuaSaver saver(4096);
 		saver.loadCfg("config.lua", theCfg);
 	}
 
-	if (nc::IFile::access(theCfg.scriptsPath.data(), nc::IFile::AccessMode::READABLE) == false)
-		theCfg.scriptsPath = nc::IFile::dataPath() + "scripts/";
-	if (nc::IFile::access(theCfg.texturesPath.data(), nc::IFile::AccessMode::READABLE) == false)
-		theCfg.texturesPath = nc::IFile::dataPath();
+	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
+		theCfg.scriptsPath = nc::fs::joinPath(nc::fs::dataPath(), "scripts");
+	if (nc::fs::isDirectory(theCfg.texturesPath.data()) == false)
+		theCfg.texturesPath = nc::fs::dataPath();
 
 	config.resolution.set(theCfg.width, theCfg.height);
 	config.inFullscreen = theCfg.fullscreen;

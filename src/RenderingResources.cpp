@@ -2,7 +2,6 @@
 #include <ncine/GLShaderProgram.h>
 #include <ncine/Application.h>
 #include <ncine/AppConfiguration.h>
-#include <ncine/IFile.h> // for dataPath()
 
 #include "shader_strings.h"
 

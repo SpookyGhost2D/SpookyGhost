@@ -1,11 +1,13 @@
 #include "gui/gui_common.h"
 #include <ncine/imgui_internal.h>
 #include <ncine/Application.h>
+#include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
 
 #include "singletons.h"
 #include "gui/gui_labels.h"
 #include "gui/UserInterface.h"
+#include "gui/FileDialog.h"
 #include "Canvas.h"
 #include "SpriteManager.h"
 #include "AnimationManager.h"
@@ -43,11 +45,6 @@ static int plotValueIndex = 0;
 
 const char *docsFile = "../docs/documentation.html";
 
-static bool requestCloseModal = false;
-static bool openModal = false;
-static bool saveAsModal = false;
-static bool allowOverwrite = false;
-
 static bool showAboutWindow = false;
 static bool hoveringOnCanvas = false;
 static bool deleteKeyPressed = false;
@@ -78,23 +75,23 @@ UserInterface::UserInterface()
 	ImFontConfig icons_config;
 	icons_config.MergeMode = true;
 	icons_config.PixelSnapH = true;
-	io.Fonts->AddFontFromFileTTF((nc::IFile::dataPath() + "fonts/" FONT_ICON_FILE_NAME_FAS).data(), 12.0f, &icons_config, icons_ranges);
+	io.Fonts->AddFontFromFileTTF(nc::fs::joinPath(nc::fs::dataPath(), "fonts/" FONT_ICON_FILE_NAME_FAS).data(), 12.0f, &icons_config, icons_ranges);
 #endif
 
 	applyDarkStyle();
 
-	spookyLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "icon96.png").data());
-	ncineLogo_ = nctl::makeUnique<Texture>((nc::IFile::dataPath() + "ncine96.png").data());
+	spookyLogo_ = nctl::makeUnique<Texture>(nc::fs::joinPath(nc::fs::dataPath(), "icon96.png").data());
+	ncineLogo_ = nctl::makeUnique<Texture>(nc::fs::joinPath(nc::fs::dataPath(), "ncine96.png").data());
 
 	canvasGuiSection_.setResize(theCanvas->size());
 
 	if (theCfg.startupScriptName.isEmpty() == false)
 	{
-		const nctl::String startupScript = theCfg.scriptsPath + theCfg.startupScriptName;
-		if (nc::IFile::access(startupScript.data(), nc::IFile::AccessMode::READABLE))
+		const nctl::String startupScript = nc::fs::joinPath(theCfg.scriptsPath, theCfg.startupScriptName);
+		if (nc::fs::isReadableFile(startupScript.data()))
 		{
 			openProject(startupScript.data());
-			filename_ = theCfg.startupScriptName;
+			lastLoadedProject_ = theCfg.startupScriptName;
 		}
 	}
 	if (theCfg.autoPlayOnStart)
@@ -145,7 +142,7 @@ void UserInterface::cancelRender()
 void UserInterface::closeModalsAndAbout()
 {
 	showAboutWindow = false;
-	requestCloseModal = true;
+	FileDialog::config.windowOpen = false;
 }
 
 void UserInterface::pressDeleteKey()
@@ -172,7 +169,8 @@ bool UserInterface::menuNewEnabled()
 
 bool UserInterface::menuSaveEnabled()
 {
-	return (filename_.isEmpty() == false &&
+	return (lastLoadedProject_.isEmpty() == false &&
+	        nc::fs::isReadableFile(lastLoadedProject_.data()) &&
 	        (theSpriteMgr->textures().isEmpty() == false ||
 	         theSpriteMgr->sprites().isEmpty() == false ||
 	         theAnimMgr->anims().isEmpty() == false));
@@ -196,19 +194,25 @@ void UserInterface::menuNew()
 
 void UserInterface::menuOpen()
 {
-	openModal = true;
+	FileDialog::config.directory = theCfg.scriptsPath;
+	FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
+	FileDialog::config.windowTitle = "Open project file";
+	FileDialog::config.okButton = Labels::Ok;
+	FileDialog::config.selectionType = FileDialog::SelectionType::FILE;
+	FileDialog::config.extensions = "lua\0\0";
+	FileDialog::config.action = FileDialog::Action::OPEN_PROJECT;
+	FileDialog::config.windowOpen = true;
 }
 
 bool UserInterface::openProject(const char *filename)
 {
 	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
-	const bool fileExists = ui::checkPathOrConcatenate(theCfg.scriptsPath, filename, ui::filePath);
-	if (fileExists && theSaver->load(ui::filePath.data(), data))
+	if (nc::fs::isReadableFile(filename) && theSaver->load(filename, data))
 	{
 		selectedAnimation_ = nullptr;
 		canvasGuiSection_.setResize(theCanvas->size());
 		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
-		ui::auxString.format("Loaded project file \"%s\"\n", ui::filePath.data());
+		ui::auxString.format("Loaded project file \"%s\"\n", filename);
 		pushStatusInfoMessage(ui::auxString.data());
 
 		return true;
@@ -220,21 +224,32 @@ bool UserInterface::openProject(const char *filename)
 void UserInterface::menuSave()
 {
 	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
-	ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
-	theSaver->save(ui::filePath.data(), data);
-	ui::auxString.format("Saved project file \"%s\"\n", ui::filePath.data());
+	theSaver->save(lastLoadedProject_.data(), data);
+	ui::auxString.format("Saved project file \"%s\"\n", lastLoadedProject_.data());
 	pushStatusInfoMessage(ui::auxString.data());
+}
+
+void UserInterface::menuSaveAs()
+{
+	FileDialog::config.directory = theCfg.scriptsPath;
+	FileDialog::config.windowIcon = Labels::FileDialog_SaveIcon;
+	FileDialog::config.windowTitle = "Save project file";
+	FileDialog::config.okButton = Labels::Ok;
+	FileDialog::config.selectionType = FileDialog::SelectionType::NEW_FILE;
+	FileDialog::config.extensions = nullptr;
+	FileDialog::config.action = FileDialog::Action::SAVE_PROJECT;
+	FileDialog::config.windowOpen = true;
 }
 
 bool UserInterface::openDocumentationEnabled()
 {
-	nctl::String docsPath = ui::joinPath(nc::IFile::dataPath(), docsFile);
-	return nc::IFile::access(docsPath.data(), nc::IFile::AccessMode::READABLE);
+	nctl::String docsPath = nc::fs::joinPath(nc::fs::dataPath(), docsFile);
+	return nc::fs::isReadableFile(docsPath.data());
 }
 
 void UserInterface::openDocumentation()
 {
-	nctl::String docsPath = ui::joinPath(nc::IFile::dataPath(), docsFile);
+	nctl::String docsPath = nc::fs::joinPath(nc::fs::dataPath(), docsFile);
 	openFile(docsPath.data());
 }
 
@@ -255,7 +270,6 @@ void UserInterface::createGui()
 		statusMessage_.clear();
 
 	createDockingSpace();
-	createGuiPopups();
 	//createToolbarWindow();
 
 	createTexturesWindow();
@@ -269,6 +283,8 @@ void UserInterface::createGui()
 	createSpriteWindow();
 	createAnimationWindow();
 	renderGuiWindow_.create();
+
+	createFileDialog();
 
 	if (numFrames == 1)
 		ImGui::SetNextWindowFocus();
@@ -344,7 +360,7 @@ void UserInterface::createInitialDocking()
 	ImGuiViewport *viewport = ImGui::GetMainViewport();
 	ImGui::DockBuilderSetNodeSize(dockIdRight, ImVec2(viewport->Size.x * 0.275f, viewport->Size.y));
 	ImGuiID dockIdLeftDown = ImGui::DockBuilderSplitNode(dockIdLeft, ImGuiDir_Down, 0.35f, nullptr, &dockIdLeft);
-	ImGuiID dockIdRightDown = ImGui::DockBuilderSplitNode(dockIdRight, ImGuiDir_Down, 0.29f, nullptr, &dockIdRight);
+	ImGuiID dockIdRightDown = ImGui::DockBuilderSplitNode(dockIdRight, ImGuiDir_Down, 0.33f, nullptr, &dockIdRight);
 
 	ImGui::DockBuilderDockWindow("Toolbar", dockIdUp);
 
@@ -381,7 +397,7 @@ void UserInterface::createMenuBar()
 				menuNew();
 
 			if (ImGui::MenuItem(Labels::Open, "CTRL + O"))
-				openModal = true;
+				menuOpen();
 
 			const bool openBundledEnabled = ScriptStrings::Count > 0;
 			if (ImGui::BeginMenu(Labels::OpenBundled, openBundledEnabled))
@@ -390,9 +406,9 @@ void UserInterface::createMenuBar()
 				{
 					if (ImGui::MenuItem(ScriptStrings::Names[i]))
 					{
-						if (openProject(ScriptStrings::Names[i]))
+						if (openProject(nc::fs::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]).data()))
 						{
-							filename_ = ScriptStrings::Names[i];
+							lastLoadedProject_ = nc::fs::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]);
 							numFrames = 0; // force focus on the canvas
 						}
 					}
@@ -411,7 +427,7 @@ void UserInterface::createMenuBar()
 #ifdef DEMO_VERSION
 				pushStatusInfoMessage("Saving a project file is not possible in the demo version");
 #else
-				saveAsModal = true;
+				menuSaveAs();
 #endif
 
 			if (ImGui::MenuItem(Labels::Configuration))
@@ -437,109 +453,6 @@ void UserInterface::createMenuBar()
 	}
 }
 
-void UserInterface::createGuiPopups()
-{
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
-
-	if (openModal)
-	{
-		ui::auxString.format("%s##Modal", Labels::Open);
-		ImGui::OpenPopup(ui::auxString.data());
-	}
-	else if (saveAsModal)
-	{
-		ui::auxString.format("%s##Modal", Labels::SaveAs);
-		ImGui::OpenPopup(ui::auxString.data());
-	}
-
-	ui::auxString.format("%s##Modal", Labels::Open);
-	if (ImGui::BeginPopupModal(ui::auxString.data(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		ImGui::Text("Enter the name of the file to load");
-		ImGui::Separator();
-
-		if (!ImGui::IsAnyItemActive())
-			ImGui::SetKeyboardFocusHere();
-		if (ImGui::InputText("", filename_.data(), ui::MaxStringLength,
-		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
-		                     ui::inputTextCallback, &filename_) ||
-		    ImGui::Button(Labels::Ok))
-		{
-			if (openProject(filename_.data()))
-			{
-				requestCloseModal = true;
-				numFrames = 0; // force focus on the canvas
-			}
-			else
-			{
-				filename_ = Labels::LoadingError;
-				ui::auxString.format("Could not load project file \"%s\"\n", ui::filePath.data());
-				pushStatusErrorMessage(ui::auxString.data());
-			}
-		}
-		ImGui::SetItemDefaultFocus();
-
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Cancel))
-			requestCloseModal = true;
-
-		if (requestCloseModal)
-		{
-			ImGui::CloseCurrentPopup();
-			openModal = false;
-			requestCloseModal = false;
-		}
-
-		ImGui::EndPopup();
-	}
-
-	ui::auxString.format("%s##Modal", Labels::SaveAs);
-	if (ImGui::BeginPopupModal(ui::auxString.data(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		ImGui::Text("Enter the name of the file to save");
-		ImGui::Separator();
-
-		if (!ImGui::IsAnyItemActive())
-			ImGui::SetKeyboardFocusHere();
-		if (ImGui::InputText("", filename_.data(), ui::MaxStringLength,
-		                     ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AutoSelectAll,
-		                     ui::inputTextCallback, &filename_) ||
-		    ImGui::Button(Labels::Ok))
-		{
-			const bool fileExists = ui::checkPathOrConcatenate(theCfg.scriptsPath, filename_, ui::filePath);
-			if (fileExists && allowOverwrite == false)
-			{
-				filename_ = Labels::FileExists;
-				ui::auxString.format("Could not overwrite existing file \"%s\"\n", ui::filePath.data());
-				pushStatusErrorMessage(ui::auxString.data());
-			}
-			else
-			{
-				theSaver->save(ui::filePath.data(), data);
-				ui::auxString.format("Saved project file \"%s\"\n", ui::filePath.data());
-				pushStatusInfoMessage(ui::auxString.data());
-				requestCloseModal = true;
-			}
-		}
-		ImGui::SetItemDefaultFocus();
-
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Cancel))
-			requestCloseModal = true;
-		ImGui::SameLine();
-		ImGui::Checkbox("Allow Overwrite", &allowOverwrite);
-
-		if (requestCloseModal)
-		{
-			ImGui::CloseCurrentPopup();
-			saveAsModal = false;
-			requestCloseModal = false;
-		}
-
-		ImGui::EndPopup();
-	}
-}
-
 void UserInterface::createToolbarWindow()
 {
 	const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse;
@@ -551,13 +464,13 @@ void UserInterface::createToolbarWindow()
 		menuNew();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Open))
-		openModal = true;
+		menuOpen();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Save) && menuSaveEnabled())
 		menuSave();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::SaveAs) && menuSaveAsEnabled())
-		saveAsModal = true;
+		menuSaveAs();
 	ImGui::PopStyleVar(2);
 
 	ImGui::End();
@@ -567,25 +480,19 @@ void UserInterface::createTexturesWindow()
 {
 	ImGui::Begin(Labels::Textures);
 
-	ImGui::InputText("##Filename", texFilename_.data(), ui::MaxStringLength,
-	                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &texFilename_);
-	ImGui::SameLine();
-	if (ImGui::Button(Labels::Load) && texFilename_.isEmpty() == false)
+	if (ImGui::Button(Labels::Load))
 	{
-		const bool fileExists = ui::checkPathOrConcatenate(theCfg.texturesPath, texFilename_, ui::filePath);
-		if (fileExists)
-		{
-			theSpriteMgr->textures().pushBack(nctl::makeUnique<Texture>(ui::filePath.data()));
-			// Set the relative path as the texture name to allow for relocatable project files
-			theSpriteMgr->textures().back()->setName(texFilename_);
-			ui::auxString.format("Loaded texture \"%s\"", ui::filePath.data());
-			selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
-		}
-		else
-			ui::auxString.format("Cannot load texture \"%s\"", ui::filePath.data());
-
-		pushStatusInfoMessage(ui::auxString.data());
+		FileDialog::config.directory = theCfg.texturesPath;
+		FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
+		FileDialog::config.windowTitle = "Load texture file";
+		FileDialog::config.okButton = Labels::Ok;
+		FileDialog::config.selectionType = FileDialog::SelectionType::FILE;
+		FileDialog::config.extensions = "png\0\0";
+		FileDialog::config.action = FileDialog::Action::LOAD_TEXTURE;
+		FileDialog::config.windowOpen = true;
 	}
+
+	ImGui::SameLine();
 
 	if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
 	{
@@ -1343,6 +1250,62 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 	}
 
 	createCurveAnimationGui(anim, limits);
+}
+
+void UserInterface::createFileDialog()
+{
+	static nctl::String selection = nctl::String(nc::fs::MaxPathLength);
+
+	if (FileDialog::create(FileDialog::config, selection))
+	{
+		LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
+		switch (FileDialog::config.action)
+		{
+			case FileDialog::Action::OPEN_PROJECT:
+				if (openProject(selection.data()))
+					numFrames = 0; // force focus on the canvas
+				else
+				{
+					ui::auxString.format("Could not load project file \"%s\"\n", selection.data());
+					pushStatusErrorMessage(ui::auxString.data());
+				}
+				break;
+			case FileDialog::Action::SAVE_PROJECT:
+				if (nc::fs::hasExtension(selection.data(), "lua") == false)
+					selection = selection + ".lua";
+				if (nc::fs::isFile(selection.data()) && FileDialog::config.allowOverwrite == false)
+				{
+					ui::auxString.format("Could not overwrite existing file \"%s\"\n", selection.data());
+					pushStatusErrorMessage(ui::auxString.data());
+				}
+				else
+				{
+					theSaver->save(selection.data(), data);
+					ui::auxString.format("Saved project file \"%s\"\n", selection.data());
+					pushStatusInfoMessage(ui::auxString.data());
+				}
+				break;
+			case FileDialog::Action::LOAD_TEXTURE:
+				if (nc::fs::hasExtension(selection.data(), "png"))
+				{
+					theSpriteMgr->textures().pushBack(nctl::makeUnique<Texture>(selection.data()));
+					// Set the relative path as the texture name to allow for relocatable project files
+					nctl::String baseName = nc::fs::baseName(selection.data());
+					if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.texturesPath, baseName.data()).data()))
+						theSpriteMgr->textures().back()->setName(baseName);
+					ui::auxString.format("Loaded texture \"%s\"", selection.data());
+					selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
+				}
+				else
+					ui::auxString.format("Cannot load texture \"%s\"", selection.data());
+
+				pushStatusInfoMessage(ui::auxString.data());
+				break;
+			case FileDialog::Action::RENDER_DIR:
+				renderGuiWindow_.directory = selection;
+				break;
+		}
+	}
 }
 
 void UserInterface::SpriteProperties::save(Sprite &sprite)

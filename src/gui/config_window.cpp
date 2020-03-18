@@ -89,6 +89,7 @@ void UserInterface::createConfigWindow()
 
 	ImGui::NewLine();
 	ImGui::Checkbox("Vertical Sync", &theCfg.withVSync);
+	nc::theApplication().gfxDevice().setSwapInterval(theCfg.withVSync ? 1 : 0);
 	int frameLimit = theCfg.frameLimit;
 	ImGui::SliderInt("Frame Limit", &frameLimit, 0, 240);
 	theCfg.frameLimit = frameLimit < 0 ? 0 : frameLimit;

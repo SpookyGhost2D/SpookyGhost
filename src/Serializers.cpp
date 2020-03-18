@@ -1,3 +1,4 @@
+#include <ncine/FileSystem.h>
 #include "Canvas.h"
 #include "Texture.h"
 #include "Sprite.h"
@@ -318,7 +319,12 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture)
 {
 	const char *textureName = deserialize<const char *>(ls, "name");
 	static nctl::String texturePath(256);
-	ui::checkPathOrConcatenate(theCfg.texturesPath, textureName, texturePath);
+
+	// Check first if the filename is relative to the textures directory
+	texturePath = nc::fs::joinPath(theCfg.texturesPath, textureName);
+	if (nc::fs::isReadableFile(texturePath.data()) == false)
+		texturePath = textureName;
+
 	texture = nctl::makeUnique<Texture>(texturePath.data());
 	// Set the relative path as the texture name to allow for relocatable project files
 	texture->setName(textureName);

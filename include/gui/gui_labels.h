@@ -109,6 +109,19 @@ static const char *StopIcon = "[Stop]";
 static const char *PauseIcon = "[Pause]";
 static const char *PlayIcon = "[Play]";
 
+static const char *FileDialog_OpenIcon = "";
+static const char *FileDialog_SaveIcon = "";
+static const char *FileDialog_SelectDirIcon = "";
+static const char *FileDialog_FolderIcon = "[Dir ]";
+static const char *FileDialog_FileIcon = "[File]" ;
+static const char *FileDialog_Sorting = "Sorting";
+static const char *FileDialog_Name_Asc = "Name Asc";
+static const char *FileDialog_Name_Desc = "Name Desc";
+static const char *FileDialog_Size_Asc = "Size Asc";
+static const char *FileDialog_Size_Desc = "Size Desc";
+static const char *FileDialog_Date_Asc = "Date Asc";
+static const char *FileDialog_Date_Desc = "Date Desc";
+
 }
 #else
 	#define FA5_SPACING " "
@@ -171,6 +184,19 @@ static const char *SelectedSpriteIcon = ICON_FA_GHOST;
 static const char *StopIcon = ICON_FA_STOP;
 static const char *PauseIcon = ICON_FA_PAUSE;
 static const char *PlayIcon = ICON_FA_PLAY;
+
+static const char *FileDialog_OpenIcon = ICON_FA_FOLDER_OPEN FA5_SPACING;
+static const char *FileDialog_SaveIcon = ICON_FA_SAVE FA5_SPACING;
+static const char *FileDialog_SelectDirIcon = ICON_FA_FOLDER FA5_SPACING;
+static const char *FileDialog_FolderIcon = ICON_FA_FOLDER;
+static const char *FileDialog_FileIcon = ICON_FA_FILE;
+static const char *FileDialog_Sorting = ICON_FA_SORT FA5_SPACING "Sorting";
+static const char *FileDialog_Name_Asc = ICON_FA_SORT_ALPHA_DOWN FA5_SPACING "Name";
+static const char *FileDialog_Name_Desc = ICON_FA_SORT_ALPHA_UP FA5_SPACING "Name";
+static const char *FileDialog_Size_Asc = ICON_FA_SORT_AMOUNT_UP FA5_SPACING "Size";
+static const char *FileDialog_Size_Desc = ICON_FA_SORT_AMOUNT_DOWN FA5_SPACING "Size";
+static const char *FileDialog_Date_Asc = ICON_FA_SORT_NUMERIC_DOWN FA5_SPACING "Date";
+static const char *FileDialog_Date_Desc = ICON_FA_SORT_NUMERIC_UP FA5_SPACING "Date";
 
 }
 #endif
