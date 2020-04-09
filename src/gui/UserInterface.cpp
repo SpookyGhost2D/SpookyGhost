@@ -65,9 +65,7 @@ UserInterface::UserInterface()
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-#ifdef __ANDROID__
-	io.FontGlobalScale = 2.0f;
-#endif
+	io.FontGlobalScale = theCfg.guiScaling;
 
 #ifdef WITH_FONTAWESOME
 	// Merge icons from Font Awesome into the default font
@@ -1011,6 +1009,7 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
+		// Assign to current sprite if none was assigned before
 		if (spriteIndex < 0)
 			spriteIndex = selectedSpriteIndex_;
 
@@ -1025,7 +1024,8 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
 
-		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()))
+		// Also assign if no sprite was assigned before
+		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()) || anim.sprite() == nullptr)
 		{
 			anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
 			selectedSpriteIndex_ = spriteIndex;
@@ -1148,6 +1148,7 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
+		// Assign to current sprite if none was assigned before
 		if (spriteIndex < 0)
 			spriteIndex = selectedSpriteIndex_;
 
@@ -1162,7 +1163,8 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
 
-		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()))
+		// Also assign if no sprite was assigned before
+		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()) || anim.sprite() == nullptr)
 		{
 			Sprite *sprite = theSpriteMgr->sprites()[spriteIndex].get();
 			selectedSpriteIndex_ = spriteIndex;

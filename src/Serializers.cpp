@@ -271,6 +271,7 @@ void serialize(LuaSerializer &ls, const Configuration &cfg)
 	serializeGlobal(ls, "frame_limit", cfg.frameLimit);
 	serializeGlobal(ls, "canvas_width", cfg.canvasWidth);
 	serializeGlobal(ls, "canvas_height", cfg.canvasHeight);
+	serializeGlobal(ls, "gui_scaling", cfg.guiScaling);
 	serializeGlobal(ls, "savefile_maxsize", cfg.saveFileMaxSize);
 	serializeGlobal(ls, "startup_script_name", cfg.startupScriptName);
 	serializeGlobal(ls, "auto_play_on_start", cfg.autoPlayOnStart);
@@ -540,8 +541,9 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 
 void deserialize(LuaSerializer &ls, Configuration &cfg)
 {
-	cfg.version = deserializeGlobal<int>(ls, "version");
-	ASSERT(cfg.version >= 1);
+	const int version = deserializeGlobal<int>(ls, "version");
+	ASSERT(version >= 1);
+
 	cfg.width = deserializeGlobal<int>(ls, "width");
 	cfg.height = deserializeGlobal<int>(ls, "height");
 	cfg.fullscreen = deserializeGlobal<bool>(ls, "fullscreen");
@@ -551,6 +553,10 @@ void deserialize(LuaSerializer &ls, Configuration &cfg)
 	cfg.canvasWidth = deserializeGlobal<int>(ls, "canvas_width");
 	cfg.canvasHeight = deserializeGlobal<int>(ls, "canvas_height");
 	cfg.saveFileMaxSize = deserializeGlobal<int>(ls, "savefile_maxsize");
+
+	if (version >= 2)
+		cfg.guiScaling = deserializeGlobal<float>(ls, "gui_scaling");
+
 	deserializeGlobal(ls, "startup_script_name", cfg.startupScriptName);
 	cfg.autoPlayOnStart = deserializeGlobal<bool>(ls, "auto_play_on_start");
 	deserializeGlobal(ls, "scripts_path", cfg.scriptsPath);

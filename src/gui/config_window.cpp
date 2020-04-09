@@ -102,6 +102,12 @@ void UserInterface::createConfigWindow()
 	theCfg.saveFileMaxSize = saveFileSize * 1024;
 
 	ImGui::NewLine();
+	ImGui::SliderFloat("GUI Scaling", &theCfg.guiScaling, 0.5f, 2.0f, "%.1f");
+	ImGui::SameLine();
+	if (ImGui::Button("Reset##Scaling"))
+		theCfg.guiScaling = 1.0f;
+	ImGui::GetIO().FontGlobalScale = theCfg.guiScaling;
+
 	ImGui::InputText("Start-up Script", theCfg.startupScriptName.data(), ui::MaxStringLength,
 	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.startupScriptName);
 	ImGui::Checkbox("Auto Play On Start", &theCfg.autoPlayOnStart);
@@ -138,4 +144,9 @@ void UserInterface::sanitizeConfigValues()
 
 	if (theCfg.saveFileMaxSize < 8 * 1024)
 		theCfg.saveFileMaxSize = 8 * 1024;
+
+	if (theCfg.guiScaling < 0.5f)
+		theCfg.guiScaling = 0.5f;
+	else if (theCfg.guiScaling > 2.0f)
+		theCfg.guiScaling = 2.0f;
 }

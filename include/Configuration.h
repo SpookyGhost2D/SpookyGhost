@@ -10,7 +10,8 @@ namespace nc = ncine;
 /// The configuration to be loaded or saved
 struct Configuration
 {
-	int version = 1;
+	const int version = 2;
+
 	int width = 1280;
 	int height = 720;
 	bool fullscreen = false;
@@ -23,6 +24,7 @@ struct Configuration
 	int canvasHeight = 256;
 	int saveFileMaxSize = 16 * 1024;
 
+	float guiScaling = 1.0f; // version 2
 	nctl::String startupScriptName = nctl::String(ui::MaxStringLength);
 	bool autoPlayOnStart = true;
 
