@@ -26,13 +26,6 @@ if(PACKAGE_BUILD_ANDROID)
 	set(ANDROID_MANIFEST_XML ${CMAKE_BINARY_DIR}/android/src/main/AndroidManifest.xml)
 	configure_file(${ANDROID_MANIFEST_XML_IN} ${ANDROID_MANIFEST_XML} @ONLY)
 
-	set(LOAD_LIBRARIES_JAVA_IN ${CMAKE_SOURCE_DIR}/android/src/main/java/LoadLibraries.java.in)
-	set(LOAD_LIBRARIES_JAVA ${CMAKE_BINARY_DIR}/android/src/main/java/${PACKAGE_JAVA_URL}/LoadLibraries.java)
-	configure_file(${LOAD_LIBRARIES_JAVA_IN} ${LOAD_LIBRARIES_JAVA} @ONLY)
-	set(LOAD_LIBRARIES_TV_JAVA_IN ${CMAKE_SOURCE_DIR}/android/src/main/java/LoadLibrariesTV.java.in)
-	set(LOAD_LIBRARIES_TV_JAVA ${CMAKE_BINARY_DIR}/android/src/main/java/${PACKAGE_JAVA_URL}/LoadLibrariesTV.java)
-	configure_file(${LOAD_LIBRARIES_TV_JAVA_IN} ${LOAD_LIBRARIES_TV_JAVA} @ONLY)
-
 	set(STRINGS_XML_IN ${CMAKE_SOURCE_DIR}/android/src/main/res/values/strings.xml.in)
 	set(STRINGS_XML ${CMAKE_BINARY_DIR}/android/src/main/res/values/strings.xml)
 	configure_file(${STRINGS_XML_IN} ${STRINGS_XML} @ONLY)
@@ -88,10 +81,31 @@ if(PACKAGE_BUILD_ANDROID)
 		PATH_SUFFIXES armeabi-v7a arm64-v8a x86_64
 	)
 	set(NCINE_ANDROID_WITH_AUDIO FALSE)
-	if(IS_DIRECTORY ${NCINE_ANDROID_OPENAL_LIB_DIR})
+	if(NCINE_WITH_AUDIO AND IS_DIRECTORY ${NCINE_ANDROID_OPENAL_LIB_DIR})
 		get_filename_component(NCINE_ANDROID_OPENAL_LIB_DIR ${NCINE_ANDROID_OPENAL_LIB_DIR} DIRECTORY)
 		set(NCINE_ANDROID_WITH_AUDIO TRUE)
 	endif()
+
+	set(JAVA_SYSTEM_LOADLIBRARY
+		"try {
+			System.loadLibrary(\"JAVA_NATIVE_LIBRARY_NAME\")\;
+		} catch (UnsatisfiedLinkError e) {
+			System.err.println(\"Caught UnsatisfiedLinkError: \" + e.getMessage())\;
+		}"
+	)
+	if(NCINE_ANDROID_WITH_AUDIO)
+		string(REPLACE "JAVA_NATIVE_LIBRARY_NAME" "openal" JAVA_SYSTEM_LOADLIBRARY_OPENAL ${JAVA_SYSTEM_LOADLIBRARY})
+	endif()
+	if(NCINE_DYNAMIC_LIBRARY)
+		string(REPLACE "JAVA_NATIVE_LIBRARY_NAME" "ncine" JAVA_SYSTEM_LOADLIBRARY_NCINE ${JAVA_SYSTEM_LOADLIBRARY})
+	endif()
+
+	set(LOAD_LIBRARIES_JAVA_IN ${CMAKE_SOURCE_DIR}/android/src/main/java/LoadLibraries.java.in)
+	set(LOAD_LIBRARIES_JAVA ${CMAKE_BINARY_DIR}/android/src/main/java/${PACKAGE_JAVA_URL}/LoadLibraries.java)
+	configure_file(${LOAD_LIBRARIES_JAVA_IN} ${LOAD_LIBRARIES_JAVA} @ONLY)
+	set(LOAD_LIBRARIES_TV_JAVA_IN ${CMAKE_SOURCE_DIR}/android/src/main/java/LoadLibrariesTV.java.in)
+	set(LOAD_LIBRARIES_TV_JAVA ${CMAKE_BINARY_DIR}/android/src/main/java/${PACKAGE_JAVA_URL}/LoadLibrariesTV.java)
+	configure_file(${LOAD_LIBRARIES_TV_JAVA_IN} ${LOAD_LIBRARIES_TV_JAVA} @ONLY)
 
 	file(COPY android/src/main/cpp/CMakeLists.txt DESTINATION android/src/main/cpp)
 	set(BUILD_GRADLE_IN ${CMAKE_SOURCE_DIR}/android/build.gradle.in)
