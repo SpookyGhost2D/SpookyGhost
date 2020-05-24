@@ -323,6 +323,11 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture)
 
 	// Check first if the filename is relative to the textures directory
 	texturePath = nc::fs::joinPath(theCfg.texturesPath, textureName);
+#ifdef __ANDROID__
+	// On Android check also for textures in the assets
+	if (nc::fs::isReadableFile(texturePath.data()) == false)
+		texturePath =  nc::fs::joinPath("asset::", textureName);
+#endif
 	if (nc::fs::isReadableFile(texturePath.data()) == false)
 		texturePath = textureName;
 

@@ -10,6 +10,18 @@
 #include "AnimationManager.h"
 
 ///////////////////////////////////////////////////////////
+// CONSTRUCTORS and DESTRUCTOR
+///////////////////////////////////////////////////////////
+
+RenderGuiWindow::RenderGuiWindow(UserInterface &ui)
+    : ui_(ui)
+{
+#ifdef __ANDROID__
+	filename.assign("animation");
+#endif
+}
+
+///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
@@ -63,7 +75,13 @@ void RenderGuiWindow::create()
 	if (ImGui::Begin(Labels::Render, nullptr))
 	{
 		if (directory.isEmpty())
+		{
+#ifdef __ANDROID__
+			directory.assign(ui::androidSaveDir.data());
+#else
 			directory.assign(nc::fs::currentDir());
+#endif
+		}
 		if (shouldSaveFrames_ == false && shouldSaveSpritesheet_ == false)
 		{
 			ui::auxString.format("Save to: %s%s", Labels::FileDialog_SelectDirIcon, directory.data());

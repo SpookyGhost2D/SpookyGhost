@@ -167,7 +167,8 @@ bool deserialize(LuaSerializer &ls, const char *name, nctl::Array<T> &array)
 	for (unsigned int i = 0; i < numElements; i++)
 	{
 		nc::LuaUtils::rawGeti(L, -1, i + 1); // Lua arrays start from index 1
-		deserialize(ls, array[i]);
+		array.emplaceBack();
+		deserialize(ls, array.back());
 		nc::LuaUtils::pop(L);
 	}
 

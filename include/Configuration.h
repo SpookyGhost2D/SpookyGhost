@@ -24,7 +24,11 @@ struct Configuration
 	int canvasHeight = 256;
 	int saveFileMaxSize = 16 * 1024;
 
+#ifdef __ANDROID__
+	float guiScaling = 2.0f; // version 2
+#else
 	float guiScaling = 1.0f; // version 2
+#endif
 	nctl::String startupScriptName = nctl::String(ui::MaxStringLength);
 	bool autoPlayOnStart = true;
 

@@ -48,9 +48,15 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 	permissionsString[3] = '\0';
 
 	if (config.directory.isEmpty() || nc::fs::isDirectory(config.directory.data()) == false)
-		config.directory = nc::fs::currentDir();
+	{
+#ifdef __ANDROID__
+		config.directory.assign(nc::fs::externalStorageDir());
+#else
+		config.directory.assign(nc::fs::currentDir());
+#endif
+	}
 	else
-		config.directory = nc::fs::absolutePath(config.directory.data());
+		config.directory.assign(nc::fs::absolutePath(config.directory.data()));
 
 	ImGui::SetNextWindowSize(ImVec2(550.0f, 350.0f), ImGuiCond_Once);
 	auxString.format("%s%s", config.windowIcon, config.windowTitle);
@@ -267,6 +273,8 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 				// Perform a selection by double clicking
 				selection = nc::fs::joinPath(config.directory, entry.name);
 				inputTextString.clear();
+				if (config.selectionType == SelectionType::DIRECTORY)
+					config.directory = selection;
 
 				selected = true;
 				config.windowOpen = false;
@@ -310,6 +318,8 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 		// Perform a selection by pressing the Enter key
 		selection = nc::fs::joinPath(config.directory, inputTextString);
 		inputTextString.clear();
+		if (config.selectionType == SelectionType::DIRECTORY)
+			config.directory = selection;
 
 		selected = true;
 		config.windowOpen = false;
@@ -331,6 +341,8 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 		// Perform a selection by pressing the OK button
 		selection = nc::fs::joinPath(config.directory, inputTextString);
 		inputTextString.clear();
+		if (config.selectionType == SelectionType::DIRECTORY)
+			config.directory = selection;
 
 		selected = true;
 		config.windowOpen = false;

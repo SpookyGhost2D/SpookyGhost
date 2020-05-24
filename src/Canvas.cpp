@@ -94,8 +94,15 @@ void Canvas::unbind()
 
 void Canvas::save(const char *filename)
 {
+#ifndef __ANDROID__
 	fbo_->unbind();
 	texture_->getTexImage(0, GL_RGBA, GL_UNSIGNED_BYTE, pixels_.get());
+#else
+	fbo_->bind(GL_READ_FRAMEBUFFER);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glReadPixels(0, 0, texWidth_, texHeight_, GL_RGBA, GL_UNSIGNED_BYTE, pixels_.get());
+	fbo_->unbind();
+#endif
 
 	nc::TextureSaverPng saver;
 	nc::ITextureSaver::Properties props;

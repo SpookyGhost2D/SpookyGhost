@@ -20,9 +20,9 @@
 #include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
 
-nc::IAppEventHandler *createAppEventHandler()
+nctl::UniquePtr<nc::IAppEventHandler> createAppEventHandler()
 {
-	return new MyEventHandler;
+	return nctl::makeUnique<MyEventHandler>();
 }
 
 void MyEventHandler::onPreInit(nc::AppConfiguration &config)
@@ -39,16 +39,43 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	#endif
 #endif
 
-	if (nc::fs::isReadableFile("config.lua"))
+	ui::auxString = "config.lua";
+#ifdef __ANDROID__
+	ui::androidSaveDir = nc::fs::joinPath(nc::fs::externalStorageDir(), "SpookyGhost");
+	if (nc::fs::isDirectory(ui::androidSaveDir.data()) == false)
 	{
-		LuaSaver saver(4096);
-		saver.loadCfg("config.lua", theCfg);
+		const bool dirCreated = nc::fs::createDir(ui::androidSaveDir.data());
+		LOGI_X("Android save directory \"%s\" created: %s", ui::androidSaveDir.data(), dirCreated ? "true" : "false");
+	}
+	ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "scripts");
+	if (nc::fs::isDirectory(ui::auxString.data()) == false)
+	{
+		const bool dirCreated = nc::fs::createDir(ui::auxString.data());
+		LOGI_X("Android scripts directory \"%s\" created: %s", ui::auxString.data(), dirCreated ? "true" : "false");
 	}
 
+	ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "config.lua");
+	if (nc::fs::isReadableFile(ui::auxString.data()) == false)
+		ui::auxString = "asset::config.lua";
+#endif
+
+	if (nc::fs::isReadableFile(ui::auxString.data()))
+	{
+		LuaSaver saver(4096);
+		saver.loadCfg(ui::auxString.data(), theCfg);
+	}
+
+#ifdef __ANDROID__
+	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
+		theCfg.scriptsPath = nc::fs::joinPath(ui::androidSaveDir, "scripts");
+	if (nc::fs::isDirectory(theCfg.texturesPath.data()) == false)
+		theCfg.texturesPath = ui::androidSaveDir;
+#else
 	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
 		theCfg.scriptsPath = nc::fs::joinPath(nc::fs::dataPath(), "scripts");
 	if (nc::fs::isDirectory(theCfg.texturesPath.data()) == false)
 		theCfg.texturesPath = nc::fs::dataPath();
+#endif
 
 	config.resolution.set(theCfg.width, theCfg.height);
 	config.inFullscreen = theCfg.fullscreen;

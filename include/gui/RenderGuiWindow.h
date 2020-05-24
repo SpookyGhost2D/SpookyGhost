@@ -39,8 +39,7 @@ class RenderGuiWindow
 	nctl::String directory = nctl::String(ui::MaxStringLength);
 	nctl::String filename = nctl::String(ui::MaxStringLength);
 
-	RenderGuiWindow(UserInterface &ui)
-	    : ui_(ui) {}
+	RenderGuiWindow(UserInterface &ui);
 
 	inline const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
 	inline SaveAnim &saveAnimStatus() { return saveAnimStatus_; }

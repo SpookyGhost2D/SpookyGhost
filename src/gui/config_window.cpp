@@ -8,6 +8,10 @@
 #include "Configuration.h"
 #include "LuaSaver.h"
 
+#ifdef __ANDROID__
+	#include <ncine/FileSystem.h>
+#endif
+
 bool UserInterface::showConfigWindow = false;
 
 ///////////////////////////////////////////////////////////
@@ -27,7 +31,6 @@ void UserInterface::createConfigWindow()
 	ImGui::Text("Screen Width: %d", nc::theApplication().widthInt());
 	ImGui::Text("Screen Height: %d", nc::theApplication().heightInt());
 	ImGui::Text("Resizable: false");
-	ImGui::SameLine();
 	ImGui::Text("Fullscreen: true");
 #else
 	static int selectedVideoMode = -1;
@@ -88,8 +91,12 @@ void UserInterface::createConfigWindow()
 #endif
 
 	ImGui::NewLine();
+#ifdef __ANDROID__
+	ImGui::Text("Vertical Sync: true");
+#else
 	ImGui::Checkbox("Vertical Sync", &theCfg.withVSync);
 	nc::theApplication().gfxDevice().setSwapInterval(theCfg.withVSync ? 1 : 0);
+#endif
 	int frameLimit = theCfg.frameLimit;
 	ImGui::SliderInt("Frame Limit", &frameLimit, 0, 240);
 	theCfg.frameLimit = frameLimit < 0 ? 0 : frameLimit;
@@ -122,7 +129,14 @@ void UserInterface::createConfigWindow()
 
 	// Auto-save on window close
 	if (showConfigWindow == false)
-		theSaver->saveCfg("config.lua", theCfg);
+	{
+		ui::auxString.assign("config.lua");
+#ifdef __ANDROID__
+		// On Android the configuration file is saved in the external storage directory
+		ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "config.lua");
+#endif
+		theSaver->saveCfg(ui::auxString.data(), theCfg);
+	}
 
 	ImGui::End();
 }

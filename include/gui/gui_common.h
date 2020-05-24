@@ -10,8 +10,12 @@ namespace ui {
 
 static const unsigned int MaxStringLength = 256;
 
-static nctl::String comboString = nctl::String(1024 * 2);
-static nctl::String auxString = nctl::String(MaxStringLength);
+extern nctl::String comboString;
+extern nctl::String auxString;
+
+#ifdef __ANDROID__
+extern nctl::String androidSaveDir;
+#endif
 
 int inputTextCallback(ImGuiInputTextCallbackData *data);
 };

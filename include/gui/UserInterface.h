@@ -150,6 +150,8 @@ class UserInterface
 	void sanitizeConfigValues();
 	void openFile(const char *filename);
 
+	void updateSelectedAnimOnSpriteRemoval(Sprite *sprite);
+
 	friend class RenderGuiWindow;
 };
 

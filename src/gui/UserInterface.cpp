@@ -73,7 +73,17 @@ UserInterface::UserInterface()
 	ImFontConfig icons_config;
 	icons_config.MergeMode = true;
 	icons_config.PixelSnapH = true;
-	io.Fonts->AddFontFromFileTTF(nc::fs::joinPath(nc::fs::dataPath(), "fonts/" FONT_ICON_FILE_NAME_FAS).data(), 12.0f, &icons_config, icons_ranges);
+
+	// Loading font from memory so that a font can be an Android asset file
+	nctl::UniquePtr<nc::IFile> fontFile = nc::IFile::createFileHandle(nc::fs::joinPath(nc::fs::dataPath(), "fonts/" FONT_ICON_FILE_NAME_FAS).data());
+	fontFile->open(nc::IFile::OpenMode::READ);
+	const long int fontFileSize = fontFile->size();
+	nctl::UniquePtr<uint8_t []> fontFileBuffer = nctl::makeUnique<uint8_t []>(fontFileSize);
+	fontFile->read(fontFileBuffer.get(), fontFileSize);
+	io.Fonts->AddFontFromMemoryTTF(fontFileBuffer.get(), fontFileSize, 12.0f, &icons_config, icons_ranges);
+	// Transfer ownership to ImGui
+	fontFileBuffer.release();
+	fontFile->close();
 #endif
 
 	applyDarkStyle();
@@ -207,6 +217,8 @@ bool UserInterface::openProject(const char *filename)
 	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 	if (nc::fs::isReadableFile(filename) && theSaver->load(filename, data))
 	{
+		selectedSpriteIndex_ = 0;
+		selectedTextureIndex_ = 0;
 		selectedAnimation_ = nullptr;
 		canvasGuiSection_.setResize(theCanvas->size());
 		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
@@ -241,8 +253,12 @@ void UserInterface::menuSaveAs()
 
 bool UserInterface::openDocumentationEnabled()
 {
+#ifdef __ANDROID__
+	return false; // TODO: open with a WebView
+#else
 	nctl::String docsPath = nc::fs::joinPath(nc::fs::dataPath(), docsFile);
 	return nc::fs::isReadableFile(docsPath.data());
+#endif
 }
 
 void UserInterface::openDocumentation()
@@ -404,9 +420,15 @@ void UserInterface::createMenuBar()
 				{
 					if (ImGui::MenuItem(ScriptStrings::Names[i]))
 					{
-						if (openProject(nc::fs::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]).data()))
+#ifdef __ANDROID__
+						// Bundled scripts on Android are always part of the assets
+						ui::auxString.assign(nc::fs::joinPath("asset::scripts", ScriptStrings::Names[i]).data());
+#else
+						ui::auxString.assign(nc::fs::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]).data());
+#endif
+						if (openProject(ui::auxString.data()))
 						{
-							lastLoadedProject_ = nc::fs::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]);
+							lastLoadedProject_ = ui::auxString;
 							numFrames = 0; // force focus on the canvas
 						}
 					}
@@ -497,10 +519,11 @@ void UserInterface::createTexturesWindow()
 		// Deleting backwards without iterators
 		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
 		{
-			Sprite &sprite = *theSpriteMgr->sprites()[i];
-			if (&sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get())
+			Sprite *sprite = theSpriteMgr->sprites()[i].get();
+			if (&sprite->texture() == theSpriteMgr->textures()[selectedTextureIndex_].get())
 			{
-				theAnimMgr->removeSprite(&sprite);
+				updateSelectedAnimOnSpriteRemoval(sprite);
+				theAnimMgr->removeSprite(sprite);
 				theSpriteMgr->sprites().removeAt(i);
 			}
 		}
@@ -550,7 +573,10 @@ void UserInterface::createSpritesWindow()
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
 		{
-			theAnimMgr->removeSprite(theSpriteMgr->sprites()[selectedSpriteIndex_].get());
+			Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
+			updateSelectedAnimOnSpriteRemoval(selectedSprite);
+
+			theAnimMgr->removeSprite(selectedSprite);
 			if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
 				theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
 			if (selectedSpriteIndex_ > 0)
@@ -1682,4 +1708,24 @@ void UserInterface::visitSprite(Sprite &sprite)
 	sprite.visited = true;
 	for (unsigned int i = 0; i < sprite.children().size(); i++)
 		visitSprite(*sprite.children()[i]);
+}
+
+void UserInterface::updateSelectedAnimOnSpriteRemoval(Sprite *sprite)
+{
+	if (selectedAnimation_)
+	{
+		if (selectedAnimation_->type() == IAnimation::Type::PROPERTY)
+		{
+			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(*selectedAnimation_);
+			if (propertyAnim.sprite() == sprite)
+				selectedAnimation_ = nullptr;
+		}
+		else if (selectedAnimation_->type() == IAnimation::Type::GRID)
+		{
+			GridAnimation &gridAnim = static_cast<GridAnimation &>(*selectedAnimation_);
+			if (gridAnim.sprite() == sprite)
+				selectedAnimation_ = nullptr;
+		}
+	}
+
 }

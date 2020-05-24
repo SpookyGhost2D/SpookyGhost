@@ -319,7 +319,7 @@ void Sprite::initGrid(int width, int height)
 		if (shortIndices_.capacity() < indicesCapacity)
 			shortIndices_.setCapacity(indicesCapacity);
 		for (unsigned int i = 0; i < indicesSize; i++)
-			shortIndices_[i] = static_cast<unsigned short>(indices_[i]);
+			shortIndices_.pushBack(static_cast<unsigned short>(indices_[i]));
 		ibo_->bufferData(iboBytes, shortIndices_.data(), GL_STATIC_DRAW);
 	}
 	else
@@ -337,14 +337,14 @@ void Sprite::resetVertices()
 		for (int x = 0; x < width_ + 1; x++)
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width_ + 1));
-			Vertex &v = interleavedVertices_[index];
-			VertexPosition &restPos = restPositions_[index];
+			Vertex v;
 			v.x = -0.5f + static_cast<float>(x) * deltaX;
 			v.y = -0.5f + static_cast<float>(y) * deltaY;
 			v.u = static_cast<float>(x) * deltaX;
 			v.v = static_cast<float>(y) * deltaY;
-			restPos.x = v.x;
-			restPos.y = v.y;
+			interleavedVertices_.pushBack(v);
+			VertexPosition restPos = { v.x, v.y };
+			restPositions_.pushBack(restPos);
 		}
 	}
 
@@ -362,21 +362,17 @@ void Sprite::resetIndices()
 	const unsigned int gridWidth = static_cast<unsigned int>(width_ + 1);
 
 	unsigned int vertexIndex = gridWidth;
-	unsigned int arrayIndex = 0;
 	for (unsigned int i = 0; i < height_; i++)
 	{
 		for (unsigned int j = 0; j < gridWidth; j++)
 		{
-			indices_[arrayIndex++] = vertexIndex + j;
+			indices_.pushBack(vertexIndex + j);
 			if (j == 0 && i != 0) // degenerate vertex
-				indices_[arrayIndex++] = vertexIndex + j;
-			indices_[arrayIndex++] = vertexIndex + j - gridWidth;
+				indices_.pushBack(vertexIndex + j);
+			indices_.pushBack(vertexIndex + j - gridWidth);
 		}
 		if (i != gridWidth - 2) // degenerate vertex
-		{
-			indices_[arrayIndex] = indices_[arrayIndex - 1];
-			arrayIndex++;
-		}
+			indices_.pushBack(indices_.back());
 		vertexIndex += gridWidth;
 	}
 
