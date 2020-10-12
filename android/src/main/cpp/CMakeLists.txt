@@ -53,6 +53,9 @@ set_property(TARGET ${PACKAGE_EXE_NAME} PROPERTY OUTPUT_NAME "game")
 target_link_libraries(${PACKAGE_EXE_NAME} PRIVATE native_app_glue ncine_main ncine)
 target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${ANDROID_NDK}/sources/android/native_app_glue)
 
+target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "$<$<CONFIG:Debug>:${PACKAGE_UPPER_NAME}_DEBUG>")
+target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "$<$<CONFIG:Debug>:NCINE_ASSERT_BREAK>")
+
 if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/ncine/include/tracy)
 	target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/ncine/include/tracy)
 	target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "TRACY_ENABLE")
