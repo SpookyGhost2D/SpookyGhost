@@ -19,6 +19,7 @@ elseif(WIN32)
 	if(NCINE_DYNAMIC_LIBRARY)
 		add_custom_target(copy_ncine_dll ALL
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NCINE_LOCATION} ${CMAKE_BINARY_DIR}
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NCINE_LOCATION} ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
 			COMMENT "Copying nCine DLL..."
 		)
 		set_target_properties(copy_ncine_dll PROPERTIES FOLDER "CustomCopyTargets")
@@ -26,7 +27,7 @@ elseif(WIN32)
 endif()
 
 if(MSVC)
-	if(EXISTS ${NCINE_CONFIG_H})
+	if(EXISTS ${NCINE_CONFIG_H} AND NOT NCINE_DYNAMIC_LIBRARY)
 		if(ANGLE_FOUND AND NCINE_WITH_ANGLE)
 			add_custom_target(copy_angle_dlls ALL
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different ${EGL_IMPORTED_LOCATION} ${CMAKE_BINARY_DIR}
@@ -90,7 +91,9 @@ if(MSVC)
 		file(GLOB MSVC_DLL_FILES ${MSVC_BINDIR}/*.dll)
 
 		add_custom_target(copy_dlls ALL
+			COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MSVC_DLL_FILES} ${CMAKE_BINARY_DIR}
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MSVC_DLL_FILES} ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
 			COMMENT "Copying DLLs..."
 		)
 		set_target_properties(copy_dlls PROPERTIES FOLDER "CustomCopyTargets")
