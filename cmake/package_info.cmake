@@ -1,7 +1,7 @@
 set(PACKAGE_NAME "SpookyGhost")
 set(PACKAGE_EXE_NAME "spookyghost")
 set(PACKAGE_VENDOR "Angelo Theodorou")
-set(PACKAGE_COPYRIGHT "Copyright ©2020 ${PACKAGE_VENDOR}")
+set(PACKAGE_COPYRIGHT "Copyright ©2020-2021 ${PACKAGE_VENDOR}")
 set(PACKAGE_DESCRIPTION "A procedural sprite animation tool")
 set(PACKAGE_HOMEPAGE "https://encelo.itch.io/spookyghost")
 set(PACKAGE_REVERSE_DNS "io.itch.encelo.spookyghost")

@@ -27,7 +27,8 @@ if(NOT DEFINED NCINE_CONFIGURATION)
 	message(FATAL_ERROR "No nCine build configuration found")
 endif()
 
-if(GENERATOR_IS_MULTI_CONFIG)
+get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(IS_MULTI_CONFIG)
 	# Remap package configurations to match the available engine configuration
 	foreach(PACKAGE_CONFIGURATION_TYPE ${CMAKE_CONFIGURATION_TYPES})
 		string(TOUPPER ${PACKAGE_CONFIGURATION_TYPE} PACKAGE_CONFIGURATION)

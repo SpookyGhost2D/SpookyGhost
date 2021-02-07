@@ -18,6 +18,9 @@ include(find_ncine)
 if(NOT NCINE_DYNAMIC_LIBRARY)
 	include(package_imported_targets)
 endif()
+if(NOT ANDROID AND NOT EMSCRIPTEN AND NCINE_WITH_QT5)
+	find_package(Qt5 COMPONENTS Widgets)
+endif()
 
 if(NOT IS_DIRECTORY ${PACKAGE_DATA_DIR})
 	if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/data AND IS_DIRECTORY ${CMAKE_SOURCE_DIR}/icons)
@@ -48,12 +51,20 @@ target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${PACKAGE_INCLUDE_DIRS})
 if(IS_DIRECTORY ${GENERATED_INCLUDE_DIR})
 	target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${GENERATED_INCLUDE_DIR})
 endif()
+
+if(WIN32 AND NCINE_WTH_QT5)
+	target_link_libraries(${PACKAGE_EXE_NAME} PRIVATE Qt5::WinMain)
+elseif(MINGW)
+	# Should be linked before `ncine_main`
+	target_link_libraries(${PACKAGE_EXE_NAME} PRIVATE mingw32)
+endif()
 target_link_libraries(${PACKAGE_EXE_NAME} PRIVATE ncine::ncine_main ncine::ncine)
 
 target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "$<$<CONFIG:Debug>:${PACKAGE_UPPER_NAME}_DEBUG>")
 target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "$<$<CONFIG:Debug>:NCINE_ASSERT_BREAK>")
 
 if(MSVC)
+	set_property(TARGET ${PACKAGE_EXE_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PACKAGE_EXE_NAME}>")
 	target_compile_options(${PACKAGE_EXE_NAME} PRIVATE /MP)
 endif()
 
