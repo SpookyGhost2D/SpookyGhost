@@ -5,7 +5,7 @@ project(fontawesome-download NONE)
 include(ExternalProject)
 ExternalProject_Add(fontawesome
 	GIT_REPOSITORY    https://github.com/FortAwesome/Font-Awesome.git
-	GIT_TAG           ""
+	GIT_TAG           "${FONTAWESOME_VERSION_TAG}"
 	GIT_SHALLOW       TRUE
 	SOURCE_DIR        "${CMAKE_BINARY_DIR}/fontawesome-src"
 	CONFIGURE_COMMAND ""

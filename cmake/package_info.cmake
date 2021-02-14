@@ -105,12 +105,11 @@ function(callback_after_target)
 		target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${EXTERNAL_MSVC_DIR}/include)
 	endif()
 
+	include(custom_iconfontcppheaders)
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND IS_DIRECTORY ${PACKAGE_DATA_DIR})
 		generate_scripts_list()
 
 		include(custom_fontawesome)
-		include(custom_iconfontcppheaders)
-
 		if(CUSTOM_WITH_FONTAWESOME)
 			file(GLOB FONT_FILES "${PACKAGE_DATA_DIR}/data/fonts/*.ttf")
 		endif()
@@ -123,7 +122,7 @@ function(callback_after_target)
 
 	if(CMAKE_SYSTEM_NAME STREQUAL "Android" AND CUSTOM_WITH_FONTAWESOME)
 		target_compile_definitions(${PACKAGE_EXE_NAME} PRIVATE "WITH_FONTAWESOME")
-		target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${GENERATED_INCLUDE_DIR}/../../iconfontcppheaders-src)
+		target_include_directories(${PACKAGE_EXE_NAME} PRIVATE ${GENERATED_INCLUDE_DIR}/../../${ICONFONTCPPHEADERS_SOURCE_DIR_NAME})
 	endif()
 
 	# Needed to compile on Android
