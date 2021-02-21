@@ -45,7 +45,7 @@ class Texture
 	unsigned int numChannels_;
 	unsigned long dataSize_;
 
-	void load(const char *filename, int width, int height);
+	bool load(const char *filename, int width, int height);
 	void load(const nc::ITextureLoader &texLoader, int width, int height);
 
 	friend class Sprite;

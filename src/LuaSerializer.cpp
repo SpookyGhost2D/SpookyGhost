@@ -383,11 +383,11 @@ bool LuaSerializer::load(const char *filename, const nc::EmscriptenLocalFile *lo
 {
 	createNewState();
 #ifndef __EMSCRIPTEN__
-	if (luaState_->run(filename) == false)
+	if (luaState_->runFromFile(filename) == false)
 #else
 	const bool loaded = (localFile != nullptr)
 	                        ? luaState_->runFromMemory(localFile->data(), localFile->size(), localFile->filename())
-	                        : luaState_->run(filename);
+	                        : luaState_->runFromFile(filename);
 
 	if (loaded == false)
 #endif

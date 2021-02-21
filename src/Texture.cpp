@@ -36,12 +36,16 @@ void *Texture::imguiTexId()
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void Texture::load(const char *filename, int width, int height)
+bool Texture::load(const char *filename, int width, int height)
 {
 	glTexture_->bind();
 	nctl::UniquePtr<nc::ITextureLoader> texLoader = nc::ITextureLoader::createFromFile(filename);
+	if (texLoader->hasLoaded() == false)
+		return false;
+
 	load(*texLoader.get(), width, height);
 	name_ = filename;
+	return true;
 }
 
 void Texture::load(const nc::ITextureLoader &texLoader, int width, int height)

@@ -17,12 +17,12 @@
 namespace {
 
 static const char *sortingStrings[6] = {
-    Labels::FileDialog_Name_Asc,
-    Labels::FileDialog_Name_Desc,
-    Labels::FileDialog_Size_Asc,
-    Labels::FileDialog_Size_Desc,
-    Labels::FileDialog_Date_Asc,
-    Labels::FileDialog_Date_Desc
+	Labels::FileDialog_Name_Asc,
+	Labels::FileDialog_Name_Desc,
+	Labels::FileDialog_Size_Asc,
+	Labels::FileDialog_Size_Desc,
+	Labels::FileDialog_Date_Asc,
+	Labels::FileDialog_Date_Desc
 };
 
 }

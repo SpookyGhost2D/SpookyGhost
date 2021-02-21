@@ -12,13 +12,8 @@ void recursiveRemoveAnimation(IAnimation &anim)
 	if (anim.isGroup())
 	{
 		AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
-		// Deleting backwards without iterators
-		for (int i = animGroup.anims().size() - 1; i >= 0; i--)
-		{
+		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
 			animGroup.anims()[i]->stop();
-			recursiveRemoveAnimation(*animGroup.anims()[i]);
-			animGroup.anims()[i].reset(nullptr);
-		}
 		animGroup.anims().clear();
 	}
 
@@ -29,7 +24,7 @@ void recursiveRemoveAnimation(IAnimation &anim)
 		{
 			if (anims[i].get() == &anim)
 			{
-				anims[i].reset(nullptr);
+				anims[i]->stop();
 				anims.removeAt(i);
 				break;
 			}

@@ -150,6 +150,7 @@ void Sprite::render()
 
 void Sprite::resetGrid()
 {
+	ASSERT(interleavedVertices_.size() >= restPositions_.size());
 	for (unsigned int i = 0; i < restPositions_.size(); i++)
 	{
 		interleavedVertices_[i].x = restPositions_[i].x;
@@ -336,7 +337,6 @@ void Sprite::resetVertices()
 	{
 		for (int x = 0; x < width_ + 1; x++)
 		{
-			const unsigned int index = static_cast<unsigned int>(x + y * (width_ + 1));
 			Vertex v;
 			v.x = -0.5f + static_cast<float>(x) * deltaX;
 			v.y = -0.5f + static_cast<float>(y) * deltaY;

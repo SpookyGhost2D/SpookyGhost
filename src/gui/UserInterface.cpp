@@ -78,7 +78,7 @@ UserInterface::UserInterface()
 	nctl::UniquePtr<nc::IFile> fontFile = nc::IFile::createFileHandle(nc::fs::joinPath(nc::fs::dataPath(), "fonts/" FONT_ICON_FILE_NAME_FAS).data());
 	fontFile->open(nc::IFile::OpenMode::READ);
 	const long int fontFileSize = fontFile->size();
-	nctl::UniquePtr<uint8_t []> fontFileBuffer = nctl::makeUnique<uint8_t []>(fontFileSize);
+	nctl::UniquePtr<uint8_t[]> fontFileBuffer = nctl::makeUnique<uint8_t[]>(fontFileSize);
 	fontFile->read(fontFileBuffer.get(), fontFileSize);
 	io.Fonts->AddFontFromMemoryTTF(fontFileBuffer.get(), fontFileSize, 12.0f, &icons_config, icons_ranges);
 	// Transfer ownership to ImGui
@@ -514,7 +514,8 @@ void UserInterface::createTexturesWindow()
 
 	ImGui::SameLine();
 
-	if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+	if (theSpriteMgr->textures().isEmpty() == false &&
+	    (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
 	{
 		// Deleting backwards without iterators
 		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
@@ -571,7 +572,8 @@ void UserInterface::createSpritesWindow()
 			}
 		}
 		ImGui::SameLine();
-		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+		if (theSpriteMgr->sprites().isEmpty() == false &&
+		    (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
 		{
 			Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
 			updateSelectedAnimOnSpriteRemoval(selectedSprite);
@@ -588,18 +590,27 @@ void UserInterface::createSpritesWindow()
 
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
-		if (selectedSpriteIndex_ > 0)
+		const bool needsMoveUpButton = selectedSpriteIndex_ > 0;
+		const bool needsMoveDownButton = selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1;
+
+		if (needsMoveUpButton || needsMoveDownButton)
 		{
+			ImGui::SameLine();
+			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		}
+
+		if (needsMoveUpButton)
+		{
+			ImGui::SameLine();
 			if (ImGui::Button(Labels::MoveUp))
 			{
 				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ - 1]);
 				selectedSpriteIndex_--;
 			}
 		}
-		if (selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1)
+		if (needsMoveDownButton)
 		{
-			if (selectedSpriteIndex_ > 0)
-				ImGui::SameLine();
+			ImGui::SameLine();
 			if (ImGui::Button(Labels::MoveDown))
 			{
 				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ + 1]);
@@ -613,6 +624,8 @@ void UserInterface::createSpritesWindow()
 		ImGui::Separator();
 		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 		{
+			// Creating a group to use the whole entry line as a drag source or target
+			ImGui::BeginGroup();
 			Sprite &sprite = *theSpriteMgr->sprites()[i];
 			ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 			if (i == selectedSpriteIndex_)
@@ -621,11 +634,34 @@ void UserInterface::createSpritesWindow()
 			ui::auxString.format("%s###Sprite%d", sprite.visible ? Labels::VisibleIcon : Labels::InvisibleIcon, i);
 			ImGui::Checkbox(ui::auxString.data(), &sprite.visible);
 			ImGui::SameLine();
-			ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "#%u: \"%s\" (%d x %d) %s",
-			                  i, sprite.name.data(), sprite.width(), sprite.height(),
-			                  &sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get() ? Labels::SelectedTextureIcon : "");
+			ui::auxString.format("#%u: \"%s\" (%d x %d) %s", i, sprite.name.data(), sprite.width(), sprite.height(),
+			                     &sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get() ? Labels::SelectedTextureIcon : "");
+			ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "%s", ui::auxString.data());
 			if (ImGui::IsItemClicked())
 				selectedSpriteIndex_ = i;
+			ImGui::EndGroup();
+
+			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+			{
+				ImGui::SetDragDropPayload("SPRITE_TREENODE", &i, sizeof(unsigned int));
+				ImGui::Text("%s", ui::auxString.data());
+				ImGui::EndDragDropSource();
+			}
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("SPRITE_TREENODE"))
+				{
+					IM_ASSERT(payload->DataSize == sizeof(unsigned int));
+
+					const unsigned int dragIndex = *reinterpret_cast<const unsigned int *>(payload->Data);
+					nctl::UniquePtr<Sprite> dragSprite(nctl::move(theSpriteMgr->sprites()[dragIndex]));
+					theSpriteMgr->sprites().removeAt(dragIndex);
+					theSpriteMgr->sprites().insertAt(i, nctl::move(dragSprite));
+					selectedSpriteIndex_ = i;
+
+					ImGui::EndDragDropTarget();
+				}
+			}
 		}
 	}
 
@@ -1314,9 +1350,11 @@ void UserInterface::createFileDialog()
 				}
 				break;
 			case FileDialog::Action::LOAD_TEXTURE:
-				if (nc::fs::hasExtension(selection.data(), "png"))
+			{
+				nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>(selection.data());
+				if (texture->dataSize() > 0)
 				{
-					theSpriteMgr->textures().pushBack(nctl::makeUnique<Texture>(selection.data()));
+					theSpriteMgr->textures().pushBack(nctl::move(texture));
 					// Set the relative path as the texture name to allow for relocatable project files
 					nctl::String baseName = nc::fs::baseName(selection.data());
 					if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.texturesPath, baseName.data()).data()))
@@ -1329,6 +1367,7 @@ void UserInterface::createFileDialog()
 
 				pushStatusInfoMessage(ui::auxString.data());
 				break;
+			}
 			case FileDialog::Action::RENDER_DIR:
 				renderGuiWindow_.directory = selection;
 				break;
@@ -1727,5 +1766,4 @@ void UserInterface::updateSelectedAnimOnSpriteRemoval(Sprite *sprite)
 				selectedAnimation_ = nullptr;
 		}
 	}
-
 }
