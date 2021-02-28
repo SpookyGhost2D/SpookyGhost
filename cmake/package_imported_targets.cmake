@@ -75,11 +75,11 @@ if(NOT MSVC AND NOT ANDROID) # GCC and LLVM
 	find_package(WebP)
 	find_package(Vorbis)
 
-	if(NOT MINGW AND NOT MSYS)
-		# Older CMake versions do not support Lua 5.4 if not set explicitly
-		set(LUA_REQUIRED_VERSION "5.4")
+	# Older CMake versions do not support Lua 5.4 if not required explicitly
+	find_package(Lua 5.4)
+	if(NOT LUA_FOUND)
+		find_package(Lua)
 	endif()
-	find_package(Lua ${LUA_REQUIRED_VERSION})
 endif()
 
 if(ANDROID)
@@ -193,7 +193,7 @@ elseif(MSVC)
 		set_target_properties(SDL2::SDL2 PROPERTIES
 			IMPORTED_IMPLIB ${MSVC_LIBDIR}/SDL2.lib
 			IMPORTED_LOCATION ${MSVC_BINDIR}/SDL2.dll
-			INTERFACE_INCLUDE_DIRECTORIES "${EXTERNAL_MSVC_DIR}/include"
+			INTERFACE_INCLUDE_DIRECTORIES "${EXTERNAL_MSVC_DIR}/include/SDL2"
 			INTERFACE_LINK_LIBRARIES ${MSVC_LIBDIR}/SDL2main.lib)
 		set(SDL2_FOUND 1)
 	endif()
@@ -285,8 +285,8 @@ elseif(MINGW OR MSYS)
 
 	if(SDL2_FOUND)
 		foreach(LIBRARY ${SDL2_LIBRARY})
-			string(FIND ${LIBRARY} ".a" FOUND_STATIC_LIB)
-			if(FOUND_STATIC_LIB GREATER -1 AND NOT ${LIBRARY} STREQUAL ${SDL2MAIN_LIBRARY})
+			string(REGEX MATCH "\.a$" FOUND_STATIC_LIB ${LIBRARY})
+			if(NOT FOUND_STATIC_LIB STREQUAL "" AND NOT ${LIBRARY} STREQUAL ${SDL2MAIN_LIBRARY})
 				set(SDL2_IMPORT_LIBRARY ${LIBRARY})
 				break()
 			endif()
@@ -341,9 +341,9 @@ elseif(MINGW OR MSYS)
 else() # GCC and LLVM
 	function(split_extra_libraries PREFIX LIBRARIES)
 		foreach(LIBRARY ${LIBRARIES})
-			string(FIND ${LIBRARY} "-l" FOUND_LINKER_ARG)
-			string(FIND ${LIBRARY} ".a" FOUND_STATIC_LIB)
-			if(FOUND_LINKER_ARG GREATER -1 OR FOUND_STATIC_LIB GREATER -1)
+			string(REGEX MATCH "^-l" FOUND_LINKER_ARG ${LIBRARY})
+			string(REGEX MATCH "\.a$" FOUND_STATIC_LIB ${LIBRARY})
+			if(NOT FOUND_LINKER_ARG STREQUAL "" OR NOT FOUND_STATIC_LIB STREQUAL "")
 				list(APPEND EXTRA_LIBRARIES ${LIBRARY})
 			else()
 				list(APPEND LIBRARY_FILE ${LIBRARY})
@@ -402,8 +402,8 @@ else() # GCC and LLVM
 	if(APPLE)
 		function(split_extra_frameworks PREFIX LIBRARIES)
 			foreach(LIBRARY ${LIBRARIES})
-				string(FIND ${LIBRARY} "-framework " FOUND)
-				if(FOUND GREATER -1)
+				string(REGEX MATCH "^-framework " FOUND ${LIBRARY})
+				if(NOT FOUND STREQUAL "")
 					list(APPEND FRAMEWORK_LINKS ${LIBRARY})
 				else()
 					list(APPEND FRAMEWORK_DIR ${LIBRARY})
