@@ -55,30 +55,32 @@ if(EMSCRIPTEN)
 	return()
 endif()
 
-find_package(Threads)
-if(NOT MSVC AND NOT ANDROID) # GCC and LLVM
-	if(APPLE)
-		set(CMAKE_FRAMEWORK_PATH ${FRAMEWORKS_DIR})
-		set(CMAKE_MACOSX_RPATH ON)
-	endif()
+if(NOT NCINE_DYNAMIC_LIBRARY)
+	find_package(Threads)
+	if(NOT MSVC AND NOT ANDROID) # GCC and LLVM
+		if(APPLE)
+			set(CMAKE_FRAMEWORK_PATH ${FRAMEWORKS_DIR})
+			set(CMAKE_MACOSX_RPATH ON)
+		endif()
 
-	if(WIN32)
-		find_package(GLEW REQUIRED)
-	else()
-		find_package(GLEW)
-	endif()
-	find_package(OpenGL REQUIRED)
-	find_package(GLFW)
-	find_package(SDL2)
-	find_package(PNG)
-	find_package(OpenAL)
-	find_package(WebP)
-	find_package(Vorbis)
+		if(WIN32)
+			find_package(GLEW REQUIRED)
+		else()
+			find_package(GLEW)
+		endif()
+		find_package(OpenGL REQUIRED)
+		find_package(GLFW)
+		find_package(SDL2)
+		find_package(PNG)
+		find_package(OpenAL)
+		find_package(WebP)
+		find_package(Vorbis)
 
-	# Older CMake versions do not support Lua 5.4 if not required explicitly
-	find_package(Lua 5.4)
-	if(NOT LUA_FOUND)
-		find_package(Lua)
+		# Older CMake versions do not support Lua 5.4 if not required explicitly
+		find_package(Lua 5.4)
+		if(NOT LUA_FOUND)
+			find_package(Lua)
+		endif()
 	endif()
 endif()
 
@@ -146,7 +148,8 @@ if(ANDROID)
 		set(LUA_FOUND 1)
 	endif()
 elseif(MSVC)
-	if(EXISTS ${MSVC_LIBDIR}/libEGL.dll.lib AND EXISTS ${MSVC_LIBDIR}/libGLESv2.dll.lib AND
+	# Import libraries are not necessary if the engine is a dynamic library
+	if((NCINE_DYNAMIC_LIBRARY OR (EXISTS ${MSVC_LIBDIR}/libEGL.dll.lib AND EXISTS ${MSVC_LIBDIR}/libGLESv2.dll.lib)) AND
 	   EXISTS ${MSVC_BINDIR}/libEGL.dll AND EXISTS ${MSVC_BINDIR}/libGLESv2.dll)
 		add_library(EGL::EGL SHARED IMPORTED)
 		set_target_properties(EGL::EGL PROPERTIES
@@ -162,7 +165,7 @@ elseif(MSVC)
 		set(ANGLE_FOUND 1)
 	endif()
 
-	if(EXISTS ${MSVC_LIBDIR}/glew32.lib AND EXISTS ${MSVC_BINDIR}/glew32.dll)
+	if((NCINE_DYNAMIC_LIBRARY OR EXISTS ${MSVC_LIBDIR}/glew32.lib) AND EXISTS ${MSVC_BINDIR}/glew32.dll)
 		add_library(GLEW::GLEW SHARED IMPORTED)
 		set_target_properties(GLEW::GLEW PROPERTIES
 			IMPORTED_IMPLIB ${MSVC_LIBDIR}/glew32.lib
@@ -177,7 +180,7 @@ elseif(MSVC)
 			IMPORTED_LOCATION opengl32.dll)
 	set(OPENGL_FOUND 1)
 
-	if(EXISTS ${MSVC_LIBDIR}/glfw3dll.lib AND EXISTS ${MSVC_BINDIR}/glfw3.dll)
+	if((NCINE_DYNAMIC_LIBRARY OR EXISTS ${MSVC_LIBDIR}/glfw3dll.lib) AND EXISTS ${MSVC_BINDIR}/glfw3.dll)
 		add_library(GLFW::GLFW SHARED IMPORTED)
 		set_target_properties(GLFW::GLFW PROPERTIES
 			IMPORTED_IMPLIB ${MSVC_LIBDIR}/glfw3dll.lib
@@ -187,7 +190,7 @@ elseif(MSVC)
 		set(GLFW_FOUND 1)
 	endif()
 
-	if(EXISTS ${MSVC_LIBDIR}/SDL2.lib AND EXISTS ${MSVC_LIBDIR}/SDL2main.lib AND
+	if((NCINE_DYNAMIC_LIBRARY OR (EXISTS ${MSVC_LIBDIR}/SDL2.lib AND EXISTS ${MSVC_LIBDIR}/SDL2main.lib)) AND
 	   EXISTS ${MSVC_BINDIR}/SDL2.dll)
 		add_library(SDL2::SDL2 SHARED IMPORTED)
 		set_target_properties(SDL2::SDL2 PROPERTIES
@@ -198,7 +201,7 @@ elseif(MSVC)
 		set(SDL2_FOUND 1)
 	endif()
 
-	if(EXISTS ${MSVC_LIBDIR}/libpng16.lib AND EXISTS ${MSVC_LIBDIR}/zlib.lib AND
+	if((NCINE_DYNAMIC_LIBRARY OR (EXISTS ${MSVC_LIBDIR}/libpng16.lib AND EXISTS ${MSVC_LIBDIR}/zlib.lib)) AND
 	   EXISTS ${MSVC_BINDIR}/libpng16.dll AND EXISTS ${MSVC_BINDIR}/zlib.dll)
 		add_library(ZLIB::ZLIB SHARED IMPORTED)
 		set_target_properties(ZLIB::ZLIB PROPERTIES
@@ -214,7 +217,7 @@ elseif(MSVC)
 		set(PNG_FOUND 1)
 	endif()
 
-	if(EXISTS ${MSVC_LIBDIR}/libwebp_dll.lib AND EXISTS ${MSVC_BINDIR}/libwebp.dll)
+	if((NCINE_DYNAMIC_LIBRARY OR EXISTS ${MSVC_LIBDIR}/libwebp_dll.lib) AND EXISTS ${MSVC_BINDIR}/libwebp.dll)
 		add_library(WebP::WebP SHARED IMPORTED)
 		set_target_properties(WebP::WebP PROPERTIES
 			IMPORTED_IMPLIB ${MSVC_LIBDIR}/libwebp_dll.lib
@@ -223,7 +226,7 @@ elseif(MSVC)
 		set(WEBP_FOUND 1)
 	endif()
 
-	if(EXISTS ${MSVC_LIBDIR}/OpenAL32.lib AND EXISTS ${MSVC_BINDIR}/OpenAL32.dll)
+	if((NCINE_DYNAMIC_LIBRARY OR EXISTS ${MSVC_LIBDIR}/OpenAL32.lib) AND EXISTS ${MSVC_BINDIR}/OpenAL32.dll)
 		add_library(OpenAL::AL SHARED IMPORTED)
 		set_target_properties(OpenAL::AL PROPERTIES
 			IMPORTED_IMPLIB ${MSVC_LIBDIR}/OpenAL32.lib
@@ -232,7 +235,7 @@ elseif(MSVC)
 		set(OPENAL_FOUND 1)
 	endif()
 
-	if(EXISTS ${MSVC_LIBDIR}/libogg.lib AND EXISTS ${MSVC_LIBDIR}/libvorbis.lib AND EXISTS ${MSVC_LIBDIR}/libvorbisfile.lib AND
+	if((NCINE_DYNAMIC_LIBRARY OR (EXISTS ${MSVC_LIBDIR}/libogg.lib AND EXISTS ${MSVC_LIBDIR}/libvorbis.lib AND EXISTS ${MSVC_LIBDIR}/libvorbisfile.lib)) AND
 	   EXISTS ${MSVC_BINDIR}/libogg.dll AND EXISTS ${MSVC_BINDIR}/libvorbis.dll AND EXISTS ${MSVC_BINDIR}/libvorbisfile.dll)
 		add_library(Ogg::Ogg SHARED IMPORTED)
 		set_target_properties(Ogg::Ogg PROPERTIES
@@ -254,7 +257,7 @@ elseif(MSVC)
 		set(VORBIS_FOUND 1)
 	endif()
 
-	if(EXISTS ${MSVC_LIBDIR}/lua54.lib AND EXISTS ${MSVC_BINDIR}/lua54.dll)
+	if((NCINE_DYNAMIC_LIBRARY OR EXISTS ${MSVC_LIBDIR}/lua54.lib) AND EXISTS ${MSVC_BINDIR}/lua54.dll)
 		add_library(Lua::Lua SHARED IMPORTED)
 		set_target_properties(Lua::Lua PROPERTIES
 			IMPORTED_IMPLIB ${MSVC_LIBDIR}/lua54.lib

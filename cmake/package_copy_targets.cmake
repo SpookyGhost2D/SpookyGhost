@@ -32,7 +32,7 @@ if(MSVC)
 	)
 	set_target_properties(create_target_dir PROPERTIES FOLDER "CustomCopyTargets")
 
-	if(EXISTS ${NCINE_CONFIG_H} AND NOT NCINE_DYNAMIC_LIBRARY)
+	if(EXISTS ${NCINE_CONFIG_H})
 		if(ANGLE_FOUND AND NCINE_WITH_ANGLE)
 			add_custom_target(copy_angle_dlls ALL
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different ${EGL_IMPORTED_LOCATION} ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
@@ -77,7 +77,7 @@ if(MSVC)
 			add_dependencies(copy_webp_dll create_target_dir)
 			set_target_properties(copy_webp_dll PROPERTIES FOLDER "CustomCopyTargets")
 		endif()
-		if(OPENAL_FOUND AND NCINE_WITH_ADUIO)
+		if(OPENAL_FOUND AND NCINE_WITH_AUDIO)
 			add_custom_target(copy_openal_dll ALL
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OPENAL_IMPORTED_LOCATION} ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
 				COMMENT "Copying OpenAL DLL...")
@@ -102,13 +102,6 @@ if(MSVC)
 			set_target_properties(copy_lua_dll PROPERTIES FOLDER "CustomCopyTargets")
 		endif()
 	else()
-		add_custom_target(copy_ncine_dll ALL
-			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NCINE_LOCATION} ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
-			COMMENT "Copying nCine DLL..."
-		)
-		add_dependencies(copy_ncine_dll create_target_dir)
-		set_target_properties(copy_ncine_dll PROPERTIES FOLDER "CustomCopyTargets")
-
 		file(GLOB MSVC_DLL_FILES ${MSVC_BINDIR}/*.dll)
 		add_custom_target(copy_dlls ALL
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MSVC_DLL_FILES} ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
@@ -117,4 +110,14 @@ if(MSVC)
 		add_dependencies(copy_dlls create_target_dir)
 		set_target_properties(copy_dlls PROPERTIES FOLDER "CustomCopyTargets")
 	endif()
+
+	if(NCINE_DYNAMIC_LIBRARY)
+		add_custom_target(copy_ncine_dll ALL
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NCINE_LOCATION} ${CMAKE_BINARY_DIR}/$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>
+			COMMENT "Copying nCine DLL..."
+		)
+		add_dependencies(copy_ncine_dll create_target_dir)
+		set_target_properties(copy_ncine_dll PROPERTIES FOLDER "CustomCopyTargets")
+	endif()
+
 endif()
