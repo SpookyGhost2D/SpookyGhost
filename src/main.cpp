@@ -1,3 +1,11 @@
+#include <ncine/config.h>
+#if !NCINE_WITH_IMGUI
+	#error nCine must have ImGui integration enabled for this application to work
+#endif
+#if !NCINE_WITH_LUA
+	#error nCine must have Lua integration enabled for this application to work
+#endif
+
 #define NCINE_INCLUDE_OPENGL
 #include <ncine/common_headers.h>
 

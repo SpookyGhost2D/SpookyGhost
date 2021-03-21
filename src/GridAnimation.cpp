@@ -8,13 +8,15 @@
 ///////////////////////////////////////////////////////////
 
 GridAnimation::GridAnimation()
-    : GridAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED)
+    : GridAnimation(nullptr)
 {
 }
 
-GridAnimation::GridAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : CurveAnimation(type, loopMode), sprite_(nullptr), gridFunction_(nullptr), params_(4)
+GridAnimation::GridAnimation(Sprite *sprite)
+    : CurveAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED),
+      sprite_(nullptr), gridFunction_(nullptr), params_(4)
 {
+	setSprite(sprite);
 	setFunction(&GridFunctionLibrary::gridFunctions()[0]);
 }
 

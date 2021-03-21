@@ -58,7 +58,7 @@ static int numFrames = 0;
 ///////////////////////////////////////////////////////////
 
 UserInterface::UserInterface()
-    : selectedSpriteIndex_(0), selectedTextureIndex_(0), selectedAnimation_(nullptr),
+    : selectedSpriteIndex_(0), selectedTextureIndex_(0), selectedAnimation_(&theAnimMgr->animGroup()),
       spriteGraph_(4), renderGuiWindow_(*this)
 {
 	ImGuiIO &io = ImGui::GetIO();
@@ -219,7 +219,7 @@ bool UserInterface::openProject(const char *filename)
 	{
 		selectedSpriteIndex_ = 0;
 		selectedTextureIndex_ = 0;
-		selectedAnimation_ = nullptr;
+		selectedAnimation_ = &theAnimMgr->animGroup();
 		canvasGuiSection_.setResize(theCanvas->size());
 		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
 		ui::auxString.format("Loaded project file \"%s\"\n", filename);
@@ -652,8 +652,8 @@ void UserInterface::createSpritesWindow()
 				if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("SPRITE_TREENODE"))
 				{
 					IM_ASSERT(payload->DataSize == sizeof(unsigned int));
-
 					const unsigned int dragIndex = *reinterpret_cast<const unsigned int *>(payload->Data);
+
 					nctl::UniquePtr<Sprite> dragSprite(nctl::move(theSpriteMgr->sprites()[dragIndex]));
 					theSpriteMgr->sprites().removeAt(dragIndex);
 					theSpriteMgr->sprites().insertAt(i, nctl::move(dragSprite));
@@ -668,6 +668,12 @@ void UserInterface::createSpritesWindow()
 	ImGui::End();
 }
 
+struct DragAnimationPayload
+{
+	AnimationGroup &parent;
+	unsigned int index;
+};
+
 void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int index)
 {
 	ImGuiTreeNodeFlags nodeFlags = anim.isGroup() ? (ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick)
@@ -675,13 +681,17 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 	if (&anim == selectedAnimation_)
 		nodeFlags |= ImGuiTreeNodeFlags_Selected;
 
+	AnimationGroup *animGroup = nullptr;
+	if (anim.isGroup())
+		animGroup = static_cast<AnimationGroup *>(&anim);
+
 	ui::auxString.format("#%u: ", index);
 	if (anim.name.isEmpty() == false)
 		ui::auxString.formatAppend("\"%s\" (", anim.name.data());
 	if (anim.type() == IAnimation::Type::PARALLEL_GROUP)
-		ui::auxString.append("Parallel Group");
+		ui::auxString.formatAppend("Parallel Group (%u children)", animGroup->anims().size());
 	else if (anim.type() == IAnimation::Type::SEQUENTIAL_GROUP)
-		ui::auxString.append("Sequential Group");
+		ui::auxString.formatAppend("Sequential Group (%u children)", animGroup->anims().size());
 	if (anim.type() == IAnimation::Type::PROPERTY)
 	{
 		PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
@@ -736,12 +746,62 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 			selectedSpriteIndex_ = spriteIndex;
 	}
 
+	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+	{
+		DragAnimationPayload dragPayload = { *anim.parent(), index };
+		ImGui::SetDragDropPayload("ANIMATION_TREENODE", &dragPayload, sizeof(DragAnimationPayload));
+		ImGui::Text("%s", ui::auxString.data());
+		ImGui::EndDragDropSource();
+	}
+	if (ImGui::BeginDragDropTarget())
+	{
+		if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("ANIMATION_TREENODE"))
+		{
+			IM_ASSERT(payload->DataSize == sizeof(DragAnimationPayload));
+			const DragAnimationPayload &dragPayload = *reinterpret_cast<const DragAnimationPayload *>(payload->Data);
+
+			bool dragIsPossible = true;
+			if (dragPayload.parent.anims()[dragPayload.index]->isGroup())
+			{
+				AnimationGroup *dragAnimGroup = static_cast<AnimationGroup *>(dragPayload.parent.anims()[dragPayload.index].get());
+				AnimationGroup *destParent = anim.parent();
+				while (destParent != nullptr)
+				{
+					if (destParent == dragAnimGroup)
+					{
+						// Trying to drag a parent group inside a children
+						dragIsPossible = false;
+						break;
+					}
+					destParent = destParent->parent();
+				}
+			}
+
+			if (dragIsPossible)
+			{
+				nctl::UniquePtr<IAnimation> dragAnimation(nctl::move(dragPayload.parent.anims()[dragPayload.index]));
+				dragPayload.parent.anims().removeAt(dragPayload.index);
+				if (anim.isGroup())
+				{
+					dragAnimation->setParent(animGroup);
+					animGroup->anims().pushBack(nctl::move(dragAnimation));
+				}
+				else
+				{
+					dragAnimation->setParent(anim.parent());
+					anim.parent()->anims().insertAt(index, nctl::move(dragAnimation));
+				}
+				selectedAnimation_ = dragAnimation.get();
+			}
+
+			ImGui::EndDragDropTarget();
+		}
+	}
+
 	if (anim.isGroup() && treeIsOpen)
 	{
-		AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
-
-		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
-			createAnimationListEntry(*animGroup.anims()[i], i);
+		for (unsigned int i = 0; i < animGroup->anims().size(); i++)
+			createAnimationListEntry(*animGroup->anims()[i], i);
 
 		ImGui::TreePop();
 	}
@@ -774,48 +834,97 @@ void UserInterface::createAnimationsWindow()
 				parent = selectedAnimation_->parent();
 			}
 		}
+		Sprite *selectedSprite = nullptr;
+		if (theSpriteMgr->sprites().isEmpty() == false &&
+		    selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ <= theSpriteMgr->sprites().size() - 1)
+		{
+			selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
+		}
 		switch (currentComboAnimType)
 		{
 			case AnimationTypesEnum::PARALLEL_GROUP:
 				anims->pushBack(nctl::makeUnique<ParallelAnimationGroup>());
 				break;
 			case AnimationTypesEnum::PROPERTY:
-				anims->pushBack(nctl::makeUnique<PropertyAnimation>());
+				anims->pushBack(nctl::makeUnique<PropertyAnimation>(selectedSprite));
+				static_cast<PropertyAnimation &>(*anims->back()).setPropertyName(Properties::Strings[0]);
 				break;
 			case AnimationTypesEnum::GRID:
-				anims->pushBack(nctl::makeUnique<GridAnimation>());
+				anims->pushBack(nctl::makeUnique<GridAnimation>(selectedSprite));
 				break;
 		}
 		anims->back()->setParent(parent);
 	}
 
-	if (theAnimMgr->anims().isEmpty() == false)
+	const bool canDeleteAnim = selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup();
+
+	if (canDeleteAnim)
+		ImGui::SameLine();
+	if (canDeleteAnim && (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
 	{
-		if (selectedAnimation_)
-			ImGui::SameLine();
-		if (selectedAnimation_ && (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
+
+		AnimationGroup *parent = nullptr;
+		if (selectedAnimation_->parent())
+			parent = selectedAnimation_->parent();
+		theAnimMgr->removeAnimation(selectedAnimation_);
+		selectedAnimation_ = parent;
+	}
+
+	if (ImGui::Button(Labels::Stop) && selectedAnimation_)
+		selectedAnimation_->stop();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Pause) && selectedAnimation_)
+		selectedAnimation_->pause();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Play) && selectedAnimation_)
+		selectedAnimation_->play();
+
+	ImGui::Separator();
+
+	// Special animation list entry for the root animation group in the animation manager
+	ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_DefaultOpen;
+	if (selectedAnimation_ == &theAnimMgr->animGroup())
+		nodeFlags |= ImGuiTreeNodeFlags_Selected;
+
+	ui::auxString.format("Root (%u children)", theAnimMgr->anims().size());
+	if (theAnimMgr->animGroup().state() == IAnimation::State::STOPPED)
+		ui::auxString.formatAppend(" %s", Labels::StopIcon);
+	else if (theAnimMgr->animGroup().state() == IAnimation::State::PAUSED)
+		ui::auxString.formatAppend(" %s", Labels::PauseIcon);
+	else if (theAnimMgr->animGroup().state() == IAnimation::State::PLAYING)
+		ui::auxString.formatAppend(" %s", Labels::PlayIcon);
+
+	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&theAnimMgr->animGroup()), nodeFlags, "%s", ui::auxString.data());
+	if (ImGui::IsItemClicked())
+		selectedAnimation_ = &theAnimMgr->animGroup();
+
+	if (ImGui::BeginDragDropTarget())
+	{
+		if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("ANIMATION_TREENODE"))
 		{
-			AnimationGroup *parent = nullptr;
-			if (selectedAnimation_->parent())
-				parent = selectedAnimation_->parent();
-			theAnimMgr->removeAnimation(selectedAnimation_);
-			selectedAnimation_ = parent;
+			IM_ASSERT(payload->DataSize == sizeof(DragAnimationPayload));
+			const DragAnimationPayload &dragPayload = *reinterpret_cast<const DragAnimationPayload *>(payload->Data);
+
+			nctl::UniquePtr<IAnimation> dragAnimation(nctl::move(dragPayload.parent.anims()[dragPayload.index]));
+			dragPayload.parent.anims().removeAt(dragPayload.index);
+
+			dragAnimation->setParent(&theAnimMgr->animGroup());
+			theAnimMgr->anims().pushBack(nctl::move(dragAnimation));
+
+			selectedAnimation_ = dragAnimation.get();
+
+			ImGui::EndDragDropTarget();
 		}
+	}
 
-		if (ImGui::Button(Labels::Stop) && selectedAnimation_)
-			selectedAnimation_->stop();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Pause) && selectedAnimation_)
-			selectedAnimation_->pause();
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Play) && selectedAnimation_)
-			selectedAnimation_->play();
-
-		ImGui::Separator();
-
+	if (treeIsOpen)
+	{
 		for (unsigned int i = 0; i < theAnimMgr->anims().size(); i++)
 			createAnimationListEntry(*theAnimMgr->anims()[i], i);
+
+		ImGui::TreePop();
 	}
+
 	ImGui::End();
 }
 
@@ -1036,7 +1145,7 @@ void UserInterface::createAnimationWindow()
 {
 	ImGui::Begin(Labels::Animation);
 
-	if (theAnimMgr->anims().isEmpty() == false && selectedAnimation_ != nullptr)
+	if (theAnimMgr->anims().isEmpty() == false && selectedAnimation_ != nullptr && selectedAnimation_ != &theAnimMgr->animGroup())
 	{
 		IAnimation &anim = *selectedAnimation_;
 		if (anim.type() == IAnimation::Type::PROPERTY)
@@ -1432,7 +1541,7 @@ void UserInterface::createCanvasWindow()
 	if (canvasGuiSection_.showBorders())
 	{
 		const ImRect borderRect(cursorScreenPos.x, cursorScreenPos.y, cursorScreenPos.x + theCanvas->texWidth() * canvasZoom, cursorScreenPos.y + theCanvas->texHeight() * canvasZoom);
-		drawList->AddRect(borderRect.Min, borderRect.Max, ImColor(1.0f, 0.0f, 1.0f, 1.0f), 0.0f, ImDrawCornerFlags_All, lineThickness);
+		drawList->AddRect(borderRect.Min, borderRect.Max, ImColor(1.0f, 0.0f, 1.0f, 1.0f), 0.0f, ImDrawFlags_RoundCornersAll, lineThickness);
 	}
 
 	hoveringOnCanvas = false;
@@ -1470,7 +1579,7 @@ void UserInterface::createCanvasWindow()
 				                        cursorScreenPos.y + (sprite.absPosition().y - sprite.absHeight() / 2) * canvasZoom,
 				                        cursorScreenPos.x + (sprite.absPosition().x + sprite.absWidth() / 2) * canvasZoom,
 				                        cursorScreenPos.y + (sprite.absPosition().y + sprite.absHeight() / 2) * canvasZoom);
-				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawCornerFlags_All, lineThickness);
+				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawFlags_RoundCornersAll, lineThickness);
 				if (spriteRect.Contains(mousePos))
 				{
 					drawList->AddLine(ImVec2(spriteRect.Min.x, mousePos.y), ImVec2(spriteRect.Max.x, mousePos.y), color, lineThickness);

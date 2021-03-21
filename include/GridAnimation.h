@@ -14,7 +14,7 @@ class GridAnimation : public CurveAnimation
 {
   public:
 	GridAnimation();
-	GridAnimation(EasingCurve::Type curveType, EasingCurve::LoopMode loopMode);
+	GridAnimation(Sprite *sprite);
 
 	inline Type type() const override { return Type::GRID; }
 

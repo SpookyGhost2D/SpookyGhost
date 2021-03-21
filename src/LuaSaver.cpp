@@ -37,7 +37,7 @@ bool LuaSaver::load(const char *filename, Data &data)
 	context.animations = &data.animMgr.anims();
 
 	const unsigned int numFunctions = GridFunctionLibrary::gridFunctions().size();
-	nctl::CStringHashMap<const GridFunction *> functionHash(numFunctions * 2);
+	nctl::HashMap<const char *, const GridFunction *> functionHash(numFunctions * 2);
 	context.functionHash = &functionHash;
 	for (unsigned int i = 0; i < numFunctions; i++)
 	{

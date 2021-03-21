@@ -11,7 +11,7 @@ class PropertyAnimation : public CurveAnimation
 {
   public:
 	PropertyAnimation();
-	PropertyAnimation(EasingCurve::Type curveType, EasingCurve::LoopMode loopMode);
+	PropertyAnimation(Sprite *sprite);
 
 	inline Type type() const override { return Type::PROPERTY; }
 

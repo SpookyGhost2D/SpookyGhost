@@ -6,13 +6,15 @@
 ///////////////////////////////////////////////////////////
 
 PropertyAnimation::PropertyAnimation()
-    : PropertyAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED)
+    : PropertyAnimation(nullptr)
 {
 }
 
-PropertyAnimation::PropertyAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : CurveAnimation(type, loopMode), property_(nullptr), propertyName_(64), sprite_(nullptr)
+PropertyAnimation::PropertyAnimation(Sprite *sprite)
+    : CurveAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED),
+      property_(nullptr), propertyName_(64), sprite_(nullptr)
 {
+	setSprite(sprite);
 }
 
 ///////////////////////////////////////////////////////////

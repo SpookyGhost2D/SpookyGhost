@@ -17,7 +17,7 @@ struct DeserializerContext
 	nctl::Array<nctl::UniquePtr<Texture>> *textures = nullptr;
 	nctl::Array<nctl::UniquePtr<Sprite>> *sprites = nullptr;
 	nctl::Array<nctl::UniquePtr<IAnimation>> *animations = nullptr;
-	nctl::CStringHashMap<const GridFunction *> *functionHash = nullptr;
+	nctl::HashMap<const char *, const GridFunction *> *functionHash = nullptr;
 };
 
 #endif
