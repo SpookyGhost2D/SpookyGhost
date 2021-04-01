@@ -9,6 +9,7 @@ class Texture;
 class Sprite;
 
 class IAnimation;
+class SequentialAnimationGroup;
 class PropertyAnimation;
 class GridAnimation;
 
@@ -23,6 +24,7 @@ void serialize(LuaSerializer &ls, const Texture &texture);
 void serialize(LuaSerializer &ls, const Sprite &sprite);
 
 void serialize(LuaSerializer &ls, const IAnimation *anim);
+void serialize(LuaSerializer &ls, const SequentialAnimationGroup &anim);
 void serialize(LuaSerializer &ls, const PropertyAnimation &anim);
 void serialize(LuaSerializer &ls, const GridAnimation &anim);
 

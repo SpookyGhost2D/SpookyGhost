@@ -109,7 +109,9 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 		}
 		case IAnimation::Type::SEQUENTIAL_GROUP:
 		{
+			const SequentialAnimationGroup &sequentialGroup = static_cast<const SequentialAnimationGroup &>(*anim);
 			serialize(ls, "type", "sequential_group");
+			serialize(ls, sequentialGroup);
 			break;
 		}
 		case IAnimation::Type::PROPERTY:
@@ -130,6 +132,41 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 
 	ls.unindent();
 	ls.buffer().append("},\n");
+}
+
+void serialize(LuaSerializer &ls, const char *name, SequentialAnimationGroup::Direction direction)
+{
+	switch (direction)
+	{
+		case SequentialAnimationGroup::Direction::FORWARD:
+			serialize(ls, name, "forward");
+			break;
+		case SequentialAnimationGroup::Direction::BACKWARD:
+			serialize(ls, name, "backward");
+			break;
+	}
+}
+
+void serialize(LuaSerializer &ls, const char *name, SequentialAnimationGroup::LoopMode loopMode)
+{
+	switch (loopMode)
+	{
+		case SequentialAnimationGroup::LoopMode::DISABLED:
+			serialize(ls, name, "disabled");
+			break;
+		case SequentialAnimationGroup::LoopMode::REWIND:
+			serialize(ls, name, "rewind");
+			break;
+		case SequentialAnimationGroup::LoopMode::PING_PONG:
+			serialize(ls, name, "ping_pong");
+			break;
+	}
+}
+
+void serialize(LuaSerializer &ls, const SequentialAnimationGroup &anim)
+{
+	serialize(ls, "direction", anim.direction());
+	serialize(ls, "loop_mode", anim.loopMode());
 }
 
 void serialize(LuaSerializer &ls, const char *name, EasingCurve::Type type)
@@ -382,6 +419,42 @@ IAnimation::Type deserialize(LuaSerializer &ls, const char *name)
 }
 
 template <>
+SequentialAnimationGroup::Direction deserialize(LuaSerializer &ls, const char *name)
+{
+	lua_State *L = ls.luaState();
+	nctl::String directionString = nc::LuaUtils::retrieveField<const char *>(L, -1, name);
+
+	if (directionString == "forward")
+		return SequentialAnimationGroup::Direction::FORWARD;
+	else if (directionString == "backward")
+		return SequentialAnimationGroup::Direction::BACKWARD;
+	else
+		return SequentialAnimationGroup::Direction::FORWARD;
+}
+
+template <>
+SequentialAnimationGroup::LoopMode deserialize(LuaSerializer &ls, const char *name)
+{
+	lua_State *L = ls.luaState();
+	nctl::String loopModeString = nc::LuaUtils::retrieveField<const char *>(L, -1, name);
+
+	if (loopModeString == "disabled")
+		return SequentialAnimationGroup::LoopMode::DISABLED;
+	else if (loopModeString == "rewind")
+		return SequentialAnimationGroup::LoopMode::REWIND;
+	else if (loopModeString == "ping_pong")
+		return SequentialAnimationGroup::LoopMode::PING_PONG;
+	else
+		return SequentialAnimationGroup::LoopMode::DISABLED;
+}
+
+void deserialize(LuaSerializer &ls, nctl::UniquePtr<SequentialAnimationGroup> &anim)
+{
+	anim->setDirection(deserialize<SequentialAnimationGroup::Direction>(ls, "direction"));
+	anim->setLoopMode(deserialize<SequentialAnimationGroup::LoopMode>(ls, "loop_mode"));
+}
+
+template <>
 EasingCurve::Type deserialize(LuaSerializer &ls, const char *name)
 {
 	lua_State *L = ls.luaState();
@@ -482,6 +555,7 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<GridAnimation> &anim)
 	if (functionPtr)
 	{
 		const GridFunction *function = *functionPtr;
+		anim->setFunction(function);
 		for (Array ar(ls, "parameters"); ar.hasNext(); ar.next())
 		{
 			const unsigned int i = ar.index();
@@ -511,14 +585,15 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 	{
 		case IAnimation::Type::PARALLEL_GROUP:
 		{
-			nctl::UniquePtr<ParallelAnimationGroup> parallelAnim = nctl::makeUnique<ParallelAnimationGroup>();
-			anim = nctl::move(parallelAnim);
+			nctl::UniquePtr<ParallelAnimationGroup> parallelGroup = nctl::makeUnique<ParallelAnimationGroup>();
+			anim = nctl::move(parallelGroup);
 			break;
 		}
 		case IAnimation::Type::SEQUENTIAL_GROUP:
 		{
-			nctl::UniquePtr<SequentialAnimationGroup> sequentialAnim = nctl::makeUnique<SequentialAnimationGroup>();
-			anim = nctl::move(sequentialAnim);
+			nctl::UniquePtr<SequentialAnimationGroup> sequentialGroup = nctl::makeUnique<SequentialAnimationGroup>();
+			deserialize(ls, sequentialGroup);
+			anim = nctl::move(sequentialGroup);
 			break;
 		}
 		case IAnimation::Type::PROPERTY:

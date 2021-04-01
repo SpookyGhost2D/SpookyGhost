@@ -11,6 +11,10 @@ class CurveAnimation : public IAnimation
 	CurveAnimation();
 	CurveAnimation(EasingCurve::Type curveType, EasingCurve::LoopMode loopMode);
 
+	/// Returns true if the curve value is applied at every update even if the animation is stopped
+	inline bool isLocked() const { return isLocked_; }
+	void setLocked(bool locked) { isLocked_ = locked; }
+
 	void stop() override;
 	void play() override;
 
@@ -25,6 +29,7 @@ class CurveAnimation : public IAnimation
 	inline void setSpeed(float speed) { speed_ = speed; }
 
   protected:
+	bool isLocked_;
 	EasingCurve curve_;
 	float speed_;
 };

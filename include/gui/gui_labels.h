@@ -35,6 +35,7 @@
 #define TEXT_CLEAR "Clear"
 #define TEXT_APPLY "Apply"
 #define TEXT_CURRENT "Current"
+#define TEXT_LOCKED "Locked"
 
 #define TEXT_ADD "Add"
 #define TEXT_REMOVE "Remove"
@@ -85,6 +86,7 @@ static const char *Reset = TEXT_RESET;
 static const char *Clear = TEXT_CLEAR;
 static const char *Apply = TEXT_APPLY;
 static const char *Current = TEXT_CURRENT;
+static const char *Locked = TEXT_LOCKED;
 
 static const char *Add = TEXT_ADD;
 static const char *Remove = TEXT_REMOVE;
@@ -105,6 +107,7 @@ static const char *MinusIcon = "-";
 static const char *SelectedIcon = "[*]";
 static const char *SelectedTextureIcon = "[T]";
 static const char *SelectedSpriteIcon = "[S]";
+static const char *LockedAnimIcon = "[L]";
 static const char *StopIcon = "[Stop]";
 static const char *PauseIcon = "[Pause]";
 static const char *PlayIcon = "[Play]";
@@ -161,6 +164,7 @@ static const char *Reset = ICON_FA_BACKSPACE FA5_SPACING TEXT_RESET;
 static const char *Clear = ICON_FA_BACKSPACE FA5_SPACING TEXT_CLEAR;
 static const char *Apply = ICON_FA_CHECK_CIRCLE FA5_SPACING TEXT_APPLY;
 static const char *Current = ICON_FA_SYNC FA5_SPACING TEXT_CURRENT;
+static const char *Locked = ICON_FA_LOCK;
 
 static const char *Add = ICON_FA_PLUS FA5_SPACING TEXT_ADD;
 static const char *Remove = ICON_FA_MINUS FA5_SPACING TEXT_REMOVE;
@@ -181,6 +185,7 @@ static const char *MinusIcon = ICON_FA_MINUS;
 static const char *SelectedIcon = ICON_FA_CHECK;
 static const char *SelectedTextureIcon = ICON_FA_IMAGE;
 static const char *SelectedSpriteIcon = ICON_FA_GHOST;
+static const char *LockedAnimIcon = ICON_FA_LOCK;
 static const char *StopIcon = ICON_FA_STOP;
 static const char *PauseIcon = ICON_FA_PAUSE;
 static const char *PlayIcon = ICON_FA_PLAY;

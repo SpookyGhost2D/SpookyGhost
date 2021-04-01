@@ -10,7 +10,7 @@ CurveAnimation::CurveAnimation()
 }
 
 CurveAnimation::CurveAnimation(EasingCurve::Type type, EasingCurve::LoopMode loopMode)
-    : curve_(type, loopMode), speed_(1.0f)
+    : isLocked_(true), curve_(type, loopMode), speed_(1.0f)
 {
 }
 

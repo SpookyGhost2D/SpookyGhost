@@ -34,7 +34,7 @@ void PropertyAnimation::update(float deltaTime)
 	{
 		case State::STOPPED:
 		case State::PAUSED:
-			if (property_)
+			if (isLocked_ && property_)
 				*property_ = curve().value();
 			break;
 		case State::PLAYING:

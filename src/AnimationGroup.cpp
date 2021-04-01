@@ -4,14 +4,6 @@
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void AnimationGroup::stop()
-{
-	for (auto &&anim : anims_)
-		anim->stop();
-
-	state_ = State::STOPPED;
-}
-
 void AnimationGroup::update(float deltaTime)
 {
 	bool allStopped = true;

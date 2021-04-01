@@ -40,7 +40,7 @@ void GridAnimation::update(float deltaTime)
 	{
 		case State::STOPPED:
 		case State::PAUSED:
-			if (sprite_ && sprite_->visible && gridFunction_)
+			if (isLocked_ && sprite_ && sprite_->visible && gridFunction_)
 				gridFunction_->execute(*this);
 			break;
 		case State::PLAYING:

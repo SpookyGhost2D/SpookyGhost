@@ -4,6 +4,14 @@
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+void ParallelAnimationGroup::stop()
+{
+	for (auto &&anim : anims_)
+		anim->stop();
+
+	state_ = State::STOPPED;
+}
+
 void ParallelAnimationGroup::pause()
 {
 	if (state_ != State::PLAYING)

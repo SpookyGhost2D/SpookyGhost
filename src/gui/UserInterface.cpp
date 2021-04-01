@@ -35,8 +35,8 @@ const char *easingCurveTypes[] = { "Linear", "Quadratic", "Cubic", "Quartic", "Q
 const char *easingCurveDirections[] = { "Forward", "Backward" };
 const char *easingCurveLoopModes[] = { "Disabled", "Rewind", "Ping Pong" };
 
-const char *animationTypes[] = { "Parallel Group", "Property", "Grid" };
-enum AnimationTypesEnum { PARALLEL_GROUP, PROPERTY, GRID };
+const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid" };
+enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
 // clang-format on
 
 static const int PlotArraySize = 512;
@@ -702,6 +702,8 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 				ui::auxString.formatAppend(" for sprite \"%s\"", propertyAnim.sprite()->name.data());
 			if (propertyAnim.sprite() == theSpriteMgr->sprites()[selectedSpriteIndex_].get())
 				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
+			if (propertyAnim.isLocked())
+				ui::auxString.formatAppend(" %s", Labels::LockedAnimIcon);
 		}
 	}
 	else if (anim.type() == IAnimation::Type::GRID)
@@ -715,6 +717,8 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 				ui::auxString.formatAppend(" for sprite \"%s\"", gridAnim.sprite()->name.data());
 			if (gridAnim.sprite() == theSpriteMgr->sprites()[selectedSpriteIndex_].get())
 				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
+			if (gridAnim.isLocked())
+				ui::auxString.formatAppend(" %s", Labels::LockedAnimIcon);
 		}
 	}
 	if (anim.name.isEmpty() == false)
@@ -844,6 +848,9 @@ void UserInterface::createAnimationsWindow()
 		{
 			case AnimationTypesEnum::PARALLEL_GROUP:
 				anims->pushBack(nctl::makeUnique<ParallelAnimationGroup>());
+				break;
+			case AnimationTypesEnum::SEQUENTIAL_GROUP:
+				anims->pushBack(nctl::makeUnique<SequentialAnimationGroup>());
 				break;
 			case AnimationTypesEnum::PROPERTY:
 				anims->pushBack(nctl::makeUnique<PropertyAnimation>(selectedSprite));
@@ -1158,9 +1165,24 @@ void UserInterface::createAnimationWindow()
 			GridAnimation &gridAnim = static_cast<GridAnimation &>(*selectedAnimation_);
 			createGridAnimationGui(gridAnim);
 		}
-		else
+		else if (anim.type() == IAnimation::Type::SEQUENTIAL_GROUP)
 		{
-			// The only editable property for animation groups is their name
+			SequentialAnimationGroup &sequentialAnim = static_cast<SequentialAnimationGroup &>(*selectedAnimation_);
+
+			ImGui::InputText("Name", sequentialAnim.name.data(), IAnimation::MaxNameLength,
+			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sequentialAnim.name);
+
+			int currentDirectionMode = static_cast<int>(sequentialAnim.direction());
+			ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
+			sequentialAnim.setDirection(static_cast<SequentialAnimationGroup::Direction>(currentDirectionMode));
+
+			int currentComboLoopMode = static_cast<int>(sequentialAnim.loopMode());
+			ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
+			sequentialAnim.setLoopMode(static_cast<SequentialAnimationGroup::LoopMode>(currentComboLoopMode));
+		}
+		else if (anim.type() == IAnimation::Type::PARALLEL_GROUP)
+		{
+			// The only editable property for parallel groups is their name
 			ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
 			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
 		}
@@ -1297,6 +1319,11 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		}
 		if (setCurveShift && anim.property())
 			anim.curve().setShift(*anim.property());
+
+		ImGui::SameLine();
+		bool isLocked = anim.isLocked();
+		ImGui::Checkbox(Labels::Locked, &isLocked);
+		anim.setLocked(isLocked);
 	}
 	else
 		ImGui::TextDisabled("There are no sprites to animate");
@@ -1342,85 +1369,90 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 			if (anim.sprite() != sprite)
 				anim.setSprite(sprite);
 		}
-	}
-	else
-		ImGui::TextDisabled("There are no sprites to animate");
 
-	static int currentComboFunction = -1;
-	ui::comboString.clear();
-	for (unsigned int i = 0; i < GridFunctionLibrary::gridFunctions().size(); i++)
-	{
-		const nctl::String &functionName = GridFunctionLibrary::gridFunctions()[i].name();
-		ui::comboString.formatAppend("%s", functionName.data());
-		ui::comboString.setLength(ui::comboString.length() + 1);
-
-		if (anim.function() && functionName == anim.function()->name())
-			currentComboFunction = i;
-	}
-	ui::comboString.setLength(ui::comboString.length() + 1);
-	// Append a second '\0' to signal the end of the combo item list
-	ui::comboString[ui::comboString.length() - 1] = '\0';
-	ASSERT(currentComboFunction > -1);
-
-	ImGui::Combo("Function", &currentComboFunction, ui::comboString.data());
-	const GridFunction *gridFunction = &GridFunctionLibrary::gridFunctions()[currentComboFunction];
-	if (anim.function() != gridFunction)
-		anim.setFunction(gridFunction);
-
-	if (anim.function() != nullptr)
-	{
-		for (unsigned int i = 0; i < anim.function()->numParameters(); i++)
+		static int currentComboFunction = -1;
+		ui::comboString.clear();
+		for (unsigned int i = 0; i < GridFunctionLibrary::gridFunctions().size(); i++)
 		{
-			const GridFunction::ParameterInfo &paramInfo = anim.function()->parameterInfo(i);
-			ui::auxString.format("%s##GridFunction%u", paramInfo.name.data(), i);
-			float minValue = paramInfo.minValue.value0;
-			float maxValue = paramInfo.maxValue.value0;
+			const nctl::String &functionName = GridFunctionLibrary::gridFunctions()[i].name();
+			ui::comboString.formatAppend("%s", functionName.data());
+			ui::comboString.setLength(ui::comboString.length() + 1);
 
-			if (anim.sprite())
+			if (anim.function() && functionName == anim.function()->name())
+				currentComboFunction = i;
+		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+		ASSERT(currentComboFunction > -1);
+
+		ImGui::Combo("Function", &currentComboFunction, ui::comboString.data());
+		const GridFunction *gridFunction = &GridFunctionLibrary::gridFunctions()[currentComboFunction];
+		if (anim.function() != gridFunction)
+			anim.setFunction(gridFunction);
+
+		ImGui::SameLine();
+		bool isLocked = anim.isLocked();
+		ImGui::Checkbox(Labels::Locked, &isLocked);
+		anim.setLocked(isLocked);
+
+		if (anim.function() != nullptr)
+		{
+			for (unsigned int i = 0; i < anim.function()->numParameters(); i++)
 			{
-				if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
-					minValue *= anim.sprite()->width();
-				else if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
-					minValue *= anim.sprite()->height();
+				const GridFunction::ParameterInfo &paramInfo = anim.function()->parameterInfo(i);
+				ui::auxString.format("%s##GridFunction%u", paramInfo.name.data(), i);
+				float minValue = paramInfo.minValue.value0;
+				float maxValue = paramInfo.maxValue.value0;
 
-				if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
-					maxValue *= anim.sprite()->width();
-				else if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
-					maxValue *= anim.sprite()->height();
-			}
-
-			switch (paramInfo.type)
-			{
-				case GridFunction::ParameterType::FLOAT:
-					ImGui::SliderFloat(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
-					break;
-				case GridFunction::ParameterType::VECTOR2F:
-					ImGui::SliderFloat2(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
-					break;
-			}
-
-			if (anim.sprite())
-			{
-				if (paramInfo.anchorType == GridFunction::AnchorType::X)
-					anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
-				else if (paramInfo.anchorType == GridFunction::AnchorType::Y)
-					anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value0;
-				else if (paramInfo.anchorType == GridFunction::AnchorType::XY)
+				if (anim.sprite())
 				{
-					anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
-					anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value1;
-				}
-			}
+					if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
+						minValue *= anim.sprite()->width();
+					else if (paramInfo.minMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
+						minValue *= anim.sprite()->height();
 
-			ImGui::SameLine();
-			ui::auxString.format("%s##GridFunction%u", Labels::Reset, i);
-			if (ImGui::Button(ui::auxString.data()))
-			{
-				anim.parameters()[i].value0 = paramInfo.initialValue.value0;
-				anim.parameters()[i].value1 = paramInfo.initialValue.value1;
+					if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_WIDTH)
+						maxValue *= anim.sprite()->width();
+					else if (paramInfo.maxMultiply == GridFunction::ValueMultiply::SPRITE_HEIGHT)
+						maxValue *= anim.sprite()->height();
+				}
+
+				switch (paramInfo.type)
+				{
+					case GridFunction::ParameterType::FLOAT:
+						ImGui::SliderFloat(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
+						break;
+					case GridFunction::ParameterType::VECTOR2F:
+						ImGui::SliderFloat2(ui::auxString.data(), &anim.parameters()[i].value0, minValue, maxValue);
+						break;
+				}
+
+				if (anim.sprite())
+				{
+					if (paramInfo.anchorType == GridFunction::AnchorType::X)
+						anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
+					else if (paramInfo.anchorType == GridFunction::AnchorType::Y)
+						anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value0;
+					else if (paramInfo.anchorType == GridFunction::AnchorType::XY)
+					{
+						anim.sprite()->gridAnchorPoint.x = anim.parameters()[i].value0;
+						anim.sprite()->gridAnchorPoint.y = anim.parameters()[i].value1;
+					}
+				}
+
+				ImGui::SameLine();
+				ui::auxString.format("%s##GridFunction%u", Labels::Reset, i);
+				if (ImGui::Button(ui::auxString.data()))
+				{
+					anim.parameters()[i].value0 = paramInfo.initialValue.value0;
+					anim.parameters()[i].value1 = paramInfo.initialValue.value1;
+				}
 			}
 		}
 	}
+	else
+		ImGui::TextDisabled("There are no sprites to animate");
 
 	createCurveAnimationGui(anim, limits);
 }

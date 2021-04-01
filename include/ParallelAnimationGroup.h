@@ -11,6 +11,7 @@ class ParallelAnimationGroup : public AnimationGroup
 
 	inline Type type() const override { return Type::PARALLEL_GROUP; }
 
+	void stop() override;
 	void pause() override;
 	void play() override;
 };

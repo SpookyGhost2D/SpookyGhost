@@ -14,8 +14,6 @@ class AnimationGroup : public IAnimation
 	inline nctl::Array<nctl::UniquePtr<IAnimation>> &anims() { return anims_; }
 	inline const nctl::Array<nctl::UniquePtr<IAnimation>> &anims() const { return anims_; }
 
-	void stop() override;
-
 	void update(float deltaTime) override;
 	void reset() override;
 

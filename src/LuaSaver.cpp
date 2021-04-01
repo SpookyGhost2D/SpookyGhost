@@ -67,7 +67,8 @@ bool LuaSaver::load(const char *filename, Data &data)
 		AnimationGroup *parent = anim->parent();
 		if (parent != nullptr)
 		{
-			parent->anims().pushBack(nctl::move(anim));
+			// Insert in front to preserve order
+			parent->anims().insertAt(0, nctl::move(anim));
 			data.animMgr.anims().removeAt(i);
 		}
 	}
