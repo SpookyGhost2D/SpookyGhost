@@ -13,6 +13,17 @@ SequentialAnimationGroup::SequentialAnimationGroup()
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+nctl::UniquePtr<IAnimation> SequentialAnimationGroup::clone() const
+{
+	nctl::UniquePtr<SequentialAnimationGroup> animGroup = nctl::makeUnique<SequentialAnimationGroup>();
+
+	for (auto &&anim : anims_)
+		animGroup->anims().pushBack(nctl::move(anim->clone()));
+	animGroup->setParent(parent_);
+
+	return nctl::move(animGroup);
+}
+
 void SequentialAnimationGroup::stop()
 {
 	if (direction_ == Direction::FORWARD)

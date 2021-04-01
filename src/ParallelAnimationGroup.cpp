@@ -4,6 +4,17 @@
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+nctl::UniquePtr<IAnimation> ParallelAnimationGroup::clone() const
+{
+	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
+
+	for (auto &&anim : anims_)
+		animGroup->anims().pushBack(nctl::move(anim->clone()));
+	animGroup->setParent(parent_);
+
+	return nctl::move(animGroup);
+}
+
 void ParallelAnimationGroup::stop()
 {
 	for (auto &&anim : anims_)

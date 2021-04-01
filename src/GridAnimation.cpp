@@ -17,12 +17,30 @@ GridAnimation::GridAnimation(Sprite *sprite)
       sprite_(nullptr), gridFunction_(nullptr), params_(4)
 {
 	setSprite(sprite);
-	setFunction(&GridFunctionLibrary::gridFunctions()[0]);
 }
 
 ///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
+
+nctl::UniquePtr<IAnimation> GridAnimation::clone() const
+{
+	nctl::UniquePtr<GridAnimation> anim = nctl::makeUnique<GridAnimation>(sprite_);
+
+	anim->name.assign(name);
+	// Animation state is not cloned
+	anim->setParent(parent_);
+
+	// Always disable locking for cloned animations
+	anim->isLocked_ = false;
+	anim->curve_ = curve_;
+	anim->speed_ = speed_;
+
+	anim->gridFunction_ = gridFunction_;
+	anim->params_ = params_;
+
+	return nctl::move(anim);
+}
 
 void GridAnimation::stop()
 {
@@ -77,6 +95,8 @@ void GridAnimation::setFunction(const GridFunction *function)
 			params_[i].value1 = paramInfo.initialValue.value1;
 		}
 	}
+	else
+		params_.clear();
 
 	gridFunction_ = function;
 }

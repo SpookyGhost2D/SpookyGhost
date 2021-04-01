@@ -16,6 +16,8 @@ class GridAnimation : public CurveAnimation
 	GridAnimation();
 	GridAnimation(Sprite *sprite);
 
+	nctl::UniquePtr<IAnimation> clone() const override;
+
 	inline Type type() const override { return Type::GRID; }
 
 	void stop() override;

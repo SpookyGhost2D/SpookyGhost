@@ -571,18 +571,32 @@ void UserInterface::createSpritesWindow()
 				selectedSpriteIndex_ = theSpriteMgr->sprites().size() - 1;
 			}
 		}
-		ImGui::SameLine();
-		if (theSpriteMgr->sprites().isEmpty() == false &&
-		    (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
+		if (theSpriteMgr->sprites().isEmpty() == false)
 		{
-			Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
-			updateSelectedAnimOnSpriteRemoval(selectedSprite);
+			ImGui::SameLine();
+			if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+			{
+				Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
+				updateSelectedAnimOnSpriteRemoval(selectedSprite);
 
-			theAnimMgr->removeSprite(selectedSprite);
-			if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
-				theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
-			if (selectedSpriteIndex_ > 0)
-				selectedSpriteIndex_--;
+				theAnimMgr->removeSprite(selectedSprite);
+				if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
+					theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
+				if (selectedSpriteIndex_ > 0)
+					selectedSpriteIndex_--;
+			}
+		}
+		// Repeat the check after the remove button
+		if (theSpriteMgr->sprites().isEmpty() == false)
+		{
+			ImGui::SameLine();
+			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+			ImGui::SameLine();
+			if (ImGui::Button(Labels::Clone))
+			{
+				Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
+				theSpriteMgr->sprites().insertAt(++selectedSpriteIndex_, nctl::move(selectedSprite->clone()));
+			}
 		}
 	}
 	else
@@ -676,7 +690,7 @@ struct DragAnimationPayload
 
 void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int index)
 {
-	ImGuiTreeNodeFlags nodeFlags = anim.isGroup() ? (ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick)
+	ImGuiTreeNodeFlags nodeFlags = anim.isGroup() ? (ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_DefaultOpen)
 	                                              : (ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 	if (&anim == selectedAnimation_)
 		nodeFlags |= ImGuiTreeNodeFlags_Selected;
@@ -709,8 +723,7 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 	else if (anim.type() == IAnimation::Type::GRID)
 	{
 		GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
-		if (gridAnim.function() != nullptr)
-			ui::auxString.formatAppend("%s grid", gridAnim.function()->name().data());
+		ui::auxString.formatAppend("%s grid", (gridAnim.function() != nullptr) ? gridAnim.function()->name().data() : "None");
 		if (gridAnim.sprite() != nullptr)
 		{
 			if (gridAnim.sprite()->name.isEmpty() == false)
@@ -731,6 +744,12 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 	else if (anim.state() == IAnimation::State::PLAYING)
 		ui::auxString.formatAppend(" %s", Labels::PlayIcon);
 
+	// Force tree expansion to see the selected animation
+	if (selectedAnimation_ && animGroup && (selectedAnimation_ != animGroup))
+	{
+		if (animGroup == selectedAnimation_->parent())
+			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+	}
 	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&anim), nodeFlags, "%s", ui::auxString.data());
 	if (ImGui::IsItemClicked())
 	{
@@ -795,7 +814,6 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 					dragAnimation->setParent(anim.parent());
 					anim.parent()->anims().insertAt(index, nctl::move(dragAnimation));
 				}
-				selectedAnimation_ = dragAnimation.get();
 			}
 
 			ImGui::EndDragDropTarget();
@@ -844,37 +862,76 @@ void UserInterface::createAnimationsWindow()
 		{
 			selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
 		}
+
+		// Search the index of the selected animation in its parent
+		unsigned int selectedIndex = anims->size() - 1;
+		for (unsigned int i = 0; i < anims->size(); i++)
+		{
+			if ((*anims)[i].get() == selectedAnimation_)
+			{
+				selectedIndex = i;
+				break;
+			}
+		}
+
 		switch (currentComboAnimType)
 		{
 			case AnimationTypesEnum::PARALLEL_GROUP:
-				anims->pushBack(nctl::makeUnique<ParallelAnimationGroup>());
+				anims->insertAt(++selectedIndex, nctl::makeUnique<ParallelAnimationGroup>());
 				break;
 			case AnimationTypesEnum::SEQUENTIAL_GROUP:
-				anims->pushBack(nctl::makeUnique<SequentialAnimationGroup>());
+				anims->insertAt(++selectedIndex, nctl::makeUnique<SequentialAnimationGroup>());
 				break;
 			case AnimationTypesEnum::PROPERTY:
-				anims->pushBack(nctl::makeUnique<PropertyAnimation>(selectedSprite));
-				static_cast<PropertyAnimation &>(*anims->back()).setPropertyName(Properties::Strings[0]);
+				anims->insertAt(++selectedIndex, nctl::makeUnique<PropertyAnimation>(selectedSprite));
+				static_cast<PropertyAnimation &>(*(*anims)[selectedIndex]).setPropertyName(Properties::Strings[0]);
 				break;
 			case AnimationTypesEnum::GRID:
-				anims->pushBack(nctl::makeUnique<GridAnimation>(selectedSprite));
+				anims->insertAt(++selectedIndex, nctl::makeUnique<GridAnimation>(selectedSprite));
 				break;
 		}
-		anims->back()->setParent(parent);
+		(*anims)[selectedIndex]->setParent(parent);
+		selectedAnimation_ = (*anims)[selectedIndex].get();
 	}
 
-	const bool canDeleteAnim = selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup();
-
-	if (canDeleteAnim)
-		ImGui::SameLine();
-	if (canDeleteAnim && (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
+	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
 	{
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+		{
 
-		AnimationGroup *parent = nullptr;
-		if (selectedAnimation_->parent())
-			parent = selectedAnimation_->parent();
-		theAnimMgr->removeAnimation(selectedAnimation_);
-		selectedAnimation_ = parent;
+			AnimationGroup *parent = nullptr;
+			if (selectedAnimation_->parent())
+				parent = selectedAnimation_->parent();
+			theAnimMgr->removeAnimation(selectedAnimation_);
+			selectedAnimation_ = parent;
+		}
+	}
+
+	// Search the index of the selected animation in its parent
+	unsigned int selectedIndex = 0;
+	if (selectedAnimation_ && selectedAnimation_->parent())
+	{
+		AnimationGroup *parent = selectedAnimation_->parent();
+		selectedIndex = parent->anims().size() - 1;
+		for (unsigned int i = 0; i < parent->anims().size(); i++)
+		{
+			if (parent->anims()[i].get() == selectedAnimation_)
+			{
+				selectedIndex = i;
+				break;
+			}
+		}
+	}
+
+	// Repeat the check after the remove button
+	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
+	{
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Clone))
+			selectedAnimation_->parent()->anims().insertAt(++selectedIndex, nctl::move(selectedAnimation_->clone()));
 	}
 
 	if (ImGui::Button(Labels::Stop) && selectedAnimation_)
@@ -885,6 +942,31 @@ void UserInterface::createAnimationsWindow()
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Play) && selectedAnimation_)
 		selectedAnimation_->play();
+
+	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
+	{
+		const bool needsMoveUpButton = selectedIndex > 0;
+		const bool needsMoveDownButton = selectedIndex < selectedAnimation_->parent()->anims().size() - 1;
+
+		if (needsMoveUpButton || needsMoveDownButton)
+		{
+			ImGui::SameLine();
+			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		}
+
+		if (needsMoveUpButton)
+		{
+			ImGui::SameLine();
+			if (ImGui::Button(Labels::MoveUp))
+				nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex - 1]);
+		}
+		if (needsMoveDownButton)
+		{
+			ImGui::SameLine();
+			if (ImGui::Button(Labels::MoveDown))
+				nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex + 1]);
+		}
+	}
 
 	ImGui::Separator();
 
@@ -901,6 +983,9 @@ void UserInterface::createAnimationsWindow()
 	else if (theAnimMgr->animGroup().state() == IAnimation::State::PLAYING)
 		ui::auxString.formatAppend(" %s", Labels::PlayIcon);
 
+	// Force tree expansion to see the selected animation
+	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
+		ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&theAnimMgr->animGroup()), nodeFlags, "%s", ui::auxString.data());
 	if (ImGui::IsItemClicked())
 		selectedAnimation_ = &theAnimMgr->animGroup();
@@ -1370,8 +1455,10 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 				anim.setSprite(sprite);
 		}
 
-		static int currentComboFunction = -1;
+		int currentComboFunction = 0;
 		ui::comboString.clear();
+		ui::comboString.formatAppend("None");
+		ui::comboString.setLength(ui::comboString.length() + 1);
 		for (unsigned int i = 0; i < GridFunctionLibrary::gridFunctions().size(); i++)
 		{
 			const nctl::String &functionName = GridFunctionLibrary::gridFunctions()[i].name();
@@ -1379,15 +1466,14 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 			ui::comboString.setLength(ui::comboString.length() + 1);
 
 			if (anim.function() && functionName == anim.function()->name())
-				currentComboFunction = i;
+				currentComboFunction = i + 1;
 		}
 		ui::comboString.setLength(ui::comboString.length() + 1);
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
-		ASSERT(currentComboFunction > -1);
 
 		ImGui::Combo("Function", &currentComboFunction, ui::comboString.data());
-		const GridFunction *gridFunction = &GridFunctionLibrary::gridFunctions()[currentComboFunction];
+		const GridFunction *gridFunction = (currentComboFunction > 0) ? &GridFunctionLibrary::gridFunctions()[currentComboFunction - 1] : nullptr;
 		if (anim.function() != gridFunction)
 			anim.setFunction(gridFunction);
 

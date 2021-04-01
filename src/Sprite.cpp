@@ -65,6 +65,32 @@ Sprite::Sprite(Texture *texture)
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+nctl::UniquePtr<Sprite> Sprite::clone() const
+{
+	nctl::UniquePtr<Sprite> sprite = nctl::makeUnique<Sprite>(texture_);
+	sprite->name.assign(name);
+	sprite->visible = visible;
+	sprite->x = x;
+	sprite->y = y;
+	sprite->rotation = rotation;
+	sprite->scaleFactor = scaleFactor;
+	sprite->anchorPoint = anchorPoint;
+	sprite->color = color;
+	sprite->visited = visited;
+	sprite->gridAnchorPoint = gridAnchorPoint;
+
+	sprite->flippedX_ = flippedX_;
+	sprite->flippedY_ = flippedY_;
+	sprite->setTexRect(texRect_);
+	sprite->setBlendingPreset(blendingPreset_);
+
+	// Vertices and indices don't need to be copied
+
+	sprite->setParent(parent_);
+
+	return sprite;
+}
+
 void Sprite::transform()
 {
 	localMatrix_ = nc::Matrix4x4f::translation(x, y, 0.0f);

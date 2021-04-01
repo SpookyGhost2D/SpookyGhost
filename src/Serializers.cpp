@@ -80,7 +80,7 @@ void serialize(LuaSerializer &ls, const Sprite &sprite)
 	serialize(ls, "scale_factor", sprite.scaleFactor);
 	serialize(ls, "anchor_point", sprite.anchorPoint);
 	serialize(ls, "color", sprite.color);
-	serialize(ls, "grid_anchor_point", sprite.gridAnchorPoint);
+	// Grid anchor point values are serialized by grid animations
 	serialize(ls, "texrect", sprite.texRect());
 	serialize(ls, "flip_x", sprite.isFlippedX());
 	serialize(ls, "flip_y", sprite.isFlippedY());
@@ -393,7 +393,7 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite)
 	deserialize(ls, "scale_factor", sprite->scaleFactor);
 	deserialize(ls, "anchor_point", sprite->anchorPoint);
 	deserialize(ls, "color", sprite->color);
-	deserialize(ls, "grid_anchor_point", sprite->gridAnchorPoint);
+	// Grid anchor point values are deserialized by grid animations
 	sprite->setTexRect(deserialize<nc::Recti>(ls, "texrect"));
 	sprite->setFlippedX(deserialize<bool>(ls, "flip_x"));
 	sprite->setFlippedY(deserialize<bool>(ls, "flip_y"));
@@ -551,6 +551,9 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<GridAnimation> &anim)
 	deserialize(ls, "curve", anim->curve());
 
 	const char *functionName = deserialize<const char *>(ls, "function_name");
+	if (functionName == nullptr)
+		return;
+
 	const GridFunction **functionPtr = context->functionHash->find(functionName);
 	if (functionPtr)
 	{

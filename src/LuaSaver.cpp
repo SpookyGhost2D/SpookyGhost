@@ -99,29 +99,28 @@ void LuaSaver::save(const char *filename, const Data &data)
 	Serializers::serializeGlobal(*serializer_, "version", ProjectVersion);
 	serializer_->buffer().append("\n");
 	Serializers::serialize(*serializer_, "canvas", data.canvas);
-	serializer_->buffer().append("\n");
 
 	const unsigned int numTextures = data.spriteMgr.textures().size();
 	if (numTextures > 0)
 	{
+		serializer_->buffer().append("\n");
 		context.textureHash = nctl::makeUnique<nctl::HashMap<const Texture *, unsigned int>>(numTextures * 2);
 
 		for (unsigned int i = 0; i < numTextures; i++)
 			context.textureHash->insert(data.spriteMgr.textures()[i].get(), i);
 
 		Serializers::serialize(*serializer_, "textures", data.spriteMgr.textures());
-		serializer_->buffer().append("\n");
 
 		const unsigned int numSprites = data.spriteMgr.sprites().size();
 		if (numSprites > 0)
 		{
+			serializer_->buffer().append("\n");
 			context.spriteHash = nctl::makeUnique<nctl::HashMap<const Sprite *, unsigned int>>(numSprites * 2);
 
 			for (unsigned int i = 0; i < numSprites; i++)
 				context.spriteHash->insert(data.spriteMgr.sprites()[i].get(), i);
 
 			Serializers::serialize(*serializer_, "sprites", data.spriteMgr.sprites());
-			serializer_->buffer().append("\n");
 		}
 	}
 
@@ -132,12 +131,12 @@ void LuaSaver::save(const char *filename, const Data &data)
 	const unsigned int numAnims = anims.size();
 	if (numAnims > 0)
 	{
+		serializer_->buffer().append("\n");
 		context.animationHash = nctl::makeUnique<nctl::HashMap<const IAnimation *, unsigned int>>(numAnims * 2);
 		for (unsigned int i = 0; i < numAnims; i++)
 			context.animationHash->insert(anims[i], i);
 
 		Serializers::serialize(*serializer_, "animations", anims);
-		serializer_->buffer().append("\n");
 	}
 
 	serializer_->save(filename);

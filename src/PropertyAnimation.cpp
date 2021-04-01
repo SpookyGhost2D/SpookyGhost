@@ -21,6 +21,25 @@ PropertyAnimation::PropertyAnimation(Sprite *sprite)
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+nctl::UniquePtr<IAnimation> PropertyAnimation::clone() const
+{
+	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(sprite_);
+
+	anim->name.assign(name);
+	// Animation state is not cloned
+	anim->setParent(parent_);
+
+	// Always disable locking for cloned animations
+	anim->isLocked_ = false;
+	anim->curve_ = curve_;
+	anim->speed_ = speed_;
+
+	anim->property_ = property_;
+	anim->propertyName_.assign(propertyName_);
+
+	return nctl::move(anim);
+}
+
 void PropertyAnimation::stop()
 {
 	CurveAnimation::stop();

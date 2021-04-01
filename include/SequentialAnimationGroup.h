@@ -22,6 +22,8 @@ class SequentialAnimationGroup : public AnimationGroup
 
 	SequentialAnimationGroup();
 
+	nctl::UniquePtr<IAnimation> clone() const override;
+
 	inline Type type() const override { return Type::SEQUENTIAL_GROUP; }
 
 	inline Direction direction() const { return direction_; }

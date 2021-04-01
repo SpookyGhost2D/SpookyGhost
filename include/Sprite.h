@@ -60,6 +60,8 @@ class Sprite
 
 	Sprite(Texture *texture);
 
+	nctl::UniquePtr<Sprite> clone() const;
+
 	void transform();
 	void updateRender();
 	void render();

@@ -28,6 +28,8 @@ class IAnimation
 	    : state_(State::STOPPED), parent_(nullptr) {}
 	virtual ~IAnimation() {}
 
+	virtual nctl::UniquePtr<IAnimation> clone() const = 0;
+
 	static const unsigned int MaxNameLength = 64;
 	nctl::String name;
 

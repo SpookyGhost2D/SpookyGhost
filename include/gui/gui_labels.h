@@ -39,6 +39,7 @@
 
 #define TEXT_ADD "Add"
 #define TEXT_REMOVE "Remove"
+#define TEXT_CLONE "Clone"
 #define TEXT_MOVE_UP "Move Up"
 #define TEXT_MOVE_DOWN "Move Down"
 
@@ -90,6 +91,7 @@ static const char *Locked = TEXT_LOCKED;
 
 static const char *Add = TEXT_ADD;
 static const char *Remove = TEXT_REMOVE;
+static const char *Clone = TEXT_CLONE;
 static const char *MoveUp = TEXT_MOVE_UP;
 static const char *MoveDown = TEXT_MOVE_DOWN;
 
@@ -168,6 +170,7 @@ static const char *Locked = ICON_FA_LOCK;
 
 static const char *Add = ICON_FA_PLUS FA5_SPACING TEXT_ADD;
 static const char *Remove = ICON_FA_MINUS FA5_SPACING TEXT_REMOVE;
+static const char *Clone = ICON_FA_CLONE FA5_SPACING TEXT_CLONE;
 static const char *MoveUp = ICON_FA_ANGLE_UP FA5_SPACING TEXT_MOVE_UP;
 static const char *MoveDown = ICON_FA_ANGLE_DOWN FA5_SPACING TEXT_MOVE_DOWN;
 
