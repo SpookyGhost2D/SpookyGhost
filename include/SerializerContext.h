@@ -14,6 +14,7 @@ struct SerializerContext
 
 struct DeserializerContext
 {
+	int version = 0;
 	nctl::Array<nctl::UniquePtr<Texture>> *textures = nullptr;
 	nctl::Array<nctl::UniquePtr<Sprite>> *sprites = nullptr;
 	nctl::Array<nctl::UniquePtr<IAnimation>> *animations = nullptr;

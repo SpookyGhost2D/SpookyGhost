@@ -7,6 +7,7 @@
 nctl::UniquePtr<IAnimation> ParallelAnimationGroup::clone() const
 {
 	nctl::UniquePtr<ParallelAnimationGroup> animGroup = nctl::makeUnique<ParallelAnimationGroup>();
+	animGroup->enabled = enabled;
 
 	for (auto &&anim : anims_)
 		animGroup->anims().pushBack(nctl::move(anim->clone()));

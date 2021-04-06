@@ -104,6 +104,8 @@ static const char *SaveSpritesheet = TEXT_SAVE_SPRITESHEET;
 
 static const char *VisibleIcon = "V";
 static const char *InvisibleIcon = "I";
+static const char *EnabledAnimIcon = "[>]";
+static const char *DisabledAnimIcon = "[ ]";
 static const char *PlusIcon = "+";
 static const char *MinusIcon = "-";
 static const char *SelectedIcon = "[*]";
@@ -183,6 +185,8 @@ static const char *SaveSpritesheet = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_SPRITESH
 
 static const char *VisibleIcon = ICON_FA_EYE;
 static const char *InvisibleIcon = ICON_FA_EYE_SLASH;
+static const char *EnabledAnimIcon = ICON_FA_PLAY_CIRCLE;
+static const char *DisabledAnimIcon = ICON_FA_STOP_CIRCLE;
 static const char *PlusIcon = ICON_FA_PLUS;
 static const char *MinusIcon = ICON_FA_MINUS;
 static const char *SelectedIcon = ICON_FA_CHECK;

@@ -16,6 +16,7 @@ SequentialAnimationGroup::SequentialAnimationGroup()
 nctl::UniquePtr<IAnimation> SequentialAnimationGroup::clone() const
 {
 	nctl::UniquePtr<SequentialAnimationGroup> animGroup = nctl::makeUnique<SequentialAnimationGroup>();
+	animGroup->enabled = enabled;
 
 	for (auto &&anim : anims_)
 		animGroup->anims().pushBack(nctl::move(anim->clone()));
@@ -104,7 +105,10 @@ void SequentialAnimationGroup::update(float deltaTime)
 		state_ = State::STOPPED;
 	else
 	{
-		anims_[playingIndex]->update(deltaTime);
+		if (anims_[playingIndex]->enabled)
+			anims_[playingIndex]->update(deltaTime);
+		else
+			anims_[playingIndex]->stop();
 
 		// Decide the next animation to play as the current one has just finished
 		if (anims_[playingIndex]->state() == State::STOPPED)

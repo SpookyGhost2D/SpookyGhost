@@ -112,7 +112,7 @@ void serialize(LuaSerializer &ls, const char *name, const nc::Colorf &color);
 
 template <class T> void serializePtr(LuaSerializer &ls, const char *name, const T *ptr, const nctl::HashMap<const T *, unsigned int> &hash)
 {
-	const unsigned int *indexFind = hash.find(ptr);
+	const unsigned int *indexFind = ptr ? hash.find(ptr) : nullptr;
 	const int index = indexFind ? static_cast<int>(*indexFind) : -1;
 	serialize(ls, name, index);
 }

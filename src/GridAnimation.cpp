@@ -28,6 +28,7 @@ nctl::UniquePtr<IAnimation> GridAnimation::clone() const
 	nctl::UniquePtr<GridAnimation> anim = nctl::makeUnique<GridAnimation>(sprite_);
 
 	anim->name.assign(name);
+	anim->enabled = enabled;
 	// Animation state is not cloned
 	anim->setParent(parent_);
 

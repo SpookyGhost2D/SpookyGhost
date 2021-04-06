@@ -9,9 +9,12 @@ void AnimationGroup::update(float deltaTime)
 	bool allStopped = true;
 	for (auto &&anim : anims_)
 	{
-		anim->update(deltaTime);
-		if (anim->state() != State::STOPPED)
-			allStopped = false;
+		if (anim->enabled)
+		{
+			anim->update(deltaTime);
+			if (anim->state() != State::STOPPED)
+				allStopped = false;
+		}
 	}
 	if (allStopped)
 		state_ = State::STOPPED;

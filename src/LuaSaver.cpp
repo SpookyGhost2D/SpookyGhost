@@ -11,7 +11,7 @@
 
 namespace {
 
-const int ProjectVersion = 1;
+const int ProjectVersion = 2;
 
 }
 
@@ -52,9 +52,8 @@ bool LuaSaver::load(const char *filename, Data &data)
 	data.spriteMgr.sprites().clear();
 	data.animMgr.anims().clear();
 
-	int version = 0;
-	Deserializers::deserializeGlobal(*serializer_, "version", version);
-	ASSERT(version >= ProjectVersion);
+	Deserializers::deserializeGlobal(*serializer_, "version", context.version);
+	ASSERT(context.version >= 1);
 	Deserializers::deserialize(*serializer_, "canvas", data.canvas);
 	Deserializers::deserialize(*serializer_, "textures", data.spriteMgr.textures());
 	Deserializers::deserialize(*serializer_, "sprites", data.spriteMgr.sprites());

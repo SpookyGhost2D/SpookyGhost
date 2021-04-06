@@ -32,6 +32,7 @@ class IAnimation
 
 	static const unsigned int MaxNameLength = 64;
 	nctl::String name;
+	bool enabled = true;
 
 	virtual Type type() const = 0;
 	inline State state() const { return state_; }

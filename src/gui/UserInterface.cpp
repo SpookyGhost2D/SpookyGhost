@@ -699,6 +699,10 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 	if (anim.isGroup())
 		animGroup = static_cast<AnimationGroup *>(&anim);
 
+	// To preserve indentation no group is created
+	ui::auxString.format("%s###Anim%u", anim.enabled ? Labels::EnabledAnimIcon : Labels::DisabledAnimIcon, uintptr_t(&anim));
+	ImGui::Checkbox(ui::auxString.data(), &anim.enabled);
+	ImGui::SameLine();
 	ui::auxString.format("#%u: ", index);
 	if (anim.name.isEmpty() == false)
 		ui::auxString.formatAppend("\"%s\" (", anim.name.data());

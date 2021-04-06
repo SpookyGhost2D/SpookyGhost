@@ -98,6 +98,7 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 	ls.indent();
 
 	serialize(ls, "name", anim->name.data());
+	serialize(ls, "enabled", anim->enabled);
 	serializePtr(ls, "parent", static_cast<const IAnimation *>(anim->parent()), *context->animationHash);
 
 	switch (anim->type())
@@ -616,6 +617,8 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 	}
 
 	deserialize(ls, "name", anim->name);
+	if (context->version >= 2)
+		deserialize(ls, "enabled", anim->enabled);
 	AnimationGroup *parent = static_cast<AnimationGroup *>(deserializePtr(ls, "parent", *context->animations));
 	if (parent == nullptr)
 		parent = &theAnimMgr->animGroup();
