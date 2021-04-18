@@ -97,10 +97,7 @@ UserInterface::UserInterface()
 	{
 		const nctl::String startupScript = nc::fs::joinPath(theCfg.scriptsPath, theCfg.startupScriptName);
 		if (nc::fs::isReadableFile(startupScript.data()))
-		{
 			openProject(startupScript.data());
-			lastLoadedProject_ = theCfg.startupScriptName;
-		}
 	}
 	if (theCfg.autoPlayOnStart)
 		theAnimMgr->play();
@@ -220,8 +217,11 @@ bool UserInterface::openProject(const char *filename)
 		selectedSpriteIndex_ = 0;
 		selectedTextureIndex_ = 0;
 		selectedAnimation_ = &theAnimMgr->animGroup();
+
 		canvasGuiSection_.setResize(theCanvas->size());
 		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
+
+		lastLoadedProject_ = filename;
 		ui::auxString.format("Loaded project file \"%s\"\n", filename);
 		pushStatusInfoMessage(ui::auxString.data());
 
@@ -427,10 +427,7 @@ void UserInterface::createMenuBar()
 						ui::auxString.assign(nc::fs::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]).data());
 #endif
 						if (openProject(ui::auxString.data()))
-						{
-							lastLoadedProject_ = ui::auxString;
 							numFrames = 0; // force focus on the canvas
-						}
 					}
 				}
 				ImGui::EndMenu();
@@ -655,7 +652,7 @@ void UserInterface::createSpritesWindow()
 				selectedSpriteIndex_ = i;
 			ImGui::EndGroup();
 
-			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
 			{
 				ImGui::SetDragDropPayload("SPRITE_TREENODE", &i, sizeof(unsigned int));
 				ImGui::Text("%s", ui::auxString.data());
@@ -1299,7 +1296,7 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 		{
 			Sprite &sprite = *theSpriteMgr->sprites()[i];
-			ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+			ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
 			ui::comboString.setLength(ui::comboString.length() + 1);
 		}
 		ui::comboString.setLength(ui::comboString.length() + 1);
@@ -1443,7 +1440,7 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
 		{
 			Sprite &sprite = *theSpriteMgr->sprites()[i];
-			ui::comboString.formatAppend("#%u: %s (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+			ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
 			ui::comboString.setLength(ui::comboString.length() + 1);
 		}
 		ui::comboString.setLength(ui::comboString.length() + 1);
@@ -1561,7 +1558,7 @@ void UserInterface::createFileDialog()
 					numFrames = 0; // force focus on the canvas
 				else
 				{
-					ui::auxString.format("Could not load project file \"%s\"\n", selection.data());
+					ui::auxString.format("Cannot load project file \"%s\"\n", selection.data());
 					pushStatusErrorMessage(ui::auxString.data());
 				}
 				break;
@@ -1570,7 +1567,7 @@ void UserInterface::createFileDialog()
 					selection = selection + ".lua";
 				if (nc::fs::isFile(selection.data()) && FileDialog::config.allowOverwrite == false)
 				{
-					ui::auxString.format("Could not overwrite existing file \"%s\"\n", selection.data());
+					ui::auxString.format("Cannot overwrite existing file \"%s\"\n", selection.data());
 					pushStatusErrorMessage(ui::auxString.data());
 				}
 				else
@@ -1590,13 +1587,17 @@ void UserInterface::createFileDialog()
 					nctl::String baseName = nc::fs::baseName(selection.data());
 					if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.texturesPath, baseName.data()).data()))
 						theSpriteMgr->textures().back()->setName(baseName);
-					ui::auxString.format("Loaded texture \"%s\"", selection.data());
 					selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
+
+					ui::auxString.format("Loaded texture \"%s\"", selection.data());
+					pushStatusInfoMessage(ui::auxString.data());
 				}
 				else
+				{
 					ui::auxString.format("Cannot load texture \"%s\"", selection.data());
+					pushStatusErrorMessage(ui::auxString.data());
+				}
 
-				pushStatusInfoMessage(ui::auxString.data());
 				break;
 			}
 			case FileDialog::Action::RENDER_DIR:
