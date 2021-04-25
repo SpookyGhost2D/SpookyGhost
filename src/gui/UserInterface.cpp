@@ -18,7 +18,6 @@
 #include "GridFunctionLibrary.h"
 #include "Sprite.h"
 #include "Texture.h"
-#include "LuaSaver.h"
 
 #include "version.h"
 #include <ncine/version.h>
@@ -46,6 +45,7 @@ static int plotValueIndex = 0;
 const char *docsFile = "../docs/documentation.html";
 
 static bool showAboutWindow = false;
+static bool hoveringOnCanvasWindow = false;
 static bool hoveringOnCanvas = false;
 static bool deleteKeyPressed = false;
 
@@ -59,7 +59,7 @@ static int numFrames = 0;
 
 UserInterface::UserInterface()
     : selectedSpriteIndex_(0), selectedTextureIndex_(0), selectedAnimation_(&theAnimMgr->animGroup()),
-      spriteGraph_(4), renderGuiWindow_(*this)
+      spriteGraph_(4), renderGuiWindow_(*this), saverData_(*theCanvas, *theSpriteMgr, *theAnimMgr)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -211,8 +211,7 @@ void UserInterface::menuOpen()
 
 bool UserInterface::openProject(const char *filename)
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
-	if (nc::fs::isReadableFile(filename) && theSaver->load(filename, data))
+	if (nc::fs::isReadableFile(filename) && theSaver->load(filename, saverData_))
 	{
 		selectedSpriteIndex_ = 0;
 		selectedTextureIndex_ = 0;
@@ -233,8 +232,7 @@ bool UserInterface::openProject(const char *filename)
 
 void UserInterface::menuSave()
 {
-	LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
-	theSaver->save(lastLoadedProject_.data(), data);
+	theSaver->save(lastLoadedProject_.data(), saverData_);
 	ui::auxString.format("Saved project file \"%s\"\n", lastLoadedProject_.data());
 	pushStatusInfoMessage(ui::auxString.data());
 }
@@ -269,7 +267,7 @@ void UserInterface::openDocumentation()
 
 void UserInterface::toggleAnimation()
 {
-	if (selectedAnimation_)
+	if (selectedAnimation_ && hoveringOnCanvasWindow)
 	{
 		if (selectedAnimation_->state() != IAnimation::State::PLAYING)
 			selectedAnimation_->play();
@@ -406,7 +404,6 @@ void UserInterface::createMenuBar()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 			if (ImGui::MenuItem(Labels::New, "CTRL + N", false, menuNewEnabled()))
 				menuNew();
 
@@ -1285,9 +1282,9 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 	                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
 	ImGui::Separator();
 
-	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
+		int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
 		// Assign to current sprite if none was assigned before
 		if (spriteIndex < 0)
 			spriteIndex = selectedSpriteIndex_;
@@ -1429,9 +1426,9 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 	                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
 	ImGui::Separator();
 
-	int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
+		int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
 		// Assign to current sprite if none was assigned before
 		if (spriteIndex < 0)
 			spriteIndex = selectedSpriteIndex_;
@@ -1450,10 +1447,8 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 		// Also assign if no sprite was assigned before
 		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()) || anim.sprite() == nullptr)
 		{
-			Sprite *sprite = theSpriteMgr->sprites()[spriteIndex].get();
+			anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
 			selectedSpriteIndex_ = spriteIndex;
-			if (anim.sprite() != sprite)
-				anim.setSprite(sprite);
 		}
 
 		int currentComboFunction = 0;
@@ -1550,7 +1545,6 @@ void UserInterface::createFileDialog()
 
 	if (FileDialog::create(FileDialog::config, selection))
 	{
-		LuaSaver::Data data(*theCanvas, *theSpriteMgr, *theAnimMgr);
 		switch (FileDialog::config.action)
 		{
 			case FileDialog::Action::OPEN_PROJECT:
@@ -1572,7 +1566,7 @@ void UserInterface::createFileDialog()
 				}
 				else
 				{
-					theSaver->save(selection.data(), data);
+					theSaver->save(selection.data(), saverData_);
 					ui::auxString.format("Saved project file \"%s\"\n", selection.data());
 					pushStatusInfoMessage(ui::auxString.data());
 				}
@@ -1652,8 +1646,11 @@ void UserInterface::createCanvasWindow()
 {
 	const float canvasZoom = canvasGuiSection_.zoomAmount();
 
+	hoveringOnCanvasWindow = false;
 	ImGui::SetNextWindowSize(ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImGuiCond_Once);
 	ImGui::Begin(Labels::Canvas, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+	if (ImGui::IsWindowHovered())
+		hoveringOnCanvasWindow = true;
 	canvasGuiSection_.create(*theCanvas);
 
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
@@ -1963,7 +1960,7 @@ void UserInterface::createAboutWindow()
 
 void UserInterface::mouseWheelCanvasZoom()
 {
-	if (ImGui::IsItemHovered() && ImGui::GetIO().KeyCtrl && ImGui::GetIO().MouseWheel != 0.0f)
+	if (ImGui::IsWindowHovered() && ImGui::GetIO().KeyCtrl && ImGui::GetIO().MouseWheel != 0.0f)
 	{
 		const float wheel = ImGui::GetIO().MouseWheel;
 

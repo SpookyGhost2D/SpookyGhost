@@ -4,13 +4,12 @@
 #include <nctl/String.h>
 #include <nctl/Array.h>
 #include <nctl/HashMap.h>
+#include <ncine/LuaStateManager.h>
 #include <ncine/LuaUtils.h>
 
 struct lua_State;
 
 namespace ncine {
-
-class LuaStateManager;
 
 template <class T> class Rect;
 using Recti = Rect<int>;
@@ -56,12 +55,10 @@ class LuaSerializer
 	lua_State *luaState();
 
   private:
+	nc::LuaStateManager luaState_;
 	nctl::String bufferString_;
 	int indentAmount_;
-	nctl::UniquePtr<nc::LuaStateManager> luaState_;
 	void *context_;
-
-	void createNewState();
 };
 
 namespace Serializers {

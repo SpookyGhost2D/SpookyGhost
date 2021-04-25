@@ -34,7 +34,8 @@ bool LuaSaver::load(const char *filename, Data &data)
 	serializer_->setContext(&context);
 	context.textures = &data.spriteMgr.textures();
 	context.sprites = &data.spriteMgr.sprites();
-	context.animations = &data.animMgr.anims();
+	nctl::Array<nctl::UniquePtr<IAnimation>> anims;
+	context.animations = &anims;
 
 	const unsigned int numFunctions = GridFunctionLibrary::gridFunctions().size();
 	nctl::HashMap<const char *, const GridFunction *> functionHash(numFunctions * 2);
@@ -55,22 +56,14 @@ bool LuaSaver::load(const char *filename, Data &data)
 	Deserializers::deserializeGlobal(*serializer_, "version", context.version);
 	ASSERT(context.version >= 1);
 	Deserializers::deserialize(*serializer_, "canvas", data.canvas);
-	Deserializers::deserialize(*serializer_, "textures", data.spriteMgr.textures());
-	Deserializers::deserialize(*serializer_, "sprites", data.spriteMgr.sprites());
-	Deserializers::deserialize(*serializer_, "animations", data.animMgr.anims());
+	Deserializers::deserialize(*serializer_, "textures", *context.textures);
+	Deserializers::deserialize(*serializer_, "sprites", *context.sprites);
+	Deserializers::deserialize(*serializer_, "animations", *context.animations);
 
-	// Deleting backwards without iterators
-	for (int i = data.animMgr.anims().size() - 1; i >= 0; i--)
-	{
-		nctl::UniquePtr<IAnimation> &anim = data.animMgr.anims()[i];
-		AnimationGroup *parent = anim->parent();
-		if (parent != nullptr)
-		{
-			// Insert in front to preserve order
-			parent->anims().insertAt(0, nctl::move(anim));
-			data.animMgr.anims().removeAt(i);
-		}
-	}
+	if (data.animMgr.anims().capacity() < anims.size())
+		data.animMgr.anims().setCapacity(anims.size());
+	for (unsigned int i = 0; i < anims.size(); i++)
+		anims[i]->parent()->anims().pushBack(nctl::move(anims[i]));
 
 	return true;
 }

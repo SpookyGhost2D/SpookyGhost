@@ -27,12 +27,13 @@ void waveX(GridAnimation &gridAnimation)
 
 	for (int y = 0; y < height + 1; y++)
 	{
-		const float distPy = halfHeight + py - float(y);
+		const float distPyNorm = (halfHeight + py - y) / halfHeight;
+		const float diff = distPyNorm * amplitude * sinf(value * 2.0f * nc::fPi + (frequency * distPyNorm));
 		for (int x = 0; x < width + 1; x++)
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Sprite::Vertex &v = interleavedVertices[index];
-			v.x += (distPy / halfHeight) * amplitude * sinf(value * 2.0f * nc::fPi + (frequency * distPy / halfHeight));
+			v.x += diff;
 		}
 	}
 }
@@ -54,12 +55,13 @@ void waveY(GridAnimation &gridAnimation)
 
 	for (int x = 0; x < width + 1; x++)
 	{
-		const float distPx = halfWidth + px - float(x);
+		const float distPxNorm = (halfWidth + px - x) / halfWidth;
+		const float diff = distPxNorm * amplitude * sinf(value * 2.0f * nc::fPi + (frequency * distPxNorm));
 		for (int y = 0; y < height + 1; y++)
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Sprite::Vertex &v = interleavedVertices[index];
-			v.y += (distPx / halfWidth) * amplitude * sinf(value * 2.0f * nc::fPi + (frequency * distPx / halfWidth));
+			v.y += diff;
 		}
 	}
 }
@@ -81,11 +83,12 @@ void skewX(GridAnimation &gridAnimation)
 	for (int y = 0; y < height + 1; y++)
 	{
 		const float distPy = halfHeight + py - y;
+		const float diff = -distPy * value * invWidth;
 		for (int x = 0; x < width + 1; x++)
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Sprite::Vertex &v = interleavedVertices[index];
-			v.x += -distPy * value * invWidth;
+			v.x += diff;
 		}
 	}
 }
@@ -107,11 +110,12 @@ void skewY(GridAnimation &gridAnimation)
 	for (int x = 0; x < width + 1; x++)
 	{
 		const float distPx = halfWidth + px - x;
+		const float diff = -distPx * value * invHeight;
 		for (int y = 0; y < height + 1; y++)
 		{
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Sprite::Vertex &v = interleavedVertices[index];
-			v.y += -distPx * value * invHeight;
+			v.y += diff;
 		}
 	}
 }
@@ -135,14 +139,16 @@ void zoom(GridAnimation &gridAnimation)
 
 	for (int y = 0; y < height + 1; y++)
 	{
+		const float distPy = halfHeight + py - y;
+		const float diffY = -distPy * value * invHeight;
 		for (int x = 0; x < width + 1; x++)
 		{
+			const float distPx = halfWidth + px - x;
+			const float diffX = -distPx * value * invWidth;
 			const unsigned int index = static_cast<unsigned int>(x + y * (width + 1));
 			Sprite::Vertex &v = interleavedVertices[index];
-			const float distPx = halfWidth + px - x;
-			const float distPy = halfHeight + py - y;
-			v.x += -distPx * value * invWidth;
-			v.y += -distPy * value * invHeight;
+			v.x += diffX;
+			v.y += diffY;
 		}
 	}
 }

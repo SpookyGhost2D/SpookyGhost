@@ -7,6 +7,7 @@
 #include <ncine/Colorf.h>
 #include <ncine/TimeStamp.h>
 
+#include "LuaSaver.h"
 #include "gui/CanvasGuiSection.h"
 #include "gui/RenderGuiWindow.h"
 
@@ -111,6 +112,7 @@ class UserInterface
 
 	CanvasGuiSection canvasGuiSection_;
 	RenderGuiWindow renderGuiWindow_;
+	LuaSaver::Data saverData_;
 
 	nctl::String lastLoadedProject_ = nctl::String(ui::MaxStringLength);
 

@@ -74,12 +74,15 @@ void GridAnimation::update(float deltaTime)
 
 void GridAnimation::setSprite(Sprite *sprite)
 {
-	if (sprite_)
-		sprite_->decrementGridAnimCounter();
-	if (sprite)
-		sprite->incrementGridAnimCounter();
+	if (sprite_ != sprite)
+	{
+		if (sprite_)
+			sprite_->decrementGridAnimCounter();
+		if (sprite)
+			sprite->incrementGridAnimCounter();
 
-	sprite_ = sprite;
+		sprite_ = sprite;
+	}
 }
 
 void GridAnimation::setFunction(const GridFunction *function)

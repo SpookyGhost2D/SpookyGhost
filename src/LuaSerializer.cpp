@@ -358,7 +358,10 @@ void deserializeGlobal(LuaSerializer &ls, const char *name, char *string)
 ///////////////////////////////////////////////////////////
 
 LuaSerializer::LuaSerializer(unsigned int bufferSize)
-    : bufferString_(bufferSize), context_(nullptr)
+    : luaState_(nc::LuaStateManager::ApiType::NONE,
+                nc::LuaStateManager::StatisticsTracking::DISABLED,
+                nc::LuaStateManager::StandardLibraries::NOT_LOADED),
+      bufferString_(bufferSize), context_(nullptr)
 {
 }
 
@@ -381,13 +384,13 @@ bool LuaSerializer::load(const char *filename)
 bool LuaSerializer::load(const char *filename, const nc::EmscriptenLocalFile *localFile)
 #endif
 {
-	createNewState();
+	luaState_.reopen();
 #ifndef __EMSCRIPTEN__
-	if (luaState_->runFromFile(filename) == false)
+	if (luaState_.runFromFile(filename) == false)
 #else
 	const bool loaded = (localFile != nullptr)
-	                        ? luaState_->runFromMemory(localFile->data(), localFile->size(), localFile->filename())
-	                        : luaState_->runFromFile(filename);
+	                        ? luaState_.runFromMemory(localFile->data(), localFile->size(), localFile->filename())
+	                        : luaState_.runFromFile(filename);
 
 	if (loaded == false)
 #endif
@@ -421,17 +424,6 @@ nctl::String &LuaSerializer::buffer()
 
 lua_State *LuaSerializer::luaState()
 {
-	return luaState_->state();
+	return luaState_.state();
 }
 
-///////////////////////////////////////////////////////////
-// PRIVATE FUNCTIONS
-///////////////////////////////////////////////////////////
-
-void LuaSerializer::createNewState()
-{
-	luaState_ = nctl::makeUnique<nc::LuaStateManager>(
-	    nc::LuaStateManager::ApiType::NONE,
-	    nc::LuaStateManager::StatisticsTracking::DISABLED,
-	    nc::LuaStateManager::StandardLibraries::NOT_LOADED);
-}
