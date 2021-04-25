@@ -1,6 +1,7 @@
 #include "LuaSaver.h"
 #include "SpriteManager.h"
 #include "Texture.h"
+#include "ScriptManager.h"
 #include "AnimationManager.h"
 #include "GridFunctionLibrary.h"
 #include "Configuration.h"
@@ -11,7 +12,7 @@
 
 namespace {
 
-const int ProjectVersion = 2;
+const int ProjectVersion = 3;
 
 }
 
@@ -34,6 +35,7 @@ bool LuaSaver::load(const char *filename, Data &data)
 	serializer_->setContext(&context);
 	context.textures = &data.spriteMgr.textures();
 	context.sprites = &data.spriteMgr.sprites();
+	context.scripts = &data.scriptMgr.scripts();
 	nctl::Array<nctl::UniquePtr<IAnimation>> anims;
 	context.animations = &anims;
 
@@ -51,6 +53,7 @@ bool LuaSaver::load(const char *filename, Data &data)
 
 	data.spriteMgr.textures().clear();
 	data.spriteMgr.sprites().clear();
+	data.scriptMgr.scripts().clear();
 	data.animMgr.anims().clear();
 
 	Deserializers::deserializeGlobal(*serializer_, "version", context.version);
@@ -58,6 +61,8 @@ bool LuaSaver::load(const char *filename, Data &data)
 	Deserializers::deserialize(*serializer_, "canvas", data.canvas);
 	Deserializers::deserialize(*serializer_, "textures", *context.textures);
 	Deserializers::deserialize(*serializer_, "sprites", *context.sprites);
+	if (context.version >= 2)
+		Deserializers::deserialize(*serializer_, "scripts", *context.scripts);
 	Deserializers::deserialize(*serializer_, "animations", *context.animations);
 
 	if (data.animMgr.anims().capacity() < anims.size())
@@ -114,6 +119,18 @@ void LuaSaver::save(const char *filename, const Data &data)
 
 			Serializers::serialize(*serializer_, "sprites", data.spriteMgr.sprites());
 		}
+	}
+
+	const unsigned int numScripts = data.scriptMgr.scripts().size();
+	if (numScripts > 0)
+	{
+		serializer_->buffer().append("\n");
+		context.scriptHash = nctl::makeUnique<nctl::HashMap<const Script *, unsigned int>>(numScripts * 2);
+
+		for (unsigned int i = 0; i < numScripts; i++)
+			context.scriptHash->insert(data.scriptMgr.scripts()[i].get(), i);
+
+		Serializers::serialize(*serializer_, "scripts", data.scriptMgr.scripts());
 	}
 
 	nctl::Array<const IAnimation *> anims;

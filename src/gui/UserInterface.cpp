@@ -3,6 +3,7 @@
 #include <ncine/Application.h>
 #include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
+#include <ncine/LuaStateManager.h>
 
 #include "singletons.h"
 #include "gui/gui_labels.h"
@@ -16,12 +17,15 @@
 #include "SequentialAnimationGroup.h"
 #include "GridAnimation.h"
 #include "GridFunctionLibrary.h"
+#include "Script.h"
+#include "ScriptAnimation.h"
 #include "Sprite.h"
 #include "Texture.h"
+#include "ScriptManager.h"
 
 #include "version.h"
 #include <ncine/version.h>
-#include "script_strings.h"
+#include "project_strings.h"
 
 namespace {
 
@@ -34,8 +38,8 @@ const char *easingCurveTypes[] = { "Linear", "Quadratic", "Cubic", "Quartic", "Q
 const char *easingCurveDirections[] = { "Forward", "Backward" };
 const char *easingCurveLoopModes[] = { "Disabled", "Rewind", "Ping Pong" };
 
-const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid" };
-enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID };
+const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid", "Script" };
+enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID, SCRIPT };
 // clang-format on
 
 static const int PlotArraySize = 512;
@@ -58,8 +62,9 @@ static int numFrames = 0;
 ///////////////////////////////////////////////////////////
 
 UserInterface::UserInterface()
-    : selectedSpriteIndex_(0), selectedTextureIndex_(0), selectedAnimation_(&theAnimMgr->animGroup()),
-      spriteGraph_(4), renderGuiWindow_(*this), saverData_(*theCanvas, *theSpriteMgr, *theAnimMgr)
+    : selectedSpriteIndex_(0), selectedTextureIndex_(0), selectedScriptIndex_(0),
+      selectedAnimation_(&theAnimMgr->animGroup()), spriteGraph_(4), renderGuiWindow_(*this),
+      saverData_(*theCanvas, *theSpriteMgr, *theScriptingMgr, *theAnimMgr)
 {
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -93,11 +98,11 @@ UserInterface::UserInterface()
 
 	canvasGuiSection_.setResize(theCanvas->size());
 
-	if (theCfg.startupScriptName.isEmpty() == false)
+	if (theCfg.startupProjectName.isEmpty() == false)
 	{
-		const nctl::String startupScript = nc::fs::joinPath(theCfg.scriptsPath, theCfg.startupScriptName);
-		if (nc::fs::isReadableFile(startupScript.data()))
-			openProject(startupScript.data());
+		const nctl::String startupProject = nc::fs::joinPath(theCfg.projectsPath, theCfg.startupProjectName);
+		if (nc::fs::isReadableFile(startupProject.data()))
+			openProject(startupProject.data());
 	}
 	if (theCfg.autoPlayOnStart)
 		theAnimMgr->play();
@@ -168,6 +173,7 @@ void UserInterface::moveSprite(int xDiff, int yDiff)
 bool UserInterface::menuNewEnabled()
 {
 	return (theAnimMgr->anims().isEmpty() == false ||
+	        theScriptingMgr->scripts().isEmpty() == false ||
 	        theSpriteMgr->sprites().isEmpty() == false ||
 	        theSpriteMgr->textures().isEmpty() == false);
 }
@@ -178,6 +184,7 @@ bool UserInterface::menuSaveEnabled()
 	        nc::fs::isReadableFile(lastLoadedProject_.data()) &&
 	        (theSpriteMgr->textures().isEmpty() == false ||
 	         theSpriteMgr->sprites().isEmpty() == false ||
+	         theScriptingMgr->scripts().isEmpty() == false ||
 	         theAnimMgr->anims().isEmpty() == false));
 }
 
@@ -185,6 +192,7 @@ bool UserInterface::menuSaveAsEnabled()
 {
 	return (theSpriteMgr->textures().isEmpty() == false ||
 	        theSpriteMgr->sprites().isEmpty() == false ||
+	        theScriptingMgr->scripts().isEmpty() == false ||
 	        theAnimMgr->anims().isEmpty() == false);
 }
 
@@ -193,13 +201,14 @@ void UserInterface::menuNew()
 	selectedAnimation_ = nullptr;
 	// Always clear animations before sprites
 	theAnimMgr->clear();
+	theScriptingMgr->scripts().clear();
 	theSpriteMgr->sprites().clear();
 	theSpriteMgr->textures().clear();
 }
 
 void UserInterface::menuOpen()
 {
-	FileDialog::config.directory = theCfg.scriptsPath;
+	FileDialog::config.directory = theCfg.projectsPath;
 	FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
 	FileDialog::config.windowTitle = "Open project file";
 	FileDialog::config.okButton = Labels::Ok;
@@ -215,6 +224,7 @@ bool UserInterface::openProject(const char *filename)
 	{
 		selectedSpriteIndex_ = 0;
 		selectedTextureIndex_ = 0;
+		selectedScriptIndex_ = 0;
 		selectedAnimation_ = &theAnimMgr->animGroup();
 
 		canvasGuiSection_.setResize(theCanvas->size());
@@ -239,7 +249,7 @@ void UserInterface::menuSave()
 
 void UserInterface::menuSaveAs()
 {
-	FileDialog::config.directory = theCfg.scriptsPath;
+	FileDialog::config.directory = theCfg.projectsPath;
 	FileDialog::config.windowIcon = Labels::FileDialog_SaveIcon;
 	FileDialog::config.windowTitle = "Save project file";
 	FileDialog::config.okButton = Labels::Ok;
@@ -276,6 +286,16 @@ void UserInterface::toggleAnimation()
 	}
 }
 
+void UserInterface::reloadScript()
+{
+	if (theScriptingMgr->scripts().isEmpty() == false)
+	{
+		Script *script = theScriptingMgr->scripts()[selectedScriptIndex_].get();
+		script->reload();
+		theAnimMgr->reloadScript(script);
+	}
+}
+
 void UserInterface::createGui()
 {
 	if (lastStatus_.secondsSince() >= 2.0f)
@@ -288,6 +308,7 @@ void UserInterface::createGui()
 	if (numFrames == 1)
 		ImGui::SetNextWindowFocus();
 	createSpritesWindow();
+	createScriptsWindow();
 	createAnimationsWindow();
 
 	if (numFrames == 1)
@@ -378,6 +399,7 @@ void UserInterface::createInitialDocking()
 
 	ImGui::DockBuilderDockWindow(Labels::Textures, dockIdLeft);
 	ImGui::DockBuilderDockWindow(Labels::Sprites, dockIdLeft);
+	ImGui::DockBuilderDockWindow(Labels::Scripts, dockIdLeft);
 	ImGui::DockBuilderDockWindow(Labels::Animations, dockIdLeftDown);
 
 	ImGui::DockBuilderDockWindow(Labels::Canvas, dockMainId);
@@ -410,18 +432,18 @@ void UserInterface::createMenuBar()
 			if (ImGui::MenuItem(Labels::Open, "CTRL + O"))
 				menuOpen();
 
-			const bool openBundledEnabled = ScriptStrings::Count > 0;
+			const bool openBundledEnabled = ProjectStrings::Count > 0;
 			if (ImGui::BeginMenu(Labels::OpenBundled, openBundledEnabled))
 			{
-				for (unsigned int i = 0; i < ScriptStrings::Count; i++)
+				for (unsigned int i = 0; i < ProjectStrings::Count; i++)
 				{
-					if (ImGui::MenuItem(ScriptStrings::Names[i]))
+					if (ImGui::MenuItem(ProjectStrings::Names[i]))
 					{
 #ifdef __ANDROID__
-						// Bundled scripts on Android are always part of the assets
-						ui::auxString.assign(nc::fs::joinPath("asset::scripts", ScriptStrings::Names[i]).data());
+						// Bundled projects on Android are always part of the assets
+						ui::auxString.assign(nc::fs::joinPath("asset::projects", ProjectStrings::Names[i]).data());
 #else
-						ui::auxString.assign(nc::fs::joinPath(theCfg.scriptsPath, ScriptStrings::Names[i]).data());
+						ui::auxString.assign(nc::fs::joinPath(theCfg.projectsPath, ProjectStrings::Names[i]).data());
 #endif
 						if (openProject(ui::auxString.data()))
 							numFrames = 0; // force focus on the canvas
@@ -676,6 +698,68 @@ void UserInterface::createSpritesWindow()
 	ImGui::End();
 }
 
+void UserInterface::createScriptsWindow()
+{
+	ImGui::Begin(Labels::Scripts);
+
+	if (ImGui::Button(Labels::Load))
+	{
+		FileDialog::config.directory = theCfg.scriptsPath;
+		FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
+		FileDialog::config.windowTitle = "Load script file";
+		FileDialog::config.okButton = Labels::Ok;
+		FileDialog::config.selectionType = FileDialog::SelectionType::FILE;
+		FileDialog::config.extensions = "lua\0\0";
+		FileDialog::config.action = FileDialog::Action::LOAD_SCRIPT;
+		FileDialog::config.windowOpen = true;
+	}
+
+	ImGui::SameLine();
+
+	if (theScriptingMgr->scripts().isEmpty() == false &&
+	    (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
+	{
+		Script *selectedScript = theScriptingMgr->scripts()[selectedScriptIndex_].get();
+		theAnimMgr->removeScript(selectedScript);
+
+		theScriptingMgr->scripts().removeAt(selectedScriptIndex_);
+		if (selectedScriptIndex_ > 0)
+			selectedScriptIndex_--;
+	}
+
+	if (theScriptingMgr->scripts().isEmpty() == false)
+	{
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Reload))
+			reloadScript();
+
+		ImGui::Separator();
+		for (unsigned int i = 0; i < theScriptingMgr->scripts().size(); i++)
+		{
+			Script &script = *theScriptingMgr->scripts()[i];
+			ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+			if (i == selectedScriptIndex_)
+				nodeFlags |= ImGuiTreeNodeFlags_Selected;
+
+			ui::auxString.format("#%u: \"%s\" %s", i, nc::fs::baseName(script.name().data()).data(), script.canRun() ? Labels::CheckIcon : Labels::TimesIcon);
+			ImGui::TreeNodeEx(static_cast<void *>(&script), nodeFlags, "%s", ui::auxString.data());
+			if (ImGui::IsItemClicked())
+				selectedScriptIndex_ = i;
+
+			if (ImGui::IsItemHovered() && script.canRun() == false)
+			{
+				ImGui::BeginTooltip();
+				ImGui::PushTextWrapPos(450.0f);
+				ImGui::TextColored(ImVec4(0.925f, 0.243f, 0.251f, 1.0f), "%s", script.errorMsg());
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+		}
+	}
+
+	ImGui::End();
+}
+
 struct DragAnimationPayload
 {
 	AnimationGroup &parent;
@@ -732,6 +816,20 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 				ui::auxString.formatAppend(" %s", Labels::LockedAnimIcon);
 		}
 	}
+	else if (anim.type() == IAnimation::Type::SCRIPT)
+	{
+		ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+		ui::auxString.append("Script");
+		if (scriptAnim.sprite() != nullptr)
+		{
+			if (scriptAnim.sprite()->name.isEmpty() == false)
+				ui::auxString.formatAppend(" for sprite \"%s\"", scriptAnim.sprite()->name.data());
+			if (scriptAnim.sprite() == theSpriteMgr->sprites()[selectedSpriteIndex_].get())
+				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
+			if (scriptAnim.isLocked())
+				ui::auxString.formatAppend(" %s", Labels::LockedAnimIcon);
+		}
+	}
 	if (anim.name.isEmpty() == false)
 		ui::auxString.append(")");
 
@@ -762,6 +860,11 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		{
 			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
 			spriteIndex = theSpriteMgr->spriteIndex(gridAnim.sprite());
+		}
+		else if (anim.type() == IAnimation::Type::SCRIPT)
+		{
+			ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+			spriteIndex = theSpriteMgr->spriteIndex(scriptAnim.sprite());
 		}
 		if (spriteIndex >= 0)
 			selectedSpriteIndex_ = spriteIndex;
@@ -886,6 +989,15 @@ void UserInterface::createAnimationsWindow()
 				break;
 			case AnimationTypesEnum::GRID:
 				anims->insertAt(++selectedIndex, nctl::makeUnique<GridAnimation>(selectedSprite));
+				break;
+			case AnimationTypesEnum::SCRIPT:
+				Script *selectedScript = nullptr;
+				if (theScriptingMgr->scripts().isEmpty() == false &&
+				    selectedScriptIndex_ >= 0 && selectedScriptIndex_ <= theScriptingMgr->scripts().size() - 1)
+				{
+					selectedScript = theScriptingMgr->scripts()[selectedScriptIndex_].get();
+				}
+				anims->insertAt(++selectedIndex, nctl::makeUnique<ScriptAnimation>(selectedSprite, selectedScript));
 				break;
 		}
 		(*anims)[selectedIndex]->setParent(parent);
@@ -1248,6 +1360,11 @@ void UserInterface::createAnimationWindow()
 			GridAnimation &gridAnim = static_cast<GridAnimation &>(*selectedAnimation_);
 			createGridAnimationGui(gridAnim);
 		}
+		else if (anim.type() == IAnimation::Type::SCRIPT)
+		{
+			ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(*selectedAnimation_);
+			createScriptAnimationGui(scriptAnim);
+		}
 		else if (anim.type() == IAnimation::Type::SEQUENTIAL_GROUP)
 		{
 			SequentialAnimationGroup &sequentialAnim = static_cast<SequentialAnimationGroup &>(*selectedAnimation_);
@@ -1539,6 +1656,83 @@ void UserInterface::createGridAnimationGui(GridAnimation &anim)
 	createCurveAnimationGui(anim, limits);
 }
 
+void UserInterface::createScriptAnimationGui(ScriptAnimation &anim)
+{
+	CurveAnimationGuiLimits limits;
+	limits.minScale = -10.0f;
+	limits.maxScale = 10.0f;
+	limits.minShift = -100.0f;
+	limits.maxShift = 100.0f;
+
+	ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
+	                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+	ImGui::Separator();
+
+	if (theSpriteMgr->sprites().isEmpty() == false)
+	{
+		int spriteIndex = theSpriteMgr->spriteIndex(anim.sprite());
+		// Assign to current sprite if none was assigned before
+		if (spriteIndex < 0)
+			spriteIndex = selectedSpriteIndex_;
+
+		ui::comboString.clear();
+		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+		{
+			Sprite &sprite = *theSpriteMgr->sprites()[i];
+			ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+			ui::comboString.setLength(ui::comboString.length() + 1);
+		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		// Also assign if no sprite was assigned before
+		if (ImGui::Combo("Sprite", &spriteIndex, ui::comboString.data()) || anim.sprite() == nullptr)
+		{
+			anim.setSprite(theSpriteMgr->sprites()[spriteIndex].get());
+			selectedSpriteIndex_ = spriteIndex;
+		}
+	}
+	else
+		ImGui::TextDisabled("There are no sprites to animate");
+
+	int scriptIndex = theScriptingMgr->scriptIndex(anim.script());
+	if (theScriptingMgr->scripts().isEmpty() == false)
+	{
+		// Assign to current script if none was assigned before
+		if (scriptIndex < 0)
+			scriptIndex = selectedScriptIndex_;
+
+		ui::comboString.clear();
+		for (unsigned int i = 0; i < theScriptingMgr->scripts().size(); i++)
+		{
+			Script &script = *theScriptingMgr->scripts()[i];
+			ui::comboString.formatAppend("#%u: \"%s\" %s", i, nc::fs::baseName(script.name().data()).data(),
+			                             script.canRun() ? Labels::CheckIcon : Labels::TimesIcon);
+			ui::comboString.setLength(ui::comboString.length() + 1);
+		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		// Also assign if no script was assigned before
+		if (ImGui::Combo("Script", &scriptIndex, ui::comboString.data()) || anim.script() == nullptr)
+		{
+			anim.setScript(theScriptingMgr->scripts()[scriptIndex].get());
+			selectedScriptIndex_ = scriptIndex;
+		}
+
+		ImGui::SameLine();
+		bool isLocked = anim.isLocked();
+		ImGui::Checkbox(Labels::Locked, &isLocked);
+		anim.setLocked(isLocked);
+	}
+	else
+		ImGui::TextDisabled("There are no scripts to use for animation");
+
+	createCurveAnimationGui(anim, limits);
+}
+
 void UserInterface::createFileDialog()
 {
 	static nctl::String selection = nctl::String(nc::fs::MaxPathLength);
@@ -1589,6 +1783,39 @@ void UserInterface::createFileDialog()
 				else
 				{
 					ui::auxString.format("Cannot load texture \"%s\"", selection.data());
+					pushStatusErrorMessage(ui::auxString.data());
+				}
+
+				break;
+			}
+			case FileDialog::Action::LOAD_SCRIPT:
+			{
+				nctl::UniquePtr<Script> script = nctl::makeUnique<Script>();
+				const bool hasLoaded = script->load(selection.data());
+
+				theScriptingMgr->scripts().pushBack(nctl::move(script));
+				// Set the relative path as the script name to allow for relocatable project files
+				nctl::String baseName = nc::fs::baseName(selection.data());
+				if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.scriptsPath, baseName.data()).data()))
+					theScriptingMgr->scripts().back()->setName(baseName);
+				selectedScriptIndex_ = theScriptingMgr->scripts().size() - 1;
+
+				if (hasLoaded)
+				{
+					if (theScriptingMgr->scripts().back()->canRun())
+					{
+						ui::auxString.format("Loaded script \"%s\"", selection.data());
+						pushStatusInfoMessage(ui::auxString.data());
+					}
+					else
+					{
+						ui::auxString.format("Loaded script \"%s\", but it cannot run", selection.data());
+						pushStatusErrorMessage(ui::auxString.data());
+					}
+				}
+				else
+				{
+					ui::auxString.format("Cannot load script \"%s\"", selection.data());
 					pushStatusErrorMessage(ui::auxString.data());
 				}
 

@@ -2,6 +2,8 @@
 #include "Sprite.h"
 #include "Texture.h"
 #include "RenderingResources.h"
+#include "AnimationManager.h"
+#include "singletons.h"
 #include <ncine/Matrix4x4.h>
 #include <ncine/RenderResources.h>
 #include <ncine/GLShaderProgram.h>
@@ -208,6 +210,8 @@ void Sprite::setTexRect(const nc::Recti &rect)
 		flippingTexRect_.y += flippingTexRect_.h;
 		flippingTexRect_.h *= -1;
 	}
+
+	theAnimMgr->initScriptsForSprite(this);
 }
 
 void Sprite::loadTexture(const char *filename)

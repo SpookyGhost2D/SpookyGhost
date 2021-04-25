@@ -3,7 +3,9 @@
 #include "PropertyAnimation.h"
 #include "GridAnimation.h"
 #include "GridFunction.h"
+#include "ScriptAnimation.h"
 #include "Sprite.h"
+#include "Script.h"
 
 namespace {
 
@@ -27,6 +29,13 @@ void resetAnimation(IAnimation &anim)
 			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
 			gridAnim.setSprite(nullptr);
 			gridAnim.stop();
+			break;
+		}
+		case IAnimation::Type::SCRIPT:
+		{
+			ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+			scriptAnim.setSprite(nullptr);
+			scriptAnim.stop();
 			break;
 		}
 	}
@@ -97,6 +106,17 @@ void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 				}
 				break;
 			}
+			case IAnimation::Type::SCRIPT:
+			{
+				ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+				if (scriptAnim.sprite() == sprite)
+				{
+					scriptAnim.setSprite(nullptr);
+					scriptAnim.stop();
+					animGroup.anims().removeAt(i);
+				}
+				break;
+			}
 		}
 	}
 }
@@ -117,6 +137,7 @@ void recursiveAssignGridAnchorToParameters(AnimationGroup &animGroup, Sprite *sp
 				break;
 			}
 			case IAnimation::Type::PROPERTY:
+			case IAnimation::Type::SCRIPT:
 				break;
 			case IAnimation::Type::GRID:
 			{
@@ -136,6 +157,106 @@ void recursiveAssignGridAnchorToParameters(AnimationGroup &animGroup, Sprite *sp
 							gridAnim.parameters()[paramIndex].value1 = gridAnim.sprite()->gridAnchorPoint.y;
 						}
 					}
+				}
+				break;
+			}
+		}
+	}
+}
+
+void recursiveRemoveScript(AnimationGroup &animGroup, Script *script)
+{
+	// Deleting backwards without iterators
+	for (int i = animGroup.anims().size() - 1; i >= 0; i--)
+	{
+		IAnimation &anim = *animGroup.anims()[i];
+
+		switch (anim.type())
+		{
+			case IAnimation::Type::PARALLEL_GROUP:
+			case IAnimation::Type::SEQUENTIAL_GROUP:
+			{
+				AnimationGroup &innerGroup = static_cast<AnimationGroup &>(anim);
+				recursiveRemoveScript(innerGroup, script);
+				break;
+			}
+			case IAnimation::Type::PROPERTY:
+			case IAnimation::Type::GRID:
+				break;
+			case IAnimation::Type::SCRIPT:
+			{
+				ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+				if (scriptAnim.script() == script)
+				{
+					scriptAnim.setSprite(nullptr);
+					scriptAnim.setScript(nullptr);
+					scriptAnim.stop();
+					animGroup.anims().removeAt(i);
+				}
+				break;
+			}
+		}
+	}
+}
+
+void recursiveReloadScript(AnimationGroup &animGroup, Script *script)
+{
+	for (unsigned int i = 0; i < animGroup.anims().size(); i++)
+	{
+		IAnimation &anim = *animGroup.anims()[i];
+
+		switch (anim.type())
+		{
+			case IAnimation::Type::PARALLEL_GROUP:
+			case IAnimation::Type::SEQUENTIAL_GROUP:
+			{
+				AnimationGroup &innerGroup = static_cast<AnimationGroup &>(anim);
+				recursiveReloadScript(innerGroup, script);
+				break;
+			}
+			case IAnimation::Type::PROPERTY:
+			case IAnimation::Type::GRID:
+				break;
+			case IAnimation::Type::SCRIPT:
+			{
+				ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+				if (scriptAnim.script() == script)
+				{
+					const IAnimation::State prevState = scriptAnim.state();
+					// Call `play()` again to run the Lua init function
+					scriptAnim.play();
+					if (prevState != IAnimation::State::PLAYING)
+						scriptAnim.stop();
+				}
+				break;
+			}
+		}
+	}
+}
+
+void recursiveInitScriptsForSprite(AnimationGroup &animGroup, Sprite *sprite)
+{
+	for (unsigned int i = 0; i < animGroup.anims().size(); i++)
+	{
+		IAnimation &anim = *animGroup.anims()[i];
+
+		switch (anim.type())
+		{
+			case IAnimation::Type::PARALLEL_GROUP:
+			case IAnimation::Type::SEQUENTIAL_GROUP:
+			case IAnimation::Type::PROPERTY:
+			case IAnimation::Type::GRID:
+				break;
+			case IAnimation::Type::SCRIPT:
+			{
+				ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+				if (scriptAnim.sprite() == sprite)
+				{
+					const IAnimation::State prevState = scriptAnim.state();
+					// Call `play()` again to run the Lua init function
+					scriptAnim.play();
+					if (prevState != IAnimation::State::PLAYING)
+						scriptAnim.stop();
 				}
 				break;
 			}
@@ -188,4 +309,22 @@ void AnimationManager::removeSprite(Sprite *sprite)
 void AnimationManager::assignGridAnchorToParameters(Sprite *sprite)
 {
 	recursiveAssignGridAnchorToParameters(*animGroup_, sprite);
+}
+
+void AnimationManager::removeScript(Script *script)
+{
+	if (script != nullptr)
+		recursiveRemoveScript(*animGroup_, script);
+}
+
+void AnimationManager::reloadScript(Script *script)
+{
+	if (script != nullptr)
+		recursiveReloadScript(*animGroup_, script);
+}
+
+void AnimationManager::initScriptsForSprite(Sprite *sprite)
+{
+	if (sprite != nullptr)
+		recursiveInitScriptsForSprite(*animGroup_, sprite);
 }

@@ -32,6 +32,9 @@ set(PACKAGE_SOURCES
 	include/LuaSerializer.h
 	include/LuaSaver.h
 	include/Serializers.h
+	include/Script.h
+	include/ScriptManager.h
+	include/ScriptAnimation.h
 
 	include/gui/gui_labels.h
 	include/gui/gui_common.h
@@ -61,6 +64,9 @@ set(PACKAGE_SOURCES
 	src/LuaSerializer.cpp
 	src/LuaSaver.cpp
 	src/Serializers.cpp
+	src/Script.cpp
+	src/ScriptManager.cpp
+	src/ScriptAnimation.cpp
 
 	src/gui/gui_common.cpp
 	src/gui/UserInterface.cpp
@@ -107,7 +113,7 @@ function(callback_after_target)
 
 	include(custom_iconfontcppheaders)
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android" AND IS_DIRECTORY ${PACKAGE_DATA_DIR})
-		generate_scripts_list()
+		generate_projects_list()
 
 		include(custom_fontawesome)
 		if(CUSTOM_WITH_FONTAWESOME)
@@ -117,7 +123,8 @@ function(callback_after_target)
 			set(CONFIG_FILE ${PACKAGE_DATA_DIR}/data/config.lua)
 		endif()
 		file(GLOB TEXTURE_FILES "${PACKAGE_DATA_DIR}/data/*.png")
-		set(PACKAGE_ANDROID_ASSETS ${CONFIG_FILE} ${FONT_FILES} ${SCRIPT_FILES} ${TEXTURE_FILES} CACHE STRING "" FORCE)
+		file(GLOB SCRIPT_FILES "${PACKAGE_DATA_DIR}/data/scripts/*.lua")
+		set(PACKAGE_ANDROID_ASSETS ${CONFIG_FILE} ${FONT_FILES} ${PROJECT_FILES} ${TEXTURE_FILES} ${SCRIPT_FILES} CACHE STRING "" FORCE)
 	endif()
 
 	if(CMAKE_SYSTEM_NAME STREQUAL "Android" AND CUSTOM_WITH_FONTAWESOME)
@@ -151,36 +158,36 @@ function(callback_end)
 	endif()
 endfunction()
 
-function(generate_scripts_list)
-	set(SCRIPTS_DIR ${PACKAGE_DATA_DIR}/data/scripts)
-	set(NUM_SCRIPTS 0)
-	if(IS_DIRECTORY ${SCRIPTS_DIR})
-		file(GLOB SCRIPT_FILES "${SCRIPTS_DIR}/*.lua")
-		list(LENGTH SCRIPT_FILES NUM_SCRIPTS)
-		set(SCRIPT_FILES ${SCRIPT_FILES} PARENT_SCOPE)
+function(generate_projects_list)
+	set(PROJECTS_DIR ${PACKAGE_DATA_DIR}/data/projects)
+	set(NUM_PROJECTS 0)
+	if(IS_DIRECTORY ${PROJECTS_DIR})
+		file(GLOB PROJECT_FILES "${PROJECTS_DIR}/*.lua")
+		list(LENGTH PROJECT_FILES NUM_PROJECTS)
+		set(PROJECT_FILES ${PROJECT_FILES} PARENT_SCOPE)
 	endif()
 
-	set(SCRIPTS_H_FILE "${GENERATED_INCLUDE_DIR}/script_strings.h")
-	set(SCRIPTS_CPP_FILE "${GENERATED_SOURCE_DIR}/script_strings.cpp")
+	set(PROJECTS_H_FILE "${GENERATED_INCLUDE_DIR}/project_strings.h")
+	set(PROJECTS_CPP_FILE "${GENERATED_SOURCE_DIR}/project_strings.cpp")
 
-	get_filename_component(SCRIPTS_H_FILENAME ${SCRIPTS_H_FILE} NAME)
-	file(WRITE ${SCRIPTS_H_FILE} "#ifndef PACKAGE_SCRIPT_STRINGS\n")
-	file(APPEND ${SCRIPTS_H_FILE} "#define PACKAGE_SCRIPT_STRINGS\n\n")
-	file(APPEND ${SCRIPTS_H_FILE} "struct ScriptStrings\n{\n")
-	file(APPEND ${SCRIPTS_H_FILE} "\tstatic const int Count = ${NUM_SCRIPTS};\n")
-	file(APPEND ${SCRIPTS_H_FILE} "\tstatic char const * const Names[Count];\n};\n\n")
-	file(APPEND ${SCRIPTS_H_FILE} "#endif\n")
+	get_filename_component(PROJECTS_H_FILENAME ${PROJECTS_H_FILE} NAME)
+	file(WRITE ${PROJECTS_H_FILE} "#ifndef PACKAGE_PROJECT_STRINGS\n")
+	file(APPEND ${PROJECTS_H_FILE} "#define PACKAGE_PROJECT_STRINGS\n\n")
+	file(APPEND ${PROJECTS_H_FILE} "struct ProjectStrings\n{\n")
+	file(APPEND ${PROJECTS_H_FILE} "\tstatic const int Count = ${NUM_PROJECTS};\n")
+	file(APPEND ${PROJECTS_H_FILE} "\tstatic char const * const Names[Count];\n};\n\n")
+	file(APPEND ${PROJECTS_H_FILE} "#endif\n")
 
-	file(WRITE ${SCRIPTS_CPP_FILE} "#include \"${SCRIPTS_H_FILENAME}\"\n\n")
-	file(APPEND ${SCRIPTS_CPP_FILE} "char const * const ScriptStrings::Names[ScriptStrings::Count] =\n")
-	file(APPEND ${SCRIPTS_CPP_FILE} "{\n")
-	foreach(SCRIPT_FILE ${SCRIPT_FILES})
-		get_filename_component(SCRIPT_FILENAME ${SCRIPT_FILE} NAME)
-		file(APPEND ${SCRIPTS_CPP_FILE} "\t\"${SCRIPT_FILENAME}\",\n")
+	file(WRITE ${PROJECTS_CPP_FILE} "#include \"${PROJECTS_H_FILENAME}\"\n\n")
+	file(APPEND ${PROJECTS_CPP_FILE} "char const * const ProjectStrings::Names[ProjectStrings::Count] =\n")
+	file(APPEND ${PROJECTS_CPP_FILE} "{\n")
+	foreach(PROJECT_FILE ${PROJECT_FILES})
+		get_filename_component(PROJECT_FILENAME ${PROJECT_FILE} NAME)
+		file(APPEND ${PROJECTS_CPP_FILE} "\t\"${PROJECT_FILENAME}\",\n")
 	endforeach()
-	file(APPEND ${SCRIPTS_CPP_FILE} "};\n")
+	file(APPEND ${PROJECTS_CPP_FILE} "};\n")
 
-	target_sources(${PACKAGE_EXE_NAME} PRIVATE ${SCRIPTS_H_FILE} ${SCRIPTS_CPP_FILE})
-	list(APPEND GENERATED_SOURCES ${SCRIPTS_CPP_FILE})
+	target_sources(${PACKAGE_EXE_NAME} PRIVATE ${PROJECTS_H_FILE} ${PROJECTS_CPP_FILE})
+	list(APPEND GENERATED_SOURCES ${PROJECTS_CPP_FILE})
 	set(GENERATED_SOURCES ${GENERATED_SOURCES} PARENT_SCOPE)
 endfunction()

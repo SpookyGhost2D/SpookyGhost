@@ -115,15 +115,17 @@ void UserInterface::createConfigWindow()
 		theCfg.guiScaling = 1.0f;
 	ImGui::GetIO().FontGlobalScale = theCfg.guiScaling;
 
-	ImGui::InputText("Start-up Script", theCfg.startupScriptName.data(), ui::MaxStringLength,
-	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.startupScriptName);
+	ImGui::InputText("Start-up Project", theCfg.startupProjectName.data(), ui::MaxStringLength,
+	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.startupProjectName);
 	ImGui::Checkbox("Auto Play On Start", &theCfg.autoPlayOnStart);
 
 	ImGui::NewLine();
-	ImGui::InputText("Scripts Path", theCfg.scriptsPath.data(), ui::MaxStringLength,
-	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.scriptsPath);
+	ImGui::InputText("Projects Path", theCfg.projectsPath.data(), ui::MaxStringLength,
+	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.projectsPath);
 	ImGui::InputText("Textures Path", theCfg.texturesPath.data(), ui::MaxStringLength,
 	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.texturesPath);
+	ImGui::InputText("Scripts Path", theCfg.scriptsPath.data(), ui::MaxStringLength,
+	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.scriptsPath);
 
 	sanitizeConfigValues();
 

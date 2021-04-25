@@ -9,6 +9,7 @@ class SpriteManager;
 class AnimationManager;
 class UserInterface;
 class LuaSaver;
+class ScriptManager;
 
 extern Configuration theCfg;
 extern nctl::UniquePtr<Canvas> theCanvas;
@@ -17,5 +18,6 @@ extern nctl::UniquePtr<Canvas> theSpritesheet;
 extern nctl::UniquePtr<SpriteManager> theSpriteMgr;
 extern nctl::UniquePtr<AnimationManager> theAnimMgr;
 extern nctl::UniquePtr<LuaSaver> theSaver;
+extern nctl::UniquePtr<ScriptManager> theScriptingMgr;
 
 #endif

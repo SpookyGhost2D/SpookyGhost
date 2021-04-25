@@ -23,6 +23,7 @@
 #include "ParallelAnimationGroup.h"
 #include "SequentialAnimationGroup.h"
 #include "LuaSaver.h"
+#include "ScriptManager.h"
 
 #include <ncine/Application.h>
 #include <ncine/FileSystem.h>
@@ -55,6 +56,12 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 		const bool dirCreated = nc::fs::createDir(ui::androidSaveDir.data());
 		LOGI_X("Android save directory \"%s\" created: %s", ui::androidSaveDir.data(), dirCreated ? "true" : "false");
 	}
+	ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "projects");
+	if (nc::fs::isDirectory(ui::auxString.data()) == false)
+	{
+		const bool dirCreated = nc::fs::createDir(ui::auxString.data());
+		LOGI_X("Android projects directory \"%s\" created: %s", ui::auxString.data(), dirCreated ? "true" : "false");
+	}
 	ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "scripts");
 	if (nc::fs::isDirectory(ui::auxString.data()) == false)
 	{
@@ -74,15 +81,19 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	}
 
 #ifdef __ANDROID__
-	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
-		theCfg.scriptsPath = nc::fs::joinPath(ui::androidSaveDir, "scripts");
+	if (nc::fs::isDirectory(theCfg.projectsPath.data()) == false)
+		theCfg.projectsPath = nc::fs::joinPath(ui::androidSaveDir, "projects");
 	if (nc::fs::isDirectory(theCfg.texturesPath.data()) == false)
 		theCfg.texturesPath = ui::androidSaveDir;
-#else
 	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
-		theCfg.scriptsPath = nc::fs::joinPath(nc::fs::dataPath(), "scripts");
+		theCfg.scriptsPath = nc::fs::joinPath(ui::androidSaveDir, "scripts");
+#else
+	if (nc::fs::isDirectory(theCfg.projectsPath.data()) == false)
+		theCfg.projectsPath = nc::fs::joinPath(nc::fs::dataPath(), "projects");
 	if (nc::fs::isDirectory(theCfg.texturesPath.data()) == false)
 		theCfg.texturesPath = nc::fs::dataPath();
+	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
+		theCfg.scriptsPath = nc::fs::joinPath(nc::fs::dataPath(), "scripts");
 #endif
 
 	config.resolution.set(theCfg.width, theCfg.height);
@@ -112,6 +123,7 @@ void MyEventHandler::onInit()
 	theSpriteMgr = nctl::makeUnique<SpriteManager>();
 	theAnimMgr = nctl::makeUnique<AnimationManager>();
 	theSaver = nctl::makeUnique<LuaSaver>(theCfg.saveFileMaxSize);
+	theScriptingMgr = nctl::makeUnique<ScriptManager>();
 
 	ui_ = nctl::makeUnique<UserInterface>();
 }
@@ -193,6 +205,8 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 
 	if (event.sym == nc::KeySym::F1 && ui_->openDocumentationEnabled())
 		ui_->openDocumentation();
+	if (event.sym == nc::KeySym::F5)
+		ui_->reloadScript();
 	if (event.sym == nc::KeySym::SPACE)
 		ui_->toggleAnimation();
 	else if (event.sym == nc::KeySym::DELETE)

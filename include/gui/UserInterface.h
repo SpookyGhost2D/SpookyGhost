@@ -19,6 +19,7 @@ class AnimationGroup;
 class CurveAnimation;
 class PropertyAnimation;
 class GridAnimation;
+class ScriptAnimation;
 class Texture;
 class Sprite;
 
@@ -53,6 +54,7 @@ class UserInterface
 	bool openDocumentationEnabled();
 	void openDocumentation();
 	void toggleAnimation();
+	void reloadScript();
 
 	void createGui();
 
@@ -105,6 +107,7 @@ class UserInterface
 	SpriteProperties spriteProps_;
 	int selectedSpriteIndex_;
 	int selectedTextureIndex_;
+	int selectedScriptIndex_;
 	IAnimation *selectedAnimation_;
 
 	/// Used to keep track of which node can be the parent of the selected one
@@ -129,6 +132,7 @@ class UserInterface
 	void createToolbarWindow();
 	void createTexturesWindow();
 	void createSpritesWindow();
+	void createScriptsWindow();
 	void createAnimationListEntry(IAnimation &anim, unsigned int index);
 	void createAnimationsWindow();
 
@@ -138,6 +142,7 @@ class UserInterface
 	void createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits);
 	void createPropertyAnimationGui(PropertyAnimation &anim);
 	void createGridAnimationGui(GridAnimation &anim);
+	void createScriptAnimationGui(ScriptAnimation &anim);
 
 	void createFileDialog();
 	void createCanvasWindow();

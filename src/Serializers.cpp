@@ -2,11 +2,14 @@
 #include "Canvas.h"
 #include "Texture.h"
 #include "Sprite.h"
+#include "Script.h"
+#include "ScriptManager.h"
 #include "ParallelAnimationGroup.h"
 #include "SequentialAnimationGroup.h"
 #include "PropertyAnimation.h"
 #include "GridAnimation.h"
 #include "GridFunction.h"
+#include "ScriptAnimation.h"
 #include "AnimationManager.h"
 #include "Configuration.h"
 #include "singletons.h"
@@ -90,6 +93,17 @@ void serialize(LuaSerializer &ls, const Sprite &sprite)
 	ls.buffer().append("},\n");
 }
 
+void serialize(LuaSerializer &ls, const Script &script)
+{
+	ls.buffer().append("{\n");
+	ls.indent();
+
+	serialize(ls, "name", script.name());
+
+	ls.unindent();
+	ls.buffer().append("},\n");
+}
+
 void serialize(LuaSerializer &ls, const IAnimation *anim)
 {
 	SerializerContext *context = static_cast<SerializerContext *>(ls.context());
@@ -127,6 +141,13 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 			const GridAnimation &gridAnimation = static_cast<const GridAnimation &>(*anim);
 			serialize(ls, "type", "grid_animation");
 			serialize(ls, gridAnimation);
+			break;
+		}
+		case IAnimation::Type::SCRIPT:
+		{
+			const ScriptAnimation &scriptAnimation = static_cast<const ScriptAnimation &>(*anim);
+			serialize(ls, "type", "script_animation");
+			serialize(ls, scriptAnimation);
 			break;
 		}
 	}
@@ -298,6 +319,16 @@ void serialize(LuaSerializer &ls, const GridAnimation &anim)
 	}
 }
 
+void serialize(LuaSerializer &ls, const ScriptAnimation &anim)
+{
+	SerializerContext *context = static_cast<SerializerContext *>(ls.context());
+
+	serializePtr(ls, "sprite", anim.sprite(), *context->spriteHash);
+	serialize(ls, "speed", anim.speed());
+	serialize(ls, "curve", anim.curve());
+	serializePtr(ls, "script", anim.script(), *context->scriptHash);
+}
+
 void serialize(LuaSerializer &ls, const Configuration &cfg)
 {
 	serializeGlobal(ls, "version", cfg.version);
@@ -311,10 +342,11 @@ void serialize(LuaSerializer &ls, const Configuration &cfg)
 	serializeGlobal(ls, "canvas_height", cfg.canvasHeight);
 	serializeGlobal(ls, "gui_scaling", cfg.guiScaling);
 	serializeGlobal(ls, "savefile_maxsize", cfg.saveFileMaxSize);
-	serializeGlobal(ls, "startup_script_name", cfg.startupScriptName);
+	serializeGlobal(ls, "startup_project_name", cfg.startupProjectName);
 	serializeGlobal(ls, "auto_play_on_start", cfg.autoPlayOnStart);
-	serializeGlobal(ls, "scripts_path", cfg.scriptsPath);
+	serializeGlobal(ls, "projects_path", cfg.projectsPath);
 	serializeGlobal(ls, "textures_path", cfg.texturesPath);
+	serializeGlobal(ls, "scripts_path", cfg.scriptsPath);
 }
 
 }
@@ -401,6 +433,26 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite)
 	sprite->setBlendingPreset(deserialize<Sprite::BlendingPreset>(ls, "blending"));
 }
 
+void deserialize(LuaSerializer &ls, nctl::UniquePtr<Script> &script)
+{
+	const char *scriptName = deserialize<const char *>(ls, "name");
+	static nctl::String scriptPath(256);
+
+	// Check first if the filename is relative to the scripts directory
+	scriptPath = nc::fs::joinPath(theCfg.scriptsPath, scriptName);
+#ifdef __ANDROID__
+	// On Android check also for scripts in the assets
+	if (nc::fs::isReadableFile(scriptPath.data()) == false)
+		scriptPath = nc::fs::joinPath("asset::", scriptName);
+#endif
+	if (nc::fs::isReadableFile(scriptPath.data()) == false)
+		scriptPath = scriptName;
+
+	script = nctl::makeUnique<Script>(scriptPath.data());
+	// Set the relative path as the script name to allow for relocatable project files
+	script->setName(scriptName);
+}
+
 template <>
 IAnimation::Type deserialize(LuaSerializer &ls, const char *name)
 {
@@ -415,6 +467,8 @@ IAnimation::Type deserialize(LuaSerializer &ls, const char *name)
 		return IAnimation::Type::PROPERTY;
 	else if (animTypeString == "grid_animation")
 		return IAnimation::Type::GRID;
+	else if (animTypeString == "script_animation")
+		return IAnimation::Type::SCRIPT;
 	else
 		return IAnimation::Type::PARALLEL_GROUP;
 }
@@ -579,6 +633,18 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<GridAnimation> &anim)
 	}
 }
 
+void deserialize(LuaSerializer &ls, nctl::UniquePtr<ScriptAnimation> &anim)
+{
+	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
+
+	Sprite *sprite = deserializePtr(ls, "sprite", *context->sprites);
+	anim->setSprite(sprite);
+	anim->setSpeed(deserialize<float>(ls, "speed"));
+	deserialize(ls, "curve", anim->curve());
+	Script *script = deserializePtr(ls, "script", *context->scripts);
+	anim->setScript(script);
+}
+
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 {
 	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
@@ -614,6 +680,13 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 			anim = nctl::move(gridAnim);
 			break;
 		}
+		case IAnimation::Type::SCRIPT:
+		{
+			nctl::UniquePtr<ScriptAnimation> scriptAnim = nctl::makeUnique<ScriptAnimation>();
+			deserialize(ls, scriptAnim);
+			anim = nctl::move(scriptAnim);
+			break;
+		}
 	}
 
 	deserialize(ls, "name", anim->name);
@@ -643,9 +716,19 @@ void deserialize(LuaSerializer &ls, Configuration &cfg)
 	if (version >= 2)
 		cfg.guiScaling = deserializeGlobal<float>(ls, "gui_scaling");
 
-	deserializeGlobal(ls, "startup_script_name", cfg.startupScriptName);
+	if (version >= 3)
+	{
+		deserializeGlobal(ls, "startup_project_name", cfg.startupProjectName);
+		deserializeGlobal(ls, "projects_path", cfg.projectsPath);
+		deserializeGlobal(ls, "scripts_path", cfg.scriptsPath);
+	}
+	else
+	{
+		deserializeGlobal(ls, "startup_script_name", cfg.startupProjectName);
+		deserializeGlobal(ls, "scripts_path", cfg.projectsPath);
+	}
+
 	cfg.autoPlayOnStart = deserializeGlobal<bool>(ls, "auto_play_on_start");
-	deserializeGlobal(ls, "scripts_path", cfg.scriptsPath);
 	deserializeGlobal(ls, "textures_path", cfg.texturesPath);
 }
 

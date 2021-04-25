@@ -7,6 +7,7 @@ class LuaSerializer;
 class UserInterface;
 class Canvas;
 class SpriteManager;
+class ScriptManager;
 class AnimationManager;
 struct Configuration;
 
@@ -16,11 +17,12 @@ class LuaSaver
   public:
 	struct Data
 	{
-		Data(Canvas &ca, SpriteManager &sm, AnimationManager &am)
-		    : canvas(ca), spriteMgr(sm), animMgr(am) {}
+		Data(Canvas &ca, SpriteManager &spm, ScriptManager &scm, AnimationManager &am)
+		    : canvas(ca), spriteMgr(spm), scriptMgr(scm), animMgr(am) {}
 
 		Canvas &canvas;
 		SpriteManager &spriteMgr;
+		ScriptManager &scriptMgr;
 		AnimationManager &animMgr;
 	};
 

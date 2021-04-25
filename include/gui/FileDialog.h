@@ -31,6 +31,7 @@ class FileDialog
 		OPEN_PROJECT,
 		SAVE_PROJECT,
 		LOAD_TEXTURE,
+		LOAD_SCRIPT,
 		RENDER_DIR
 	};
 

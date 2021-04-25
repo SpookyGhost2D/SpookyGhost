@@ -5,6 +5,7 @@
 #include "AnimationGroup.h"
 
 class Sprite;
+class Script;
 
 /// The animation manager class
 class AnimationManager
@@ -31,6 +32,9 @@ class AnimationManager
 	void removeAnimation(IAnimation *anim);
 	void removeSprite(Sprite *sprite);
 	void assignGridAnchorToParameters(Sprite *sprite);
+	void removeScript(Script *script);
+	void reloadScript(Script *script);
+	void initScriptsForSprite(Sprite *sprite);
 
   private:
 	nctl::UniquePtr<AnimationGroup> animGroup_;

@@ -24,6 +24,7 @@
 #define TEXT_HEADER_TEXRECT "TexRect"
 #define TEXT_HEADER_TEXTURES "Textures"
 #define TEXT_HEADER_SPRITES "Sprites"
+#define TEXT_HEADER_SCRIPTS "Scripts"
 #define TEXT_HEADER_ANIMATIONS "Animations"
 #define TEXT_HEADER_RENDER "Render"
 
@@ -31,6 +32,7 @@
 #define TEXT_HEADER_ANIMATION "Animation"
 
 #define TEXT_LOAD "Load"
+#define TEXT_RELOAD "Reload"
 #define TEXT_RESET "Reset"
 #define TEXT_CLEAR "Clear"
 #define TEXT_APPLY "Apply"
@@ -76,6 +78,7 @@ static const char *Canvas = TEXT_HEADER_CANVAS;
 static const char *TexRect = TEXT_HEADER_TEXRECT;
 static const char *Textures = TEXT_HEADER_TEXTURES;
 static const char *Sprites = TEXT_HEADER_SPRITES;
+static const char *Scripts = TEXT_HEADER_SCRIPTS;
 static const char *Animations = TEXT_HEADER_ANIMATIONS;
 static const char *Render = TEXT_HEADER_RENDER;
 
@@ -83,6 +86,7 @@ static const char *Sprite = TEXT_HEADER_SPRITE;
 static const char *Animation = TEXT_HEADER_ANIMATION;
 
 static const char *Load = TEXT_LOAD;
+static const char *Reload = TEXT_RELOAD;
 static const char *Reset = TEXT_RESET;
 static const char *Clear = TEXT_CLEAR;
 static const char *Apply = TEXT_APPLY;
@@ -108,6 +112,8 @@ static const char *EnabledAnimIcon = "[>]";
 static const char *DisabledAnimIcon = "[ ]";
 static const char *PlusIcon = "+";
 static const char *MinusIcon = "-";
+static const char *CheckIcon = "[v]";
+static const char *TimesIcon = "[x]";
 static const char *SelectedIcon = "[*]";
 static const char *SelectedTextureIcon = "[T]";
 static const char *SelectedSpriteIcon = "[S]";
@@ -157,6 +163,7 @@ static const char *Canvas = ICON_FA_PAINT_ROLLER FA5_SPACING TEXT_HEADER_CANVAS;
 static const char *TexRect = ICON_FA_CROP_ALT FA5_SPACING TEXT_HEADER_TEXRECT;
 static const char *Textures = ICON_FA_IMAGE FA5_SPACING TEXT_HEADER_TEXTURES;
 static const char *Sprites = ICON_FA_GHOST FA5_SPACING TEXT_HEADER_SPRITES;
+static const char *Scripts = ICON_FA_SCROLL FA5_SPACING TEXT_HEADER_SCRIPTS;
 static const char *Animations = ICON_FA_SLIDERS_H FA5_SPACING TEXT_HEADER_ANIMATIONS;
 static const char *Render = ICON_FA_IMAGE FA5_SPACING TEXT_HEADER_RENDER;
 
@@ -164,6 +171,7 @@ static const char *Sprite = ICON_FA_GHOST FA5_SPACING TEXT_HEADER_SPRITE;
 static const char *Animation = ICON_FA_SLIDERS_H FA5_SPACING TEXT_HEADER_ANIMATION;
 
 static const char *Load = ICON_FA_FILE_UPLOAD FA5_SPACING TEXT_LOAD;
+static const char *Reload = ICON_FA_REDO FA5_SPACING TEXT_RELOAD;
 static const char *Reset = ICON_FA_BACKSPACE FA5_SPACING TEXT_RESET;
 static const char *Clear = ICON_FA_BACKSPACE FA5_SPACING TEXT_CLEAR;
 static const char *Apply = ICON_FA_CHECK_CIRCLE FA5_SPACING TEXT_APPLY;
@@ -189,6 +197,8 @@ static const char *EnabledAnimIcon = ICON_FA_PLAY_CIRCLE;
 static const char *DisabledAnimIcon = ICON_FA_STOP_CIRCLE;
 static const char *PlusIcon = ICON_FA_PLUS;
 static const char *MinusIcon = ICON_FA_MINUS;
+static const char *CheckIcon = ICON_FA_CHECK_CIRCLE;
+static const char *TimesIcon = ICON_FA_TIMES_CIRCLE;
 static const char *SelectedIcon = ICON_FA_CHECK;
 static const char *SelectedTextureIcon = ICON_FA_IMAGE;
 static const char *SelectedSpriteIcon = ICON_FA_GHOST;

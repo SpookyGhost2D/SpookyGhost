@@ -10,7 +10,7 @@ namespace nc = ncine;
 /// The configuration to be loaded or saved
 struct Configuration
 {
-	const int version = 2;
+	const int version = 3;
 
 	int width = 1280;
 	int height = 720;
@@ -25,15 +25,16 @@ struct Configuration
 	int saveFileMaxSize = 16 * 1024;
 
 #ifdef __ANDROID__
-	float guiScaling = 2.0f; // version 2
+	float guiScaling = 2.0f; // Added in version 2
 #else
-	float guiScaling = 1.0f; // version 2
+	float guiScaling = 1.0f; // Added in version 2
 #endif
-	nctl::String startupScriptName = nctl::String(ui::MaxStringLength);
+	nctl::String startupProjectName = nctl::String(ui::MaxStringLength); // Renamed in version 3
 	bool autoPlayOnStart = true;
 
-	nctl::String scriptsPath = nctl::String(ui::MaxStringLength);
+	nctl::String projectsPath = nctl::String(ui::MaxStringLength); // Renamed in version 3
 	nctl::String texturesPath = nctl::String(ui::MaxStringLength);
+	nctl::String scriptsPath = nctl::String(ui::MaxStringLength); // Added in version 3
 };
 
 #endif

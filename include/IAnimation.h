@@ -13,6 +13,7 @@ class IAnimation
 	{
 		PROPERTY,
 		GRID,
+		SCRIPT,
 		SEQUENTIAL_GROUP,
 		PARALLEL_GROUP
 	};
