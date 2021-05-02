@@ -176,12 +176,9 @@ void Sprite::render()
 
 void Sprite::resetGrid()
 {
-	ASSERT(interleavedVertices_.size() >= restPositions_.size());
+	ASSERT(interleavedVertices_.size() == restPositions_.size());
 	for (unsigned int i = 0; i < restPositions_.size(); i++)
-	{
-		interleavedVertices_[i].x = restPositions_[i].x;
-		interleavedVertices_[i].y = restPositions_[i].y;
-	}
+		interleavedVertices_[i] = restPositions_[i];
 }
 
 void Sprite::setTexture(Texture *texture)
@@ -193,6 +190,9 @@ void Sprite::setTexture(Texture *texture)
 
 void Sprite::setTexRect(const nc::Recti &rect)
 {
+	if (rect == texRect_ || rect.w == 0 || rect.h == 0)
+		return;
+
 	texRect_ = rect;
 	flippingTexRect_ = texRect_;
 	setSize(rect.w, rect.h);
@@ -315,9 +315,7 @@ void Sprite::initGrid(int width, int height)
 	const unsigned int verticesCapacity = (width + 1) * (height + 1);
 	if (interleavedVertices_.capacity() < verticesCapacity)
 	{
-		interleavedVertices_.clear();
 		interleavedVertices_.setCapacity(verticesCapacity);
-		restPositions_.clear();
 		restPositions_.setCapacity(verticesCapacity);
 		const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
 		vbo_->bufferData(vboBytes, nullptr, GL_STATIC_DRAW);
@@ -326,15 +324,12 @@ void Sprite::initGrid(int width, int height)
 	// Upper bound for number of indices
 	const unsigned int indicesCapacity = (width + 2) * height * 2;
 	if (indices_.capacity() < indicesCapacity)
-	{
-		indices_.clear();
 		indices_.setCapacity(indicesCapacity);
-	}
 
 	resetVertices();
-	ASSERT(interleavedVertices_.capacity() == verticesCapacity);
+	ASSERT(interleavedVertices_.capacity() >= verticesCapacity);
 	resetIndices();
-	ASSERT(indices_.capacity() == indicesCapacity);
+	ASSERT(indices_.capacity() >= indicesCapacity);
 
 	const unsigned int indicesSize = indices_.size();
 	const long int iboBytes = (indicesSize < 65536)
@@ -356,6 +351,7 @@ void Sprite::initGrid(int width, int height)
 void Sprite::resetVertices()
 {
 	interleavedVertices_.clear();
+	restPositions_.clear();
 	const float deltaX = 1.0f / static_cast<float>(width_);
 	const float deltaY = 1.0f / static_cast<float>(height_);
 
@@ -369,8 +365,7 @@ void Sprite::resetVertices()
 			v.u = static_cast<float>(x) * deltaX;
 			v.v = static_cast<float>(y) * deltaY;
 			interleavedVertices_.pushBack(v);
-			VertexPosition restPos = { v.x, v.y };
-			restPositions_.pushBack(restPos);
+			restPositions_.pushBack(v);
 		}
 	}
 

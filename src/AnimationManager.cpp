@@ -7,15 +7,42 @@
 
 namespace {
 
+void resetAnimation(IAnimation &anim)
+{
+	switch (anim.type())
+	{
+		case IAnimation::Type::PARALLEL_GROUP:
+		case IAnimation::Type::SEQUENTIAL_GROUP:
+			break;
+		case IAnimation::Type::PROPERTY:
+		{
+			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
+			propertyAnim.setProperty(nullptr);
+			propertyAnim.setSprite(nullptr);
+			propertyAnim.stop();
+			break;
+		}
+		case IAnimation::Type::GRID:
+		{
+			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+			gridAnim.setSprite(nullptr);
+			gridAnim.stop();
+			break;
+		}
+	}
+}
+
 void recursiveRemoveAnimation(IAnimation &anim)
 {
 	if (anim.isGroup())
 	{
 		AnimationGroup &animGroup = static_cast<AnimationGroup &>(anim);
 		for (unsigned int i = 0; i < animGroup.anims().size(); i++)
-			animGroup.anims()[i]->stop();
+			resetAnimation(*animGroup.anims()[i]);
 		animGroup.anims().clear();
 	}
+	else
+		resetAnimation(anim);
 
 	if (anim.parent() != nullptr)
 	{
@@ -24,7 +51,6 @@ void recursiveRemoveAnimation(IAnimation &anim)
 		{
 			if (anims[i].get() == &anim)
 			{
-				anims[i]->stop();
 				anims.removeAt(i);
 				break;
 			}
@@ -54,6 +80,7 @@ void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 				if (propertyAnim.sprite() == sprite)
 				{
 					propertyAnim.setProperty(nullptr);
+					propertyAnim.setSprite(nullptr);
 					propertyAnim.stop();
 					animGroup.anims().removeAt(i);
 				}
@@ -148,18 +175,14 @@ void AnimationManager::clear()
 
 void AnimationManager::removeAnimation(IAnimation *anim)
 {
-	if (anim == nullptr)
-		return;
-
-	recursiveRemoveAnimation(*anim);
+	if (anim != nullptr)
+		recursiveRemoveAnimation(*anim);
 }
 
 void AnimationManager::removeSprite(Sprite *sprite)
 {
-	if (sprite == nullptr)
-		return;
-
-	recursiveRemoveSprite(*animGroup_, sprite);
+	if (sprite != nullptr)
+		recursiveRemoveSprite(*animGroup_, sprite);
 }
 
 void AnimationManager::assignGridAnchorToParameters(Sprite *sprite)

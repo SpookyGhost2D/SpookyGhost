@@ -30,11 +30,6 @@ class Sprite
 		float u, v;
 	};
 
-	struct VertexPosition
-	{
-		float x, y;
-	};
-
 	enum class BlendingPreset
 	{
 		DISABLED, ///< uses `GL_ONE` and `GL_ZERO`
@@ -88,7 +83,7 @@ class Sprite
 	inline BlendingPreset blendingPreset() const { return blendingPreset_; }
 	inline void setBlendingPreset(BlendingPreset blendingPreset) { blendingPreset_ = blendingPreset; }
 
-	inline const nctl::Array<VertexPosition> &vertexRestPositions() const { return restPositions_; }
+	inline const nctl::Array<Vertex> &vertexRestPositions() const { return restPositions_; }
 	inline const nctl::Array<Vertex> &interleavedVertices() const { return interleavedVertices_; }
 	inline nctl::Array<Vertex> &interleavedVertices() { return interleavedVertices_; }
 
@@ -138,7 +133,7 @@ class Sprite
 	int gridAnimationsCounter_;
 
 	nctl::Array<Vertex> interleavedVertices_;
-	nctl::Array<VertexPosition> restPositions_;
+	nctl::Array<Vertex> restPositions_;
 	nctl::Array<unsigned int> indices_;
 	nctl::Array<unsigned short> shortIndices_;
 
