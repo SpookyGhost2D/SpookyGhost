@@ -347,6 +347,7 @@ void serialize(LuaSerializer &ls, const Configuration &cfg)
 	serializeGlobal(ls, "projects_path", cfg.projectsPath);
 	serializeGlobal(ls, "textures_path", cfg.texturesPath);
 	serializeGlobal(ls, "scripts_path", cfg.scriptsPath);
+	serializeGlobal(ls, "show_tips_on_start", cfg.showTipsOnStart);
 }
 
 }
@@ -730,6 +731,9 @@ void deserialize(LuaSerializer &ls, Configuration &cfg)
 
 	cfg.autoPlayOnStart = deserializeGlobal<bool>(ls, "auto_play_on_start");
 	deserializeGlobal(ls, "textures_path", cfg.texturesPath);
+
+	if (version >= 4)
+		cfg.showTipsOnStart = deserializeGlobal<bool>(ls, "show_tips_on_start");
 }
 
 }

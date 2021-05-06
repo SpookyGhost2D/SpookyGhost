@@ -40,7 +40,7 @@ class UserInterface
 	void signalFrameSaved();
 	void cancelRender();
 
-	void closeModalsAndAbout();
+	void closeModalsAndUndockables();
 	void pressDeleteKey();
 	void moveSprite(int xDiff, int yDiff);
 	bool menuNewEnabled();
@@ -149,6 +149,7 @@ class UserInterface
 	void createTexRectWindow();
 	void createConfigWindow();
 	void createAboutWindow();
+	void createTipsWindow();
 
 	void applyDarkStyle();
 	void mouseWheelCanvasZoom();

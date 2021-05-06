@@ -23,8 +23,10 @@ void UserInterface::createConfigWindow()
 	if (showConfigWindow == false)
 		return;
 
-	const ImVec2 windowSize = ImVec2(500.0f, 375.0f);
+	const ImVec2 windowSize = ImVec2(500.0f, 475.0f);
 	ImGui::SetNextWindowSize(windowSize, ImGuiCond_FirstUseEver);
+	const ImVec2 windowPos = ImVec2(ImGui::GetWindowViewport()->Size.x * 0.5f, ImGui::GetWindowViewport()->Size.y * 0.5f);
+	ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 	ImGui::Begin(Labels::Configuration, &showConfigWindow, ImGuiWindowFlags_NoDocking);
 
 #ifdef __ANDROID__
@@ -127,12 +129,18 @@ void UserInterface::createConfigWindow()
 	ImGui::InputText("Scripts Path", theCfg.scriptsPath.data(), ui::MaxStringLength,
 	                 ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &theCfg.scriptsPath);
 
+	ImGui::Checkbox("Show Tips On Start", &theCfg.showTipsOnStart);
+
 	sanitizeConfigValues();
+
+	ImGui::NewLine();
+	if (ImGui::Button(Labels::Close))
+		showConfigWindow = false;
 
 	// Auto-save on window close
 	if (showConfigWindow == false)
 	{
-		ui::auxString.assign("config.lua");
+		ui::auxString = "config.lua";
 #ifdef __ANDROID__
 		// On Android the configuration file is saved in the external storage directory
 		ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "config.lua");

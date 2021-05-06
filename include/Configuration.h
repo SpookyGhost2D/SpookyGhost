@@ -10,7 +10,7 @@ namespace nc = ncine;
 /// The configuration to be loaded or saved
 struct Configuration
 {
-	const int version = 3;
+	const int version = 4;
 
 	int width = 1280;
 	int height = 720;
@@ -35,6 +35,8 @@ struct Configuration
 	nctl::String projectsPath = nctl::String(ui::MaxStringLength); // Renamed in version 3
 	nctl::String texturesPath = nctl::String(ui::MaxStringLength);
 	nctl::String scriptsPath = nctl::String(ui::MaxStringLength); // Added in version 3
+
+	bool showTipsOnStart = true; // Added in version 4
 };
 
 #endif

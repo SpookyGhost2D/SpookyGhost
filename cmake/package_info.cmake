@@ -37,6 +37,7 @@ set(PACKAGE_SOURCES
 	include/ScriptAnimation.h
 
 	include/gui/gui_labels.h
+	include/gui/gui_tips.h
 	include/gui/gui_common.h
 	include/gui/UserInterface.h
 	include/gui/CanvasGuiSection.h

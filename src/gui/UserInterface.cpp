@@ -4,9 +4,11 @@
 #include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
 #include <ncine/LuaStateManager.h>
+#include <ncine/Random.h>
 
 #include "singletons.h"
 #include "gui/gui_labels.h"
+#include "gui/gui_tips.h"
 #include "gui/UserInterface.h"
 #include "gui/FileDialog.h"
 #include "Canvas.h"
@@ -48,12 +50,14 @@ static int plotValueIndex = 0;
 
 const char *docsFile = "../docs/documentation.html";
 
+static bool showTipsWindow = false;
 static bool showAboutWindow = false;
 static bool hoveringOnCanvasWindow = false;
 static bool hoveringOnCanvas = false;
 static bool deleteKeyPressed = false;
 
 static int numFrames = 0;
+static unsigned int currentTipIndex = 0;
 
 }
 
@@ -106,6 +110,10 @@ UserInterface::UserInterface()
 	}
 	if (theCfg.autoPlayOnStart)
 		theAnimMgr->play();
+
+	if (theCfg.showTipsOnStart)
+		showTipsWindow = true;
+	currentTipIndex = nc::random().fastInteger(0, Tips::Count);
 }
 
 ///////////////////////////////////////////////////////////
@@ -149,8 +157,9 @@ void UserInterface::cancelRender()
 	renderGuiWindow_.cancelRender();
 }
 
-void UserInterface::closeModalsAndAbout()
+void UserInterface::closeModalsAndUndockables()
 {
+	showTipsWindow = false;
 	showAboutWindow = false;
 	FileDialog::config.windowOpen = false;
 }
@@ -329,6 +338,9 @@ void UserInterface::createGui()
 	ImGui::Text("%s", statusMessage_.data());
 	ImGui::End();
 
+	if (showTipsWindow)
+		createTipsWindow();
+
 	if (showAboutWindow)
 		createAboutWindow();
 
@@ -479,6 +491,9 @@ void UserInterface::createMenuBar()
 		{
 			if (ImGui::MenuItem(Labels::Documentation, "F1", false, openDocumentationEnabled()))
 				openDocumentation();
+
+			if (ImGui::MenuItem(Labels::Tips))
+				showTipsWindow = true;
 
 			if (ImGui::MenuItem(Labels::About))
 				showAboutWindow = true;
@@ -2146,8 +2161,61 @@ void UserInterface::createTexRectWindow()
 	ImGui::End();
 }
 
+void UserInterface::createTipsWindow()
+{
+	if (showTipsWindow == false)
+		return;
+
+	const ImVec2 windowPos = ImVec2(ImGui::GetWindowViewport()->Size.x * 0.5f, ImGui::GetWindowViewport()->Size.y * 0.5f);
+	ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+
+	ImGui::Begin("Tips", &showTipsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
+	ImGui::Text("%s Did you know...", Labels::LightbulbIcon);
+	ImGui::NewLine();
+	ImGui::TextWrapped("%s", Tips::Strings[currentTipIndex]);
+
+	ImGui::NewLine();
+	ImGui::Checkbox("Show Tips On Start", &theCfg.showTipsOnStart);
+	ImGui::SameLine();
+	ui::auxString.format("%s Prev", Labels::PreviousIcon);
+	if (ImGui::Button(ui::auxString.data()))
+	{
+		if (currentTipIndex >= 1)
+			currentTipIndex--;
+	}
+	ImGui::SameLine();
+	ImGui::Text("%u / %u", currentTipIndex + 1, Tips::Count);
+	ImGui::SameLine();
+	ui::auxString.format("Next %s", Labels::NextIcon);
+	if (ImGui::Button(ui::auxString.data()))
+	{
+		if (currentTipIndex <= Tips::Count - 2)
+			currentTipIndex++;
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Close))
+		showTipsWindow = false;
+
+	// Auto-save on window close
+	if (showTipsWindow == false)
+	{
+		ui::auxString = "config.lua";
+#ifdef __ANDROID__
+		// On Android the configuration file is saved in the external storage directory
+		ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "config.lua");
+#endif
+		theSaver->saveCfg(ui::auxString.data(), theCfg);
+	}
+
+	ImGui::End();
+}
+
 void UserInterface::createAboutWindow()
 {
+	const ImVec2 windowPos = ImVec2(ImGui::GetWindowViewport()->Size.x * 0.5f, ImGui::GetWindowViewport()->Size.y * 0.5f);
+	ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+
 	ImGui::Begin("About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 	ImVec2 cursorPos = ImGui::GetCursorPos();
 	const ImVec2 spookySize(spookyLogo_->width() * 2.0f, spookyLogo_->height() * 2.0f);
@@ -2182,6 +2250,11 @@ void UserInterface::createAboutWindow()
 	ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
 	ImGui::Spacing();
 	ImGui::Text("https://ncine.github.io/");
+
+	ImGui::NewLine();
+	if (ImGui::Button(Labels::Close))
+		showAboutWindow = false;
+
 	ImGui::End();
 }
 

@@ -9,6 +9,7 @@
 #define TEXT_FILEEXISTS "File exists!"
 #define TEXT_OK "Ok"
 #define TEXT_CANCEL "Cancel"
+#define TEXT_CLOSE "Close"
 
 #define TEXT_MENU_FILE_NEW "New"
 #define TEXT_MENU_FILE_OPEN "Open"
@@ -18,6 +19,7 @@
 #define TEXT_MENU_FILE_CONFIGURATION "Configuration"
 #define TEXT_MENU_FILE_QUIT "Quit"
 #define TEXT_MENU_DOCUMENTATION "Documentation"
+#define TEXT_MENU_TIPS "Tips"
 #define TEXT_MENU_ABOUT "About"
 
 #define TEXT_HEADER_CANVAS "Canvas"
@@ -51,7 +53,6 @@
 
 #define TEXT_SAVE_FRAMES "Save Frames"
 #define TEXT_SAVE_SPRITESHEET "Save Spritesheet"
-#define TEXT_CANCEL "Cancel"
 
 #ifndef WITH_FONTAWESOME
 namespace Labels {
@@ -63,6 +64,7 @@ static const char *LoadingError = TEXT_LOADINGERROR;
 static const char *FileExists = TEXT_FILEEXISTS;
 static const char *Ok = TEXT_OK;
 static const char *Cancel = TEXT_CANCEL;
+static const char *Close = TEXT_CLOSE;
 
 static const char *New = TEXT_MENU_FILE_NEW;
 static const char *Open = TEXT_MENU_FILE_OPEN;
@@ -72,6 +74,7 @@ static const char *SaveAs = TEXT_MENU_FILE_SAVEAS;
 static const char *Configuration = TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = TEXT_MENU_FILE_QUIT;
 static const char *Documentation = TEXT_MENU_DOCUMENTATION;
+static const char *Tips = TEXT_MENU_TIPS;
 static const char *About = TEXT_MENU_ABOUT;
 
 static const char *Canvas = TEXT_HEADER_CANVAS;
@@ -112,8 +115,11 @@ static const char *EnabledAnimIcon = "[>]";
 static const char *DisabledAnimIcon = "[ ]";
 static const char *PlusIcon = "+";
 static const char *MinusIcon = "-";
+static const char *PreviousIcon = "<";
+static const char *NextIcon = ">";
 static const char *CheckIcon = "[v]";
 static const char *TimesIcon = "[x]";
+static const char *LightbulbIcon = "[*]";
 static const char *SelectedIcon = "[*]";
 static const char *SelectedTextureIcon = "[T]";
 static const char *SelectedSpriteIcon = "[S]";
@@ -146,8 +152,9 @@ static const char *ERROR_MARKER = ICON_FA_EXCLAMATION_TRIANGLE FA5_SPACING;
 
 static const char *LoadingError = ICON_FA_EXCLAMATION_TRIANGLE FA5_SPACING TEXT_LOADINGERROR;
 static const char *FileExists = ICON_FA_EXCLAMATION_TRIANGLE FA5_SPACING TEXT_FILEEXISTS;
-static const char *Ok = ICON_FA_CHECK FA5_SPACING TEXT_OK;
+static const char *Ok = ICON_FA_CHECK_CIRCLE FA5_SPACING TEXT_OK;
 static const char *Cancel = ICON_FA_TIMES_CIRCLE FA5_SPACING TEXT_CANCEL;
+static const char *Close = ICON_FA_TIMES_CIRCLE FA5_SPACING TEXT_CLOSE;
 
 static const char *New = ICON_FA_FILE FA5_SPACING TEXT_MENU_FILE_NEW;
 static const char *Open = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_MENU_FILE_OPEN;
@@ -157,6 +164,7 @@ static const char *SaveAs = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVEAS;
 static const char *Configuration = ICON_FA_TOOLS FA5_SPACING TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = ICON_FA_POWER_OFF FA5_SPACING TEXT_MENU_FILE_QUIT;
 static const char *Documentation = ICON_FA_QUESTION_CIRCLE FA5_SPACING TEXT_MENU_DOCUMENTATION;
+static const char *Tips = ICON_FA_LIGHTBULB FA5_SPACING TEXT_MENU_TIPS;
 static const char *About = ICON_FA_INFO_CIRCLE FA5_SPACING TEXT_MENU_ABOUT;
 
 static const char *Canvas = ICON_FA_PAINT_ROLLER FA5_SPACING TEXT_HEADER_CANVAS;
@@ -197,8 +205,11 @@ static const char *EnabledAnimIcon = ICON_FA_PLAY_CIRCLE;
 static const char *DisabledAnimIcon = ICON_FA_STOP_CIRCLE;
 static const char *PlusIcon = ICON_FA_PLUS;
 static const char *MinusIcon = ICON_FA_MINUS;
+static const char *PreviousIcon = ICON_FA_CARET_LEFT;
+static const char *NextIcon = ICON_FA_CARET_RIGHT;
 static const char *CheckIcon = ICON_FA_CHECK_CIRCLE;
 static const char *TimesIcon = ICON_FA_TIMES_CIRCLE;
+static const char *LightbulbIcon = ICON_FA_LIGHTBULB;
 static const char *SelectedIcon = ICON_FA_CHECK;
 static const char *SelectedTextureIcon = ICON_FA_IMAGE;
 static const char *SelectedSpriteIcon = ICON_FA_GHOST;

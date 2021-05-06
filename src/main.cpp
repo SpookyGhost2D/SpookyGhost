@@ -225,7 +225,7 @@ void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 {
 	if (event.sym == nc::KeySym::ESCAPE)
 	{
-		ui_->closeModalsAndAbout();
+		ui_->closeModalsAndUndockables();
 		ui_->cancelRender();
 	}
 }
