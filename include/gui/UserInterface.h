@@ -147,9 +147,15 @@ class UserInterface
 	void createMenuBar();
 
 	void createToolbarWindow();
+	void removeTexture();
 	void createTexturesWindow();
+	void cloneSprite();
+	void removeSprite();
 	void createSpritesWindow();
+	void removeScript();
 	void createScriptsWindow();
+	void cloneAnimation(unsigned int &selectedIndex);
+	void removeAnimation();
 	void createAnimationListEntry(IAnimation &anim, unsigned int index);
 	void createAnimationsWindow();
 

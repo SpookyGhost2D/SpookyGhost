@@ -611,6 +611,24 @@ void UserInterface::createToolbarWindow()
 	ImGui::End();
 }
 
+void UserInterface::removeTexture()
+{
+	// Deleting backwards without iterators
+	for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
+	{
+		Sprite *sprite = theSpriteMgr->sprites()[i].get();
+		if (&sprite->texture() == theSpriteMgr->textures()[selectedTextureIndex_].get())
+		{
+			updateSelectedAnimOnSpriteRemoval(sprite);
+			theAnimMgr->removeSprite(sprite);
+			theSpriteMgr->sprites().removeAt(i);
+		}
+	}
+	theSpriteMgr->textures().removeAt(selectedTextureIndex_);
+	if (selectedTextureIndex_ > 0)
+		selectedTextureIndex_--;
+}
+
 void UserInterface::createTexturesWindow()
 {
 	ImGui::Begin(Labels::Textures);
@@ -659,22 +677,7 @@ void UserInterface::createTexturesWindow()
 	{
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
-		{
-			// Deleting backwards without iterators
-			for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
-			{
-				Sprite *sprite = theSpriteMgr->sprites()[i].get();
-				if (&sprite->texture() == theSpriteMgr->textures()[selectedTextureIndex_].get())
-				{
-					updateSelectedAnimOnSpriteRemoval(sprite);
-					theAnimMgr->removeSprite(sprite);
-					theSpriteMgr->sprites().removeAt(i);
-				}
-			}
-			theSpriteMgr->textures().removeAt(selectedTextureIndex_);
-			if (selectedTextureIndex_ > 0)
-				selectedTextureIndex_--;
-		}
+			removeTexture();
 	}
 
 	if (theSpriteMgr->textures().isEmpty() == false)
@@ -691,10 +694,38 @@ void UserInterface::createTexturesWindow()
 			                  i, texture.name().data(), texture.width(), texture.height());
 			if (ImGui::IsItemClicked())
 				selectedTextureIndex_ = i;
+
+			if (ImGui::BeginPopupContextItem())
+			{
+				if (ImGui::MenuItem(Labels::Remove))
+				{
+					selectedTextureIndex_ = i;
+					removeTexture();
+				}
+				ImGui::EndPopup();
+			}
 		}
 	}
 
 	ImGui::End();
+}
+
+void UserInterface::cloneSprite()
+{
+	Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
+	theSpriteMgr->sprites().insertAt(++selectedSpriteIndex_, nctl::move(selectedSprite->clone()));
+}
+
+void UserInterface::removeSprite()
+{
+	Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
+	updateSelectedAnimOnSpriteRemoval(selectedSprite);
+
+	theAnimMgr->removeSprite(selectedSprite);
+	if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
+		theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
+	if (selectedSpriteIndex_ > 0)
+		selectedSpriteIndex_--;
 }
 
 void UserInterface::createSpritesWindow()
@@ -719,16 +750,7 @@ void UserInterface::createSpritesWindow()
 		{
 			ImGui::SameLine();
 			if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
-			{
-				Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
-				updateSelectedAnimOnSpriteRemoval(selectedSprite);
-
-				theAnimMgr->removeSprite(selectedSprite);
-				if (selectedSpriteIndex_ >= 0 && selectedSpriteIndex_ < theSpriteMgr->sprites().size())
-					theSpriteMgr->sprites().removeAt(selectedSpriteIndex_);
-				if (selectedSpriteIndex_ > 0)
-					selectedSpriteIndex_--;
-			}
+				removeSprite();
 		}
 		// Repeat the check after the remove button
 		if (theSpriteMgr->sprites().isEmpty() == false)
@@ -737,10 +759,7 @@ void UserInterface::createSpritesWindow()
 			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 			ImGui::SameLine();
 			if (ImGui::Button(Labels::Clone))
-			{
-				Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
-				theSpriteMgr->sprites().insertAt(++selectedSpriteIndex_, nctl::move(selectedSprite->clone()));
-			}
+				cloneSprite();
 		}
 	}
 	else
@@ -797,6 +816,22 @@ void UserInterface::createSpritesWindow()
 			ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "%s", ui::auxString.data());
 			if (ImGui::IsItemClicked())
 				selectedSpriteIndex_ = i;
+
+			if (ImGui::BeginPopupContextItem())
+			{
+				if (ImGui::MenuItem(Labels::Clone))
+				{
+					selectedSpriteIndex_ = i;
+					cloneSprite();
+				}
+				if (ImGui::MenuItem(Labels::Remove))
+				{
+					selectedSpriteIndex_ = i;
+					removeSprite();
+				}
+				ImGui::EndPopup();
+			}
+
 			ImGui::EndGroup();
 
 			if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
@@ -824,6 +859,16 @@ void UserInterface::createSpritesWindow()
 	}
 
 	ImGui::End();
+}
+
+void UserInterface::removeScript()
+{
+	Script *selectedScript = theScriptingMgr->scripts()[selectedScriptIndex_].get();
+	theAnimMgr->removeScript(selectedScript);
+
+	theScriptingMgr->scripts().removeAt(selectedScriptIndex_);
+	if (selectedScriptIndex_ > 0)
+		selectedScriptIndex_--;
 }
 
 void UserInterface::createScriptsWindow()
@@ -868,14 +913,7 @@ void UserInterface::createScriptsWindow()
 	{
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
-		{
-			Script *selectedScript = theScriptingMgr->scripts()[selectedScriptIndex_].get();
-			theAnimMgr->removeScript(selectedScript);
-
-			theScriptingMgr->scripts().removeAt(selectedScriptIndex_);
-			if (selectedScriptIndex_ > 0)
-				selectedScriptIndex_--;
-		}
+			removeScript();
 
 		ImGui::SameLine();
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
@@ -907,10 +945,39 @@ void UserInterface::createScriptsWindow()
 				ImGui::PopTextWrapPos();
 				ImGui::EndTooltip();
 			}
+
+			if (ImGui::BeginPopupContextItem())
+			{
+				if (ImGui::MenuItem(Labels::Reload))
+				{
+					selectedScriptIndex_ = i;
+					reloadScript();
+				}
+				if (ImGui::MenuItem(Labels::Remove))
+				{
+					selectedScriptIndex_ = i;
+					removeScript();
+				}
+				ImGui::EndPopup();
+			}
 		}
 	}
 
 	ImGui::End();
+}
+
+void UserInterface::cloneAnimation(unsigned int &selectedIndex)
+{
+	selectedAnimation_->parent()->anims().insertAt(++selectedIndex, nctl::move(selectedAnimation_->clone()));
+}
+
+void UserInterface::removeAnimation()
+{
+	AnimationGroup *parent = nullptr;
+	if (selectedAnimation_->parent())
+		parent = selectedAnimation_->parent();
+	theAnimMgr->removeAnimation(selectedAnimation_);
+	selectedAnimation_ = parent;
 }
 
 struct DragAnimationPayload
@@ -918,6 +985,8 @@ struct DragAnimationPayload
 	AnimationGroup &parent;
 	unsigned int index;
 };
+
+IAnimation *removeAnimWithContextMenu = nullptr;
 
 void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int index)
 {
@@ -1021,6 +1090,43 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		}
 		if (spriteIndex >= 0)
 			selectedSpriteIndex_ = spriteIndex;
+	}
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		if (ImGui::MenuItem(Labels::Play))
+		{
+			selectedAnimation_ = &anim;
+			selectedAnimation_->play();
+		}
+		if (ImGui::MenuItem(Labels::Pause))
+		{
+			selectedAnimation_ = &anim;
+			selectedAnimation_->pause();
+		}
+		if (ImGui::MenuItem(Labels::Stop))
+		{
+			selectedAnimation_ = &anim;
+			selectedAnimation_->stop();
+		}
+		ImGui::Separator();
+		if (anim.isGroup() == false)
+		{
+			CurveAnimation &curveAnim = static_cast<CurveAnimation &>(anim);
+			bool locked = curveAnim.isLocked();
+			ui::auxString.format("Locked %s", Labels::LockedAnimIcon);
+			ImGui::Checkbox(ui::auxString.data(), &locked);
+			curveAnim.setLocked(locked);
+		}
+		if (ImGui::MenuItem(Labels::Clone))
+		{
+			selectedAnimation_ = &anim;
+			cloneAnimation(index);
+		}
+		if (ImGui::MenuItem(Labels::Remove))
+			removeAnimWithContextMenu = &anim;
+
+		ImGui::EndPopup();
 	}
 
 	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
@@ -1157,18 +1263,19 @@ void UserInterface::createAnimationsWindow()
 		selectedAnimation_ = (*anims)[selectedIndex].get();
 	}
 
+	// Remove an animation as instructed by the context menu
+	if (removeAnimWithContextMenu)
+	{
+		selectedAnimation_ = removeAnimWithContextMenu;
+		removeAnimation();
+		removeAnimWithContextMenu = nullptr;
+	}
+
 	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
 	{
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
-		{
-
-			AnimationGroup *parent = nullptr;
-			if (selectedAnimation_->parent())
-				parent = selectedAnimation_->parent();
-			theAnimMgr->removeAnimation(selectedAnimation_);
-			selectedAnimation_ = parent;
-		}
+			removeAnimation();
 	}
 
 	// Search the index of the selected animation in its parent
@@ -1252,6 +1359,26 @@ void UserInterface::createAnimationsWindow()
 	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&theAnimMgr->animGroup()), nodeFlags, "%s", ui::auxString.data());
 	if (ImGui::IsItemClicked())
 		selectedAnimation_ = &theAnimMgr->animGroup();
+
+	if (ImGui::BeginPopupContextItem())
+	{
+		if (ImGui::MenuItem(Labels::Play))
+		{
+			selectedAnimation_ = &theAnimMgr->animGroup();
+			theAnimMgr->animGroup().play();
+		}
+		if (ImGui::MenuItem(Labels::Pause))
+		{
+			selectedAnimation_ = &theAnimMgr->animGroup();
+			theAnimMgr->animGroup().pause();
+		}
+		if (ImGui::MenuItem(Labels::Stop))
+		{
+			selectedAnimation_ = &theAnimMgr->animGroup();
+			theAnimMgr->animGroup().stop();
+		}
+		ImGui::EndPopup();
+	}
 
 	if (ImGui::BeginDragDropTarget())
 	{
@@ -2070,9 +2197,9 @@ void UserInterface::createCanvasWindow()
 					sprite.setAbsPosition(newSpriteAbsPos);
 				}
 			}
-			else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f) || ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			else if (ImGui::GetIO().KeyAlt && (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f) || ImGui::IsMouseReleased(ImGuiMouseButton_Left)))
 			{
-				// Update sprite position while clicking and moving the mouse (with pixel snapping)
+				// Update sprite position while pressing Alt, clicking and moving the mouse (with pixel snapping)
 				if (sprite.absPosition().x != newSpriteAbsPos.x || sprite.absPosition().y != newSpriteAbsPos.y)
 					sprite.setAbsPosition(newSpriteAbsPos);
 			}
