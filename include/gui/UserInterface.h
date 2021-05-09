@@ -11,6 +11,10 @@
 #include "gui/CanvasGuiSection.h"
 #include "gui/RenderGuiWindow.h"
 
+#ifdef __EMSCRIPTEN__
+	#include <ncine/EmscriptenLocalFile.h>
+#endif
+
 class Canvas;
 class SpriteManager;
 class AnimationManager;
@@ -47,7 +51,6 @@ class UserInterface
 	bool menuSaveEnabled();
 	bool menuSaveAsEnabled();
 	void menuNew();
-	bool openProject(const char *filename);
 	void menuOpen();
 	void menuSave();
 	void menuSaveAs();
@@ -117,6 +120,10 @@ class UserInterface
 	RenderGuiWindow renderGuiWindow_;
 	LuaSaver::Data saverData_;
 
+#ifdef __EMSCRIPTEN__
+	nc::EmscriptenLocalFile textureLocalFile_;
+#endif
+
 	nctl::String lastLoadedProject_ = nctl::String(ui::MaxStringLength);
 
 	nctl::String statusMessage_ = nctl::String(ui::MaxStringLength);
@@ -124,6 +131,16 @@ class UserInterface
 
 	nctl::UniquePtr<Texture> spookyLogo_;
 	nctl::UniquePtr<Texture> ncineLogo_;
+
+	bool openProject(const char *filename);
+	bool loadTexture(const char *filename);
+	bool loadScript(const char *filename);
+
+#ifdef __EMSCRIPTEN__
+	bool loadTexture(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize);
+#endif
+
+	bool loadTextureImpl(nctl::UniquePtr<Texture> texture, const char *name);
 
 	void createDockingSpace();
 	void createInitialDocking();

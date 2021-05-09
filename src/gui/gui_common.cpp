@@ -2,12 +2,17 @@
 
 namespace ui {
 
-nctl::String comboString(1024 * 2);
+nctl::String comboString(1024 * 4);
 nctl::String auxString(MaxStringLength);
 
 #ifdef __ANDROID__
+nctl::String androidCfgDir(MaxStringLength);
 nctl::String androidSaveDir(MaxStringLength);
 #endif
+
+nctl::String projectsDataDir(MaxStringLength);
+nctl::String texturesDataDir(MaxStringLength);
+nctl::String scriptsDataDir(MaxStringLength);
 
 int inputTextCallback(ImGuiInputTextCallbackData *data)
 {

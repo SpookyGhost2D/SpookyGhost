@@ -33,6 +33,9 @@
 #define TEXT_HEADER_SPRITE "Sprite"
 #define TEXT_HEADER_ANIMATION "Animation"
 
+#define TEXT_COMBO_BUNDLED_TEXTURES "Bundled Textures"
+#define TEXT_COMBO_BUNDLED_SCRIPTS "Bundled Scripts"
+
 #define TEXT_LOAD "Load"
 #define TEXT_RELOAD "Reload"
 #define TEXT_RESET "Reset"
@@ -108,6 +111,9 @@ static const char *Play = TEXT_PLAY;
 
 static const char *SaveFrames = TEXT_SAVE_FRAMES;
 static const char *SaveSpritesheet = TEXT_SAVE_SPRITESHEET;
+
+static const char *BundledTexture = TEXT_COMBO_BUNDLED_TEXTURES;
+static const char *BundledScripts = TEXT_COMBO_BUNDLED_SCRIPTS;
 
 static const char *VisibleIcon = "V";
 static const char *InvisibleIcon = "I";
@@ -198,6 +204,9 @@ static const char *Play = ICON_FA_PLAY FA5_SPACING TEXT_PLAY;
 
 static const char *SaveFrames = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_FRAMES;
 static const char *SaveSpritesheet = ICON_FA_SAVE FA5_SPACING TEXT_SAVE_SPRITESHEET;
+
+static const char *BundledTextures = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_COMBO_BUNDLED_TEXTURES;
+static const char *BundledScripts = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_COMBO_BUNDLED_SCRIPTS;
 
 static const char *VisibleIcon = ICON_FA_EYE;
 static const char *InvisibleIcon = ICON_FA_EYE_SLASH;

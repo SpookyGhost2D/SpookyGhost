@@ -26,6 +26,10 @@ using Vector3f = Vector3<float>;
 class Color;
 class Colorf;
 
+#ifdef __EMSCRIPTEN__
+class EmscriptenLocalFile;
+#endif
+
 }
 
 namespace nc = ncine;
@@ -40,7 +44,7 @@ class LuaSerializer
 
 	bool load(const char *filename);
 #ifdef __EMSCRIPTEN__
-	bool ((const char *filename, const nc::EmscriptenLocalFile *localFile);
+	bool load(const char *filename, const nc::EmscriptenLocalFile *localFile);
 #endif
 	void save(const char *filename);
 

@@ -392,15 +392,15 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture)
 	const char *textureName = deserialize<const char *>(ls, "name");
 	static nctl::String texturePath(256);
 
-	// Check first if the filename is relative to the textures directory
+	// Check first if the filename is relative to the configuration textures directory
 	texturePath = nc::fs::joinPath(theCfg.texturesPath, textureName);
-#ifdef __ANDROID__
-	// On Android check also for textures in the assets
 	if (nc::fs::isReadableFile(texturePath.data()) == false)
-		texturePath = nc::fs::joinPath("asset::", textureName);
-#endif
-	if (nc::fs::isReadableFile(texturePath.data()) == false)
-		texturePath = textureName;
+	{
+		// Then check if the filename is relative to the data textures directory
+		texturePath = nc::fs::joinPath(ui::texturesDataDir, textureName);
+		if (nc::fs::isReadableFile(texturePath.data()) == false)
+			texturePath = textureName;
+	}
 
 	texture = nctl::makeUnique<Texture>(texturePath.data());
 	// Set the relative path as the texture name to allow for relocatable project files
@@ -439,15 +439,15 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Script> &script)
 	const char *scriptName = deserialize<const char *>(ls, "name");
 	static nctl::String scriptPath(256);
 
-	// Check first if the filename is relative to the scripts directory
+	// Check first if the filename is relative to the configuration scripts directory
 	scriptPath = nc::fs::joinPath(theCfg.scriptsPath, scriptName);
-#ifdef __ANDROID__
-	// On Android check also for scripts in the assets
 	if (nc::fs::isReadableFile(scriptPath.data()) == false)
-		scriptPath = nc::fs::joinPath("asset::", scriptName);
-#endif
-	if (nc::fs::isReadableFile(scriptPath.data()) == false)
-		scriptPath = scriptName;
+	{
+		// Then check if the filename is relative to the data scripts directory
+		scriptPath = nc::fs::joinPath(ui::scriptsDataDir, scriptName);
+		if (nc::fs::isReadableFile(scriptPath.data()) == false)
+			scriptPath = scriptName;
+	}
 
 	script = nctl::makeUnique<Script>(scriptPath.data());
 	// Set the relative path as the script name to allow for relocatable project files

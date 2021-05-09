@@ -77,7 +77,7 @@ void RenderGuiWindow::create()
 		if (directory.isEmpty())
 		{
 #ifdef __ANDROID__
-			directory.assign(ui::androidSaveDir.data());
+			directory.assign(ui::androidSaveDir);
 #else
 			directory.assign(nc::fs::currentDir());
 #endif

@@ -107,7 +107,7 @@ void UserInterface::createConfigWindow()
 	ImGui::SliderInt("Canvas Width", &theCfg.canvasWidth, 0, 1024);
 	ImGui::SliderInt("Canvas Height", &theCfg.canvasHeight, 0, 1024);
 	int saveFileSize = theCfg.saveFileMaxSize / 1024;
-	ImGui::SliderInt("Savefile Size", &saveFileSize, 0, 128, "%d KB");
+	ImGui::SliderInt("Savefile Size", &saveFileSize, 0, 256, "%d KB");
 	theCfg.saveFileMaxSize = saveFileSize * 1024;
 
 	ImGui::NewLine();
@@ -142,8 +142,8 @@ void UserInterface::createConfigWindow()
 	{
 		ui::auxString = "config.lua";
 #ifdef __ANDROID__
-		// On Android the configuration file is saved in the external storage directory
-		ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "config.lua");
+		// On Android the configuration file is saved in the internal storage directory
+		ui::auxString = nc::fs::joinPath(ui::androidCfgDir.data(), "config.lua");
 #endif
 		theSaver->saveCfg(ui::auxString.data(), theCfg);
 	}

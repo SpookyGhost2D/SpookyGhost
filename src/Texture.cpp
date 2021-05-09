@@ -15,7 +15,19 @@ Texture::Texture(const char *filename, int width, int height)
     : glTexture_(nctl::makeUnique<nc::GLTexture>(GL_TEXTURE_2D)),
       name_(MaxNameLength), width_(0), height_(0), numChannels_(0), dataSize_(0)
 {
-	load(filename, width, height);
+	loadFromFile(filename, width, height);
+}
+
+Texture::Texture(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize)
+    : Texture(bufferName, bufferPtr, bufferSize, 0, 0)
+{
+}
+
+Texture::Texture(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize, int width, int height)
+    : glTexture_(nctl::makeUnique<nc::GLTexture>(GL_TEXTURE_2D)),
+      name_(MaxNameLength), width_(0), height_(0), numChannels_(0), dataSize_(0)
+{
+	loadFromMemory(bufferName, bufferPtr, bufferSize, width, height);
 }
 
 ///////////////////////////////////////////////////////////
@@ -36,7 +48,7 @@ void *Texture::imguiTexId()
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-bool Texture::load(const char *filename, int width, int height)
+bool Texture::loadFromFile(const char *filename, int width, int height)
 {
 	glTexture_->bind();
 	nctl::UniquePtr<nc::ITextureLoader> texLoader = nc::ITextureLoader::createFromFile(filename);
@@ -45,6 +57,18 @@ bool Texture::load(const char *filename, int width, int height)
 
 	load(*texLoader.get(), width, height);
 	name_ = filename;
+	return true;
+}
+
+bool Texture::loadFromMemory(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize, int width, int height)
+{
+	glTexture_->bind();
+	nctl::UniquePtr<nc::ITextureLoader> texLoader = nc::ITextureLoader::createFromMemory(bufferName, bufferPtr, bufferSize);
+	if (texLoader->hasLoaded() == false)
+		return false;
+
+	load(*texLoader.get(), width, height);
+	name_ = bufferName;
 	return true;
 }
 

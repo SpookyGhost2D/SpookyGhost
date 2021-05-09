@@ -123,5 +123,8 @@ bool ScriptAnimation::runScript(const char *functionName, float value)
 			nc::LuaUtils::pop(L);
 		}
 	}
+	else
+		nc::LuaUtils::pop(L);
+
 	return true;
 }

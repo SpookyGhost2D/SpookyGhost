@@ -94,7 +94,7 @@ void Canvas::unbind()
 
 void Canvas::save(const char *filename)
 {
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
 	fbo_->unbind();
 	texture_->getTexImage(0, GL_RGBA, GL_UNSIGNED_BYTE, pixels_.get());
 #else

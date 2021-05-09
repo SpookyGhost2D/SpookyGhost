@@ -22,6 +22,8 @@ class Texture
 
 	Texture(const char *filename);
 	Texture(const char *filename, int width, int height);
+	Texture(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize);
+	Texture(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize, int width, int height);
 
 	inline const nctl::String &name() const { return name_; }
 	inline void setName(const nctl::String &name) { name_ = name; }
@@ -45,7 +47,8 @@ class Texture
 	unsigned int numChannels_;
 	unsigned long dataSize_;
 
-	bool load(const char *filename, int width, int height);
+	bool loadFromFile(const char *filename, int width, int height);
+	bool loadFromMemory(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize, int width, int height);
 	void load(const nc::ITextureLoader &texLoader, int width, int height);
 
 	friend class Sprite;

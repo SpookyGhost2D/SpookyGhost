@@ -29,6 +29,10 @@
 #include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
 
+#ifdef __ANDROID__
+	#include <ncine/AndroidApplication.h>
+#endif
+
 nctl::UniquePtr<nc::IAppEventHandler> createAppEventHandler()
 {
 	return nctl::makeUnique<MyEventHandler>();
@@ -50,7 +54,10 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 
 	ui::auxString = "config.lua";
 #ifdef __ANDROID__
-	ui::androidSaveDir = nc::fs::joinPath(nc::fs::externalStorageDir(), "SpookyGhost");
+	ui::androidCfgDir = static_cast<nc::AndroidApplication &>(nc::theApplication()).internalDataPath();
+	// TODO: Load textures from media directory and save projects and scripts in an external path
+	ui::androidSaveDir = static_cast<nc::AndroidApplication &>(nc::theApplication()).internalDataPath();
+
 	if (nc::fs::isDirectory(ui::androidSaveDir.data()) == false)
 	{
 		const bool dirCreated = nc::fs::createDir(ui::androidSaveDir.data());
@@ -69,7 +76,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 		LOGI_X("Android scripts directory \"%s\" created: %s", ui::auxString.data(), dirCreated ? "true" : "false");
 	}
 
-	ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "config.lua");
+	ui::auxString = nc::fs::joinPath(ui::androidCfgDir.data(), "config.lua");
 	if (nc::fs::isReadableFile(ui::auxString.data()) == false)
 		ui::auxString = "asset::config.lua";
 #endif
@@ -81,19 +88,31 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	}
 
 #ifdef __ANDROID__
+	// Setting the default configuration directories
 	if (nc::fs::isDirectory(theCfg.projectsPath.data()) == false)
 		theCfg.projectsPath = nc::fs::joinPath(ui::androidSaveDir, "projects");
 	if (nc::fs::isDirectory(theCfg.texturesPath.data()) == false)
 		theCfg.texturesPath = ui::androidSaveDir;
 	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
 		theCfg.scriptsPath = nc::fs::joinPath(ui::androidSaveDir, "scripts");
+
+	// Setting the default data directories
+	ui::projectsDataDir = "asset::projects";
+	ui::texturesDataDir = "asset::";
+	ui::scriptsDataDir = "asset::scripts";
 #else
+	// Setting the default configuration directories
 	if (nc::fs::isDirectory(theCfg.projectsPath.data()) == false)
 		theCfg.projectsPath = nc::fs::joinPath(nc::fs::dataPath(), "projects");
 	if (nc::fs::isDirectory(theCfg.texturesPath.data()) == false)
 		theCfg.texturesPath = nc::fs::dataPath();
 	if (nc::fs::isDirectory(theCfg.scriptsPath.data()) == false)
 		theCfg.scriptsPath = nc::fs::joinPath(nc::fs::dataPath(), "scripts");
+
+	// Setting the default data directories
+	ui::projectsDataDir = nc::fs::joinPath(nc::fs::dataPath(), "projects");
+	ui::texturesDataDir = nc::fs::dataPath();
+	ui::scriptsDataDir = nc::fs::joinPath(nc::fs::dataPath(), "scripts");
 #endif
 
 	config.resolution.set(theCfg.width, theCfg.height);

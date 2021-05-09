@@ -389,7 +389,7 @@ bool LuaSerializer::load(const char *filename, const nc::EmscriptenLocalFile *lo
 	if (luaState_.runFromFile(filename) == false)
 #else
 	const bool loaded = (localFile != nullptr)
-	                        ? luaState_.runFromMemory(localFile->data(), localFile->size(), localFile->filename())
+	                        ? luaState_.runFromMemory(localFile->filename(), localFile->data(), localFile->size())
 	                        : luaState_.runFromFile(filename);
 
 	if (loaded == false)
@@ -401,15 +401,25 @@ bool LuaSerializer::load(const char *filename, const nc::EmscriptenLocalFile *lo
 
 void LuaSerializer::save(const char *filename)
 {
-#ifndef __EMSCRIPTEN__
-	nctl::UniquePtr<nc::IFile> fileHandle = nc::IFile::createFileHandle(filename);
-	fileHandle->open(nc::IFile::OpenMode::WRITE | nc::IFile::OpenMode::BINARY);
-	fileHandle->write(bufferString_.data(), bufferString_.length());
-	fileHandle->close();
-#else
-	nc::EmscriptenLocalFile localFileSave;
-	localFileSave.write(bufferString_.data(), bufferString_.length());
-	localFileSave.save(filename);
+#ifdef __EMSCRIPTEN__
+	// Don't save the configuration file locally
+	if (strncmp(filename, "config.lua", 10) == 0)
+	{
+#endif
+
+		nctl::UniquePtr<nc::IFile> fileHandle = nc::IFile::createFileHandle(filename);
+		fileHandle->open(nc::IFile::OpenMode::WRITE | nc::IFile::OpenMode::BINARY);
+		fileHandle->write(bufferString_.data(), bufferString_.length());
+		fileHandle->close();
+
+#ifdef __EMSCRIPTEN__
+	}
+	else
+	{
+		nc::EmscriptenLocalFile localFileSave;
+		localFileSave.write(bufferString_.data(), bufferString_.length());
+		localFileSave.save(filename);
+	}
 #endif
 }
 
@@ -426,4 +436,3 @@ lua_State *LuaSerializer::luaState()
 {
 	return luaState_.state();
 }
-

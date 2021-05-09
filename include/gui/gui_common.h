@@ -14,8 +14,13 @@ extern nctl::String comboString;
 extern nctl::String auxString;
 
 #ifdef __ANDROID__
+extern nctl::String androidCfgDir;
 extern nctl::String androidSaveDir;
 #endif
+
+extern nctl::String projectsDataDir;
+extern nctl::String texturesDataDir;
+extern nctl::String scriptsDataDir;
 
 int inputTextCallback(ImGuiInputTextCallbackData *data);
 };

@@ -27,7 +27,11 @@
 
 #include "version.h"
 #include <ncine/version.h>
-#include "project_strings.h"
+#include "projects_strings.h"
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+	#include "textures_strings.h"
+#endif
+#include "scripts_strings.h"
 
 namespace {
 
@@ -70,6 +74,14 @@ UserInterface::UserInterface()
       selectedAnimation_(&theAnimMgr->animGroup()), spriteGraph_(4), renderGuiWindow_(*this),
       saverData_(*theCanvas, *theSpriteMgr, *theScriptingMgr, *theAnimMgr)
 {
+#ifdef __EMSCRIPTEN__
+	textureLocalFile_.setLoadedCallback([](const nc::EmscriptenLocalFile &localFile, void *userData) {
+		UserInterface *ui = reinterpret_cast<UserInterface *>(userData);
+		if (localFile.size() > 0)
+			ui->loadTexture(localFile.filename(), localFile.data(), localFile.size());
+	}, this);
+#endif
+
 	ImGuiIO &io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -227,28 +239,6 @@ void UserInterface::menuOpen()
 	FileDialog::config.windowOpen = true;
 }
 
-bool UserInterface::openProject(const char *filename)
-{
-	if (nc::fs::isReadableFile(filename) && theSaver->load(filename, saverData_))
-	{
-		selectedSpriteIndex_ = 0;
-		selectedTextureIndex_ = 0;
-		selectedScriptIndex_ = 0;
-		selectedAnimation_ = &theAnimMgr->animGroup();
-
-		canvasGuiSection_.setResize(theCanvas->size());
-		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
-
-		lastLoadedProject_ = filename;
-		ui::auxString.format("Loaded project file \"%s\"\n", filename);
-		pushStatusInfoMessage(ui::auxString.data());
-
-		return true;
-	}
-	else
-		return false;
-}
-
 void UserInterface::menuSave()
 {
 	theSaver->save(lastLoadedProject_.data(), saverData_);
@@ -355,6 +345,106 @@ void UserInterface::createGui()
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+bool UserInterface::openProject(const char *filename)
+{
+	if (nc::fs::isReadableFile(filename) && theSaver->load(filename, saverData_))
+	{
+		selectedSpriteIndex_ = 0;
+		selectedTextureIndex_ = 0;
+		selectedScriptIndex_ = 0;
+		selectedAnimation_ = &theAnimMgr->animGroup();
+
+		canvasGuiSection_.setResize(theCanvas->size());
+		renderGuiWindow_.setResize(renderGuiWindow_.saveAnimStatus().canvasResize);
+
+		lastLoadedProject_ = filename;
+		ui::auxString.format("Loaded project file \"%s\"\n", filename);
+		pushStatusInfoMessage(ui::auxString.data());
+
+		return true;
+	}
+	else
+	{
+		ui::auxString.format("Cannot load project file \"%s\"\n", filename);
+		pushStatusErrorMessage(ui::auxString.data());
+
+		return false;
+	}
+}
+
+bool UserInterface::loadTexture(const char *filename)
+{
+	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>(filename);
+	return loadTextureImpl(nctl::move(texture), filename);
+}
+
+bool UserInterface::loadScript(const char *filename)
+{
+	nctl::UniquePtr<Script> script = nctl::makeUnique<Script>();
+	const bool hasLoaded = script->load(filename);
+
+	theScriptingMgr->scripts().pushBack(nctl::move(script));
+	// Set the relative path as the script name to allow for relocatable project files
+	nctl::String baseName = nc::fs::baseName(filename);
+	if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.scriptsPath, baseName.data()).data()))
+		theScriptingMgr->scripts().back()->setName(baseName);
+	selectedScriptIndex_ = theScriptingMgr->scripts().size() - 1;
+
+	if (hasLoaded)
+	{
+		if (theScriptingMgr->scripts().back()->canRun())
+		{
+			ui::auxString.format("Loaded script \"%s\"", filename);
+			pushStatusInfoMessage(ui::auxString.data());
+		}
+		else
+		{
+			ui::auxString.format("Loaded script \"%s\", but it cannot run", filename);
+			pushStatusErrorMessage(ui::auxString.data());
+		}
+	}
+	else
+	{
+		ui::auxString.format("Cannot load script \"%s\"", filename);
+		pushStatusErrorMessage(ui::auxString.data());
+	}
+
+	return hasLoaded;
+}
+
+#ifdef __EMSCRIPTEN__
+bool UserInterface::loadTexture(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize)
+{
+	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>(bufferName, reinterpret_cast<const unsigned char *>(bufferPtr), bufferSize);
+	return loadTextureImpl(nctl::move(texture), bufferName);
+}
+#endif
+
+bool UserInterface::loadTextureImpl(nctl::UniquePtr<Texture> texture, const char *name)
+{
+	if (texture->dataSize() > 0)
+	{
+		theSpriteMgr->textures().pushBack(nctl::move(texture));
+		// Set the relative path as the texture name to allow for relocatable project files
+		nctl::String baseName = nc::fs::baseName(name);
+		if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.texturesPath, baseName.data()).data()))
+			theSpriteMgr->textures().back()->setName(baseName);
+		selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
+
+		ui::auxString.format("Loaded texture \"%s\"", name);
+		pushStatusInfoMessage(ui::auxString.data());
+
+		return true;
+	}
+	else
+	{
+		ui::auxString.format("Cannot load texture \"%s\"", name);
+		pushStatusErrorMessage(ui::auxString.data());
+
+		return false;
+	}
+}
+
 void UserInterface::createDockingSpace()
 {
 	ImGuiIO &io = ImGui::GetIO();
@@ -444,20 +534,14 @@ void UserInterface::createMenuBar()
 			if (ImGui::MenuItem(Labels::Open, "CTRL + O"))
 				menuOpen();
 
-			const bool openBundledEnabled = ProjectStrings::Count > 0;
+			const bool openBundledEnabled = ProjectsStrings::Count > 0;
 			if (ImGui::BeginMenu(Labels::OpenBundled, openBundledEnabled))
 			{
-				for (unsigned int i = 0; i < ProjectStrings::Count; i++)
+				for (unsigned int i = 0; i < ProjectsStrings::Count; i++)
 				{
-					if (ImGui::MenuItem(ProjectStrings::Names[i]))
+					if (ImGui::MenuItem(ProjectsStrings::Names[i]))
 					{
-#ifdef __ANDROID__
-						// Bundled projects on Android are always part of the assets
-						ui::auxString.assign(nc::fs::joinPath("asset::projects", ProjectStrings::Names[i]).data());
-#else
-						ui::auxString.assign(nc::fs::joinPath(theCfg.projectsPath, ProjectStrings::Names[i]).data());
-#endif
-						if (openProject(ui::auxString.data()))
+						if (openProject(nc::fs::joinPath(ui::projectsDataDir, ProjectsStrings::Names[i]).data()))
 							numFrames = 0; // force focus on the canvas
 					}
 				}
@@ -531,8 +615,33 @@ void UserInterface::createTexturesWindow()
 {
 	ImGui::Begin(Labels::Textures);
 
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+	const bool openBundledEnabled = TexturesStrings::Count > 0;
+	if (openBundledEnabled)
+	{
+		ui::comboString.clear();
+		ui::comboString.append(Labels::BundledTextures);
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		for (unsigned int i = 0; i < TexturesStrings::Count; i++)
+		{
+			ui::comboString.formatAppend("%s", TexturesStrings::Names[i]);
+			ui::comboString.setLength(ui::comboString.length() + 1);
+		}
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		static int currentComboTexture = 0;
+		if (ImGui::Combo("###BundledTextures", &currentComboTexture, ui::comboString.data()) && currentComboTexture > 0)
+		{
+			loadTexture(nc::fs::joinPath(ui::texturesDataDir, TexturesStrings::Names[currentComboTexture - 1]).data());
+			currentComboTexture = 0;
+		}
+	}
+#endif
+
 	if (ImGui::Button(Labels::Load))
 	{
+#ifndef __EMSCRIPTEN__
 		FileDialog::config.directory = theCfg.texturesPath;
 		FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
 		FileDialog::config.windowTitle = "Load texture file";
@@ -541,27 +650,31 @@ void UserInterface::createTexturesWindow()
 		FileDialog::config.extensions = "png\0\0";
 		FileDialog::config.action = FileDialog::Action::LOAD_TEXTURE;
 		FileDialog::config.windowOpen = true;
+#else
+		textureLocalFile_.load();
+#endif
 	}
 
-	ImGui::SameLine();
-
-	if (theSpriteMgr->textures().isEmpty() == false &&
-	    (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
+	if (theSpriteMgr->textures().isEmpty() == false)
 	{
-		// Deleting backwards without iterators
-		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
 		{
-			Sprite *sprite = theSpriteMgr->sprites()[i].get();
-			if (&sprite->texture() == theSpriteMgr->textures()[selectedTextureIndex_].get())
+			// Deleting backwards without iterators
+			for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
 			{
-				updateSelectedAnimOnSpriteRemoval(sprite);
-				theAnimMgr->removeSprite(sprite);
-				theSpriteMgr->sprites().removeAt(i);
+				Sprite *sprite = theSpriteMgr->sprites()[i].get();
+				if (&sprite->texture() == theSpriteMgr->textures()[selectedTextureIndex_].get())
+				{
+					updateSelectedAnimOnSpriteRemoval(sprite);
+					theAnimMgr->removeSprite(sprite);
+					theSpriteMgr->sprites().removeAt(i);
+				}
 			}
+			theSpriteMgr->textures().removeAt(selectedTextureIndex_);
+			if (selectedTextureIndex_ > 0)
+				selectedTextureIndex_--;
 		}
-		theSpriteMgr->textures().removeAt(selectedTextureIndex_);
-		if (selectedTextureIndex_ > 0)
-			selectedTextureIndex_--;
 	}
 
 	if (theSpriteMgr->textures().isEmpty() == false)
@@ -717,6 +830,28 @@ void UserInterface::createScriptsWindow()
 {
 	ImGui::Begin(Labels::Scripts);
 
+	const bool openBundledEnabled = ScriptsStrings::Count > 0;
+	if (openBundledEnabled)
+	{
+		ui::comboString.clear();
+		ui::comboString.append(Labels::BundledScripts);
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		for (unsigned int i = 0; i < ScriptsStrings::Count; i++)
+		{
+			ui::comboString.formatAppend("%s", ScriptsStrings::Names[i]);
+			ui::comboString.setLength(ui::comboString.length() + 1);
+		}
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		static int currentComboScript = 0;
+		if (ImGui::Combo("###BundledScripts", &currentComboScript, ui::comboString.data()) && currentComboScript > 0)
+		{
+			loadScript(nc::fs::joinPath(ui::scriptsDataDir, ScriptsStrings::Names[currentComboScript - 1]).data());
+			currentComboScript = 0;
+		}
+	}
+
 	if (ImGui::Button(Labels::Load))
 	{
 		FileDialog::config.directory = theCfg.scriptsPath;
@@ -729,25 +864,28 @@ void UserInterface::createScriptsWindow()
 		FileDialog::config.windowOpen = true;
 	}
 
-	ImGui::SameLine();
-
-	if (theScriptingMgr->scripts().isEmpty() == false &&
-	    (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered())))
+	if (theScriptingMgr->scripts().isEmpty() == false)
 	{
-		Script *selectedScript = theScriptingMgr->scripts()[selectedScriptIndex_].get();
-		theAnimMgr->removeScript(selectedScript);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+		{
+			Script *selectedScript = theScriptingMgr->scripts()[selectedScriptIndex_].get();
+			theAnimMgr->removeScript(selectedScript);
 
-		theScriptingMgr->scripts().removeAt(selectedScriptIndex_);
-		if (selectedScriptIndex_ > 0)
-			selectedScriptIndex_--;
+			theScriptingMgr->scripts().removeAt(selectedScriptIndex_);
+			if (selectedScriptIndex_ > 0)
+				selectedScriptIndex_--;
+		}
+
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Reload))
+			reloadScript();
 	}
 
 	if (theScriptingMgr->scripts().isEmpty() == false)
 	{
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Reload))
-			reloadScript();
-
 		ImGui::Separator();
 		for (unsigned int i = 0; i < theScriptingMgr->scripts().size(); i++)
 		{
@@ -1759,11 +1897,6 @@ void UserInterface::createFileDialog()
 			case FileDialog::Action::OPEN_PROJECT:
 				if (openProject(selection.data()))
 					numFrames = 0; // force focus on the canvas
-				else
-				{
-					ui::auxString.format("Cannot load project file \"%s\"\n", selection.data());
-					pushStatusErrorMessage(ui::auxString.data());
-				}
 				break;
 			case FileDialog::Action::SAVE_PROJECT:
 				if (nc::fs::hasExtension(selection.data(), "lua") == false)
@@ -1775,67 +1908,22 @@ void UserInterface::createFileDialog()
 				}
 				else
 				{
+#ifdef __EMSCRIPTEN__
+					theSaver->save(nc::fs::baseName(selection.data()).data(), saverData_);
+					ui::auxString.format("Saved project file \"%s\"\n", nc::fs::baseName(selection.data()).data());
+#else
 					theSaver->save(selection.data(), saverData_);
 					ui::auxString.format("Saved project file \"%s\"\n", selection.data());
+#endif
 					pushStatusInfoMessage(ui::auxString.data());
 				}
 				break;
 			case FileDialog::Action::LOAD_TEXTURE:
-			{
-				nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>(selection.data());
-				if (texture->dataSize() > 0)
-				{
-					theSpriteMgr->textures().pushBack(nctl::move(texture));
-					// Set the relative path as the texture name to allow for relocatable project files
-					nctl::String baseName = nc::fs::baseName(selection.data());
-					if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.texturesPath, baseName.data()).data()))
-						theSpriteMgr->textures().back()->setName(baseName);
-					selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
-
-					ui::auxString.format("Loaded texture \"%s\"", selection.data());
-					pushStatusInfoMessage(ui::auxString.data());
-				}
-				else
-				{
-					ui::auxString.format("Cannot load texture \"%s\"", selection.data());
-					pushStatusErrorMessage(ui::auxString.data());
-				}
-
+				loadTexture(selection.data());
 				break;
-			}
 			case FileDialog::Action::LOAD_SCRIPT:
-			{
-				nctl::UniquePtr<Script> script = nctl::makeUnique<Script>();
-				const bool hasLoaded = script->load(selection.data());
-
-				theScriptingMgr->scripts().pushBack(nctl::move(script));
-				// Set the relative path as the script name to allow for relocatable project files
-				nctl::String baseName = nc::fs::baseName(selection.data());
-				if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.scriptsPath, baseName.data()).data()))
-					theScriptingMgr->scripts().back()->setName(baseName);
-				selectedScriptIndex_ = theScriptingMgr->scripts().size() - 1;
-
-				if (hasLoaded)
-				{
-					if (theScriptingMgr->scripts().back()->canRun())
-					{
-						ui::auxString.format("Loaded script \"%s\"", selection.data());
-						pushStatusInfoMessage(ui::auxString.data());
-					}
-					else
-					{
-						ui::auxString.format("Loaded script \"%s\", but it cannot run", selection.data());
-						pushStatusErrorMessage(ui::auxString.data());
-					}
-				}
-				else
-				{
-					ui::auxString.format("Cannot load script \"%s\"", selection.data());
-					pushStatusErrorMessage(ui::auxString.data());
-				}
-
+				loadScript(selection.data());
 				break;
-			}
 			case FileDialog::Action::RENDER_DIR:
 				renderGuiWindow_.directory = selection;
 				break;
@@ -2202,8 +2290,8 @@ void UserInterface::createTipsWindow()
 	{
 		ui::auxString = "config.lua";
 #ifdef __ANDROID__
-		// On Android the configuration file is saved in the external storage directory
-		ui::auxString = nc::fs::joinPath(ui::androidSaveDir.data(), "config.lua");
+		// On Android the configuration file is saved in the internal storage directory
+		ui::auxString = nc::fs::joinPath(ui::androidCfgDir.data(), "config.lua");
 #endif
 		theSaver->saveCfg(ui::auxString.data(), theCfg);
 	}
