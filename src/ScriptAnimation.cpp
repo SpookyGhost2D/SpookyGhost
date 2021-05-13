@@ -15,7 +15,7 @@ ScriptAnimation::ScriptAnimation()
 }
 
 ScriptAnimation::ScriptAnimation(Sprite *sprite, Script *script)
-    : CurveAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED),
+    : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
       sprite_(nullptr), script_(nullptr)
 {
 	setSprite(sprite);
@@ -32,16 +32,7 @@ ScriptAnimation::ScriptAnimation(Sprite *sprite, Script *script)
 nctl::UniquePtr<IAnimation> ScriptAnimation::clone() const
 {
 	nctl::UniquePtr<ScriptAnimation> anim = nctl::makeUnique<ScriptAnimation>(sprite_, script_);
-
-	anim->name.assign(name);
-	anim->enabled = enabled;
-	// Animation state is not cloned
-	anim->setParent(parent_);
-
-	// Always disable locking for cloned animations
-	anim->isLocked_ = false;
-	anim->curve_ = curve_;
-	anim->speed_ = speed_;
+	CurveAnimation::cloneTo(*anim);
 
 	return nctl::move(anim);
 }
@@ -70,12 +61,10 @@ void ScriptAnimation::update(float deltaTime)
 				runScript("update", curve_.value());
 			break;
 		case State::PLAYING:
-		{
 			curve_.next(speed_ * deltaTime);
 			if (sprite_ && sprite_->visible)
 				runScript("update", curve_.value());
 			break;
-		}
 	}
 
 	CurveAnimation::update(deltaTime);

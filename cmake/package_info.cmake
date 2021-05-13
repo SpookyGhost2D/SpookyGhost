@@ -16,6 +16,7 @@ set(PACKAGE_SOURCES
 	include/Sprite.h
 	include/Texture.h
 	include/RenderingResources.h
+	include/LoopComponent.h
 	include/EasingCurve.h
 	include/IAnimation.h
 	include/CurveAnimation.h
@@ -52,6 +53,7 @@ set(PACKAGE_SOURCES
 	src/Texture.cpp
 	src/RenderingResources.cpp
 	src/EasingCurve.cpp
+	src/IAnimation.cpp
 	src/CurveAnimation.cpp
 	src/PropertyAnimation.cpp
 	src/GridAnimation.cpp

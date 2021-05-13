@@ -9,6 +9,7 @@ class Texture;
 class Sprite;
 class Script;
 
+class LoopComponent;
 class IAnimation;
 class SequentialAnimationGroup;
 class PropertyAnimation;
@@ -45,6 +46,7 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Script> &script);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim);
+void deserialize(LuaSerializer &ls, LoopComponent &loop);
 bool deserialize(LuaSerializer &ls, const char *name, SaveAnim &saveAnim);
 void deserialize(LuaSerializer &ls, Configuration &cfg);
 

@@ -2,35 +2,20 @@
 #define CLASS_SEQUENTIALANIMATIONGROUP
 
 #include "AnimationGroup.h"
+#include "LoopComponent.h"
 
 /// The sequential animation group class
 class SequentialAnimationGroup : public AnimationGroup
 {
   public:
-	enum class Direction
-	{
-		FORWARD,
-		BACKWARD
-	};
-
-	enum class LoopMode
-	{
-		DISABLED,
-		REWIND,
-		PING_PONG
-	};
-
 	SequentialAnimationGroup();
 
 	nctl::UniquePtr<IAnimation> clone() const override;
 
 	inline Type type() const override { return Type::SEQUENTIAL_GROUP; }
 
-	inline Direction direction() const { return direction_; }
-	inline void setDirection(Direction direction) { direction_ = direction; }
-
-	inline LoopMode loopMode() const { return loopMode_; }
-	inline void setLoopMode(LoopMode loopMode) { loopMode_ = loopMode; }
+	inline const LoopComponent &loop() const { return loop_; }
+	inline LoopComponent &loop() { return loop_; }
 
 	void stop() override;
 	void pause() override;
@@ -39,9 +24,7 @@ class SequentialAnimationGroup : public AnimationGroup
 	void update(float deltaTime) override;
 
   private:
-	Direction direction_;
-	LoopMode loopMode_;
-	bool forward_;
+	LoopComponent loop_;
 };
 
 #endif

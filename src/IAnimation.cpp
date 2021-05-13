@@ -1,0 +1,22 @@
+#include "IAnimation.h"
+
+///////////////////////////////////////////////////////////
+// CONSTRUCTORS and DESTRUCTOR
+///////////////////////////////////////////////////////////
+
+IAnimation::IAnimation()
+    : state_(State::STOPPED), parent_(nullptr)
+{}
+
+///////////////////////////////////////////////////////////
+// PROTECTED FUNCTIONS
+///////////////////////////////////////////////////////////
+
+void IAnimation::cloneTo(IAnimation &other) const
+{
+	other.name = name;
+	other.enabled = enabled;
+	// Animation state is not cloned
+	other.state_ = State::STOPPED;
+	other.parent_ = parent_;
+}

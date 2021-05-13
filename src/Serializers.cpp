@@ -155,40 +155,35 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 	ls.unindent();
 	ls.buffer().append("},\n");
 }
-
-void serialize(LuaSerializer &ls, const char *name, SequentialAnimationGroup::Direction direction)
+void serialize(LuaSerializer &ls, const LoopComponent &loop)
 {
-	switch (direction)
+	switch (loop.direction())
 	{
-		case SequentialAnimationGroup::Direction::FORWARD:
-			serialize(ls, name, "forward");
+		case Loop::Direction::FORWARD:
+			serialize(ls, "direction", "forward");
 			break;
-		case SequentialAnimationGroup::Direction::BACKWARD:
-			serialize(ls, name, "backward");
+		case Loop::Direction::BACKWARD:
+			serialize(ls, "direction", "backward");
 			break;
 	}
-}
 
-void serialize(LuaSerializer &ls, const char *name, SequentialAnimationGroup::LoopMode loopMode)
-{
-	switch (loopMode)
+	switch (loop.mode())
 	{
-		case SequentialAnimationGroup::LoopMode::DISABLED:
-			serialize(ls, name, "disabled");
+		case Loop::Mode::DISABLED:
+			serialize(ls, "loop_mode", "disabled");
 			break;
-		case SequentialAnimationGroup::LoopMode::REWIND:
-			serialize(ls, name, "rewind");
+		case Loop::Mode::REWIND:
+			serialize(ls, "loop_mode", "rewind");
 			break;
-		case SequentialAnimationGroup::LoopMode::PING_PONG:
-			serialize(ls, name, "ping_pong");
+		case Loop::Mode::PING_PONG:
+			serialize(ls, "loop_mode", "ping_pong");
 			break;
 	}
 }
 
 void serialize(LuaSerializer &ls, const SequentialAnimationGroup &anim)
 {
-	serialize(ls, "direction", anim.direction());
-	serialize(ls, "loop_mode", anim.loopMode());
+	serialize(ls, anim.loop());
 }
 
 void serialize(LuaSerializer &ls, const char *name, EasingCurve::Type type)
@@ -222,35 +217,6 @@ void serialize(LuaSerializer &ls, const char *name, EasingCurve::Type type)
 	}
 }
 
-void serialize(LuaSerializer &ls, const char *name, EasingCurve::Direction direction)
-{
-	switch (direction)
-	{
-		case EasingCurve::Direction::FORWARD:
-			serialize(ls, name, "forward");
-			break;
-		case EasingCurve::Direction::BACKWARD:
-			serialize(ls, name, "backward");
-			break;
-	}
-}
-
-void serialize(LuaSerializer &ls, const char *name, EasingCurve::LoopMode loopMode)
-{
-	switch (loopMode)
-	{
-		case EasingCurve::LoopMode::DISABLED:
-			serialize(ls, name, "disabled");
-			break;
-		case EasingCurve::LoopMode::REWIND:
-			serialize(ls, name, "rewind");
-			break;
-		case EasingCurve::LoopMode::PING_PONG:
-			serialize(ls, name, "ping_pong");
-			break;
-	}
-}
-
 void serialize(LuaSerializer &ls, const char *name, const EasingCurve &curve)
 {
 	ls.buffer().formatAppend("%s =\n", name);
@@ -258,8 +224,7 @@ void serialize(LuaSerializer &ls, const char *name, const EasingCurve &curve)
 	ls.indent();
 
 	serialize(ls, "type", curve.type());
-	serialize(ls, "direction", curve.direction());
-	serialize(ls, "loop_mode", curve.loopMode());
+	serialize(ls, curve.loop());
 	serialize(ls, "start_time", curve.start());
 	serialize(ls, "end_time", curve.end());
 	serialize(ls, "scale", curve.scale());
@@ -474,40 +439,32 @@ IAnimation::Type deserialize(LuaSerializer &ls, const char *name)
 		return IAnimation::Type::PARALLEL_GROUP;
 }
 
-template <>
-SequentialAnimationGroup::Direction deserialize(LuaSerializer &ls, const char *name)
+void deserialize(LuaSerializer &ls, LoopComponent &loop)
 {
 	lua_State *L = ls.luaState();
-	nctl::String directionString = nc::LuaUtils::retrieveField<const char *>(L, -1, name);
 
+	nctl::String directionString = nc::LuaUtils::retrieveField<const char *>(L, -1, "direction");
 	if (directionString == "forward")
-		return SequentialAnimationGroup::Direction::FORWARD;
+		loop.setDirection(Loop::Direction::FORWARD);
 	else if (directionString == "backward")
-		return SequentialAnimationGroup::Direction::BACKWARD;
+		loop.setDirection(Loop::Direction::BACKWARD);
 	else
-		return SequentialAnimationGroup::Direction::FORWARD;
-}
+		loop.setDirection(Loop::Direction::FORWARD);
 
-template <>
-SequentialAnimationGroup::LoopMode deserialize(LuaSerializer &ls, const char *name)
-{
-	lua_State *L = ls.luaState();
-	nctl::String loopModeString = nc::LuaUtils::retrieveField<const char *>(L, -1, name);
-
+	nctl::String loopModeString = nc::LuaUtils::retrieveField<const char *>(L, -1, "loop_mode");
 	if (loopModeString == "disabled")
-		return SequentialAnimationGroup::LoopMode::DISABLED;
+		loop.setMode(Loop::Mode::DISABLED);
 	else if (loopModeString == "rewind")
-		return SequentialAnimationGroup::LoopMode::REWIND;
+		loop.setMode(Loop::Mode::REWIND);
 	else if (loopModeString == "ping_pong")
-		return SequentialAnimationGroup::LoopMode::PING_PONG;
+		loop.setMode(Loop::Mode::PING_PONG);
 	else
-		return SequentialAnimationGroup::LoopMode::DISABLED;
+		loop.setMode(Loop::Mode::DISABLED);
 }
 
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<SequentialAnimationGroup> &anim)
 {
-	anim->setDirection(deserialize<SequentialAnimationGroup::Direction>(ls, "direction"));
-	anim->setLoopMode(deserialize<SequentialAnimationGroup::LoopMode>(ls, "loop_mode"));
+	deserialize(ls, anim->loop());
 }
 
 template <>
@@ -536,36 +493,6 @@ EasingCurve::Type deserialize(LuaSerializer &ls, const char *name)
 		return EasingCurve::Type::LINEAR;
 }
 
-template <>
-EasingCurve::Direction deserialize(LuaSerializer &ls, const char *name)
-{
-	lua_State *L = ls.luaState();
-	nctl::String directionString = nc::LuaUtils::retrieveField<const char *>(L, -1, name);
-
-	if (directionString == "forward")
-		return EasingCurve::Direction::FORWARD;
-	else if (directionString == "backward")
-		return EasingCurve::Direction::BACKWARD;
-	else
-		return EasingCurve::Direction::FORWARD;
-}
-
-template <>
-EasingCurve::LoopMode deserialize(LuaSerializer &ls, const char *name)
-{
-	lua_State *L = ls.luaState();
-	nctl::String loopModeString = nc::LuaUtils::retrieveField<const char *>(L, -1, name);
-
-	if (loopModeString == "disabled")
-		return EasingCurve::LoopMode::DISABLED;
-	else if (loopModeString == "rewind")
-		return EasingCurve::LoopMode::REWIND;
-	else if (loopModeString == "ping_pong")
-		return EasingCurve::LoopMode::PING_PONG;
-	else
-		return EasingCurve::LoopMode::DISABLED;
-}
-
 void deserialize(LuaSerializer &ls, const char *name, EasingCurve &curve)
 {
 	ASSERT(name);
@@ -574,8 +501,7 @@ void deserialize(LuaSerializer &ls, const char *name, EasingCurve &curve)
 	nc::LuaUtils::retrieveFieldTable(L, -1, name);
 
 	curve.setType(deserialize<EasingCurve::Type>(ls, "type"));
-	curve.setDirection(deserialize<EasingCurve::Direction>(ls, "direction"));
-	curve.setLoopMode(deserialize<EasingCurve::LoopMode>(ls, "loop_mode"));
+	deserialize(ls, curve.loop());
 	curve.setStart(deserialize<float>(ls, "start_time"));
 	curve.setEnd(deserialize<float>(ls, "end_time"));
 	curve.setScale(deserialize<float>(ls, "scale"));

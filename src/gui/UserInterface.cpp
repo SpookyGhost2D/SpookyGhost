@@ -41,8 +41,8 @@ enum AnchorPointsEnum { CENTER, BOTTOM_LEFT, TOP_LEFT, BOTTOM_RIGHT, TOP_RIGHT }
 const char *blendingPresets[] = { "Disabled", "Alpha", "Pre-multiplied Alpha", "Additive", "Multiply" };
 
 const char *easingCurveTypes[] = { "Linear", "Quadratic", "Cubic", "Quartic", "Quintic", "Sine", "Exponential", "Circular" };
-const char *easingCurveDirections[] = { "Forward", "Backward" };
-const char *easingCurveLoopModes[] = { "Disabled", "Rewind", "Ping Pong" };
+const char *loopDirections[] = { "Forward", "Backward" };
+const char *loopModes[] = { "Disabled", "Rewind", "Ping Pong" };
 
 const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property", "Grid", "Script" };
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID, SCRIPT };
@@ -1558,19 +1558,24 @@ void UserInterface::createSpriteWindow()
 	ImGui::End();
 }
 
+void UserInterface::createLoopAnimationGui(LoopComponent &loop)
+{
+	int currentLoopDirection = static_cast<int>(loop.direction());
+	ImGui::Combo("Direction", &currentLoopDirection, loopDirections, IM_ARRAYSIZE(loopDirections));
+	loop.setDirection(static_cast<Loop::Direction>(currentLoopDirection));
+
+	int currentLoopMode = static_cast<int>(loop.mode());
+	ImGui::Combo("Loop Mode", &currentLoopMode, loopModes, IM_ARRAYSIZE(loopModes));
+	loop.setMode(static_cast<Loop::Mode>(currentLoopMode));
+}
+
 void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits)
 {
 	int currentComboCurveType = static_cast<int>(anim.curve().type());
 	ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
 	anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
 
-	int currentDirectionMode = static_cast<int>(anim.curve().direction());
-	ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
-	anim.curve().setDirection(static_cast<EasingCurve::Direction>(currentDirectionMode));
-
-	int currentComboLoopMode = static_cast<int>(anim.curve().loopMode());
-	ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
-	anim.curve().setLoopMode(static_cast<EasingCurve::LoopMode>(currentComboLoopMode));
+	createLoopAnimationGui(anim.curve().loop());
 
 	ImGui::SliderFloat("Shift", &anim.curve().shift(), limits.minShift, limits.maxShift);
 	ImGui::SameLine();
@@ -1652,13 +1657,7 @@ void UserInterface::createAnimationWindow()
 			ImGui::InputText("Name", sequentialAnim.name.data(), IAnimation::MaxNameLength,
 			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sequentialAnim.name);
 
-			int currentDirectionMode = static_cast<int>(sequentialAnim.direction());
-			ImGui::Combo("Direction", &currentDirectionMode, easingCurveDirections, IM_ARRAYSIZE(easingCurveDirections));
-			sequentialAnim.setDirection(static_cast<SequentialAnimationGroup::Direction>(currentDirectionMode));
-
-			int currentComboLoopMode = static_cast<int>(sequentialAnim.loopMode());
-			ImGui::Combo("Loop Mode", &currentComboLoopMode, easingCurveLoopModes, IM_ARRAYSIZE(easingCurveLoopModes));
-			sequentialAnim.setLoopMode(static_cast<SequentialAnimationGroup::LoopMode>(currentComboLoopMode));
+			createLoopAnimationGui(sequentialAnim.loop());
 		}
 		else if (anim.type() == IAnimation::Type::PARALLEL_GROUP)
 		{

@@ -8,8 +8,7 @@
 class AnimationGroup : public IAnimation
 {
   public:
-	AnimationGroup()
-	    : anims_(4) {}
+	AnimationGroup();
 
 	inline nctl::Array<nctl::UniquePtr<IAnimation>> &anims() { return anims_; }
 	inline const nctl::Array<nctl::UniquePtr<IAnimation>> &anims() const { return anims_; }
@@ -19,6 +18,8 @@ class AnimationGroup : public IAnimation
 
   protected:
 	nctl::Array<nctl::UniquePtr<IAnimation>> anims_;
+
+	void cloneTo(AnimationGroup &other) const;
 };
 
 #endif

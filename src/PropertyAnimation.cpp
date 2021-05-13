@@ -11,7 +11,7 @@ PropertyAnimation::PropertyAnimation()
 }
 
 PropertyAnimation::PropertyAnimation(Sprite *sprite)
-    : CurveAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED),
+    : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
       property_(nullptr), propertyName_(64), sprite_(nullptr)
 {
 	setSprite(sprite);
@@ -24,16 +24,7 @@ PropertyAnimation::PropertyAnimation(Sprite *sprite)
 nctl::UniquePtr<IAnimation> PropertyAnimation::clone() const
 {
 	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(sprite_);
-
-	anim->name.assign(name);
-	anim->enabled = enabled;
-	// Animation state is not cloned
-	anim->setParent(parent_);
-
-	// Always disable locking for cloned animations
-	anim->isLocked_ = false;
-	anim->curve_ = curve_;
-	anim->speed_ = speed_;
+	CurveAnimation::cloneTo(*anim);
 
 	anim->property_ = property_;
 	anim->propertyName_.assign(propertyName_);

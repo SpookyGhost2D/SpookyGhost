@@ -25,8 +25,7 @@ class IAnimation
 		PLAYING
 	};
 
-	IAnimation()
-	    : state_(State::STOPPED), parent_(nullptr) {}
+	IAnimation();
 	virtual ~IAnimation() {}
 
 	virtual nctl::UniquePtr<IAnimation> clone() const = 0;
@@ -53,6 +52,8 @@ class IAnimation
   protected:
 	State state_;
 	AnimationGroup *parent_;
+
+	void cloneTo(IAnimation &other) const;
 };
 
 #endif

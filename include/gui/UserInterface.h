@@ -20,6 +20,7 @@ class SpriteManager;
 class AnimationManager;
 class IAnimation;
 class AnimationGroup;
+class LoopComponent;
 class CurveAnimation;
 class PropertyAnimation;
 class GridAnimation;
@@ -162,6 +163,7 @@ class UserInterface
 	void createSpriteWindow();
 	void createAnimationWindow();
 
+	void createLoopAnimationGui(LoopComponent &loop);
 	void createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits);
 	void createPropertyAnimationGui(PropertyAnimation &anim);
 	void createGridAnimationGui(GridAnimation &anim);

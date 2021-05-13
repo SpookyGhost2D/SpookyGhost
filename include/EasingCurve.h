@@ -1,6 +1,8 @@
 #ifndef CLASS_EASINGCURVE
 #define CLASS_EASINGCURVE
 
+#include "LoopComponent.h"
+
 /// The easing curve class
 class EasingCurve
 {
@@ -17,32 +19,13 @@ class EasingCurve
 		CIRC,
 	};
 
-	enum class Direction
-	{
-		FORWARD,
-		BACKWARD
-	};
-
-	enum class LoopMode
-	{
-		DISABLED,
-		REWIND,
-		PING_PONG
-	};
-
-	EasingCurve(Type type, LoopMode loopMode);
+	EasingCurve(Type type, Loop::Mode loopMode);
 
 	inline Type type() const { return type_; }
 	inline void setType(Type type) { type_ = type; }
 
-	inline Direction direction() const { return direction_; }
-	inline void setDirection(Direction direction) { direction_ = direction; }
-
-	inline LoopMode loopMode() const { return loopMode_; }
-	inline void setLoopMode(LoopMode loopMode) { loopMode_ = loopMode; }
-
-	inline bool isGoingForward() const { return forward_; }
-	inline void goForward(bool forward) { forward_ = forward; }
+	inline const LoopComponent &loop() const { return loop_; }
+	inline LoopComponent &loop() { return loop_; }
 
 	inline float time() const { return time_; }
 	inline float &time() { return time_; }
@@ -70,9 +53,7 @@ class EasingCurve
 
   private:
 	Type type_;
-	Direction direction_;
-	LoopMode loopMode_;
-	bool forward_;
+	LoopComponent loop_;
 
 	float time_;
 	float start_;

@@ -13,7 +13,7 @@ GridAnimation::GridAnimation()
 }
 
 GridAnimation::GridAnimation(Sprite *sprite)
-    : CurveAnimation(EasingCurve::Type::LINEAR, EasingCurve::LoopMode::DISABLED),
+    : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
       sprite_(nullptr), gridFunction_(nullptr), params_(4)
 {
 	setSprite(sprite);
@@ -26,16 +26,7 @@ GridAnimation::GridAnimation(Sprite *sprite)
 nctl::UniquePtr<IAnimation> GridAnimation::clone() const
 {
 	nctl::UniquePtr<GridAnimation> anim = nctl::makeUnique<GridAnimation>(sprite_);
-
-	anim->name.assign(name);
-	anim->enabled = enabled;
-	// Animation state is not cloned
-	anim->setParent(parent_);
-
-	// Always disable locking for cloned animations
-	anim->isLocked_ = false;
-	anim->curve_ = curve_;
-	anim->speed_ = speed_;
+	CurveAnimation::cloneTo(*anim);
 
 	anim->gridFunction_ = gridFunction_;
 	anim->params_ = params_;

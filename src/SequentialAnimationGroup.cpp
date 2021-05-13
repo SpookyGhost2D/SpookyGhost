@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////
 
 SequentialAnimationGroup::SequentialAnimationGroup()
-    : direction_(Direction::FORWARD), loopMode_(LoopMode::DISABLED), forward_(true)
+    : loop_(Loop::Mode::DISABLED)
 {
 }
 
@@ -16,18 +16,16 @@ SequentialAnimationGroup::SequentialAnimationGroup()
 nctl::UniquePtr<IAnimation> SequentialAnimationGroup::clone() const
 {
 	nctl::UniquePtr<SequentialAnimationGroup> animGroup = nctl::makeUnique<SequentialAnimationGroup>();
-	animGroup->enabled = enabled;
+	AnimationGroup::cloneTo(*animGroup);
 
-	for (auto &&anim : anims_)
-		animGroup->anims().pushBack(nctl::move(anim->clone()));
-	animGroup->setParent(parent_);
+	animGroup->loop_ = loop_;
 
 	return nctl::move(animGroup);
 }
 
 void SequentialAnimationGroup::stop()
 {
-	if (direction_ == Direction::FORWARD)
+	if (loop_.direction_ == Loop::Direction::FORWARD)
 	{
 		// Reverse stop to reset animations in the correct order
 		for (int i = anims_.size() - 1; i >= 0; i--)
@@ -68,7 +66,7 @@ void SequentialAnimationGroup::play()
 	{
 		if (anims_.isEmpty() == false)
 		{
-			if (direction_ == Direction::FORWARD)
+			if (loop_.direction_ == Loop::Direction::FORWARD)
 				anims_.front()->play();
 			else
 				anims_.back()->play();
@@ -113,26 +111,26 @@ void SequentialAnimationGroup::update(float deltaTime)
 		// Decide the next animation to play as the current one has just finished
 		if (anims_[playingIndex]->state() == State::STOPPED)
 		{
-			switch (loopMode_)
+			switch (loop_.mode_)
 			{
-				case LoopMode::DISABLED:
-					playingIndex += (direction_ == Direction::FORWARD) ? 1 : -1;
+				case Loop::Mode::DISABLED:
+					playingIndex += (loop_.direction_ == Loop::Direction::FORWARD) ? 1 : -1;
 					break;
-				case LoopMode::REWIND:
-					playingIndex += (direction_ == Direction::FORWARD) ? 1 : -1;
+				case Loop::Mode::REWIND:
+					playingIndex += (loop_.direction_ == Loop::Direction::FORWARD) ? 1 : -1;
 					if (playingIndex > static_cast<int>(anims_.size() - 1))
 						playingIndex = 0;
 					else if (playingIndex < 0)
 						playingIndex = anims_.size() - 1;
 					break;
-				case LoopMode::PING_PONG:
-					if (forward_)
+				case Loop::Mode::PING_PONG:
+					if (loop_.forward_)
 					{
 						playingIndex++;
 						if (playingIndex >= anims_.size())
 						{
 							playingIndex = anims_.size() > 1 ? anims_.size() - 2 : anims_.size() - 1;
-							forward_ = !forward_;
+							loop_.forward_ = !loop_.forward_;
 						}
 					}
 					else
@@ -141,7 +139,7 @@ void SequentialAnimationGroup::update(float deltaTime)
 						if (playingIndex < 0)
 						{
 							playingIndex = anims_.size() > 1 ? 1 : 0;
-							forward_ = !forward_;
+							loop_.forward_ = !loop_.forward_;
 						}
 					}
 					break;

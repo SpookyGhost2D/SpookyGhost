@@ -5,9 +5,9 @@
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-EasingCurve::EasingCurve(Type type, LoopMode loopMode)
-    : type_(type), direction_(Direction::FORWARD), loopMode_(loopMode), forward_(true),
-      time_(0.0f), start_(0.0f), end_(1.0f), scale_(1.0f), shift_(0.0f)
+EasingCurve::EasingCurve(Type type, Loop::Mode loopMode)
+    : type_(type), loop_(loopMode), time_(0.0f),
+      start_(0.0f), end_(1.0f), scale_(1.0f), shift_(0.0f)
 {
 }
 
@@ -27,9 +27,9 @@ void EasingCurve::setTime(float time)
 
 void EasingCurve::reset()
 {
-	if (direction_ == Direction::FORWARD)
+	if (loop_.direction_ == Loop::Direction::FORWARD)
 		time_ = start_;
-	else if (direction_ == Direction::BACKWARD)
+	else if (loop_.direction_ == Loop::Direction::BACKWARD)
 		time_ = end_;
 }
 
@@ -60,50 +60,50 @@ float EasingCurve::value()
 
 void EasingCurve::next(float deltaTime)
 {
-	if ((forward_ && direction_ == Direction::FORWARD) ||
-	    (!forward_ && direction_ == Direction::BACKWARD))
+	if ((loop_.forward_ && loop_.direction_ == Loop::Direction::FORWARD) ||
+	    (!loop_.forward_ && loop_.direction_ == Loop::Direction::BACKWARD))
 		time_ += deltaTime;
 	else
 		time_ -= deltaTime;
 
 	if (time_ < start_)
 	{
-		if (direction_ == Direction::BACKWARD)
+		if (loop_.direction_ == Loop::Direction::BACKWARD)
 		{
-			if (loopMode_ == LoopMode::DISABLED)
+			if (loop_.mode_ == Loop::Mode::DISABLED)
 				time_ = start_;
-			else if (loopMode_ == LoopMode::REWIND)
+			else if (loop_.mode_ == Loop::Mode::REWIND)
 				time_ = end_ + time_;
-			else if (loopMode_ == LoopMode::PING_PONG)
+			else if (loop_.mode_ == Loop::Mode::PING_PONG)
 			{
 				time_ = 2.0f * start_ - time_;
-				forward_ = false;
+				loop_.forward_ = false;
 			}
 		}
 		else
 		{
 			time_ = 2.0f * start_ - time_;
-			forward_ = true;
+			loop_.forward_ = true;
 		}
 	}
 	else if (time_ > end_)
 	{
-		if (direction_ == Direction::FORWARD)
+		if (loop_.direction_ == Loop::Direction::FORWARD)
 		{
-			if (loopMode_ == LoopMode::DISABLED)
+			if (loop_.mode_ == Loop::Mode::DISABLED)
 				time_ = end_;
-			else if (loopMode_ == LoopMode::REWIND)
+			else if (loop_.mode_ == Loop::Mode::REWIND)
 				time_ = time_ - end_;
-			else if (loopMode_ == LoopMode::PING_PONG)
+			else if (loop_.mode_ == Loop::Mode::PING_PONG)
 			{
 				time_ = 2.0f * end_ - time_;
-				forward_ = false;
+				loop_.forward_ = false;
 			}
 		}
 		else
 		{
 			time_ = 2.0f * end_ - time_;
-			forward_ = true;
+			loop_.forward_ = true;
 		}
 	}
 }
