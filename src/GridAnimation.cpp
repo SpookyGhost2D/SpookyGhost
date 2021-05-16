@@ -2,6 +2,7 @@
 #include "Sprite.h"
 #include "GridFunction.h"
 #include "GridFunctionLibrary.h"
+#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -49,12 +50,22 @@ void GridAnimation::update(float deltaTime)
 	switch (state_)
 	{
 		case State::STOPPED:
+			if (curve().hasInitialValue())
+				curve().setTime(curve().initialValue());
+
+			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible && gridFunction_)
+				gridFunction_->execute(*this);
+			break;
 		case State::PAUSED:
-			if (isLocked_ && sprite_ && sprite_->visible && gridFunction_)
+			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible && gridFunction_)
 				gridFunction_->execute(*this);
 			break;
 		case State::PLAYING:
-			curve_.next(speed_ * deltaTime);
+			if (shouldWaitDelay(deltaTime))
+				return;
+			if (curve_.loop().shouldWaitDelay(deltaTime) == false)
+				curve_.next(speed_ * deltaTime);
+
 			if (sprite_ && sprite_->visible && gridFunction_)
 				gridFunction_->execute(*this);
 			break;

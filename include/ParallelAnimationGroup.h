@@ -14,6 +14,8 @@ class ParallelAnimationGroup : public AnimationGroup
 	void stop() override;
 	void pause() override;
 	void play() override;
+
+	void update(float deltaTime) override;
 };
 
 #endif

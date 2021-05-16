@@ -13,24 +13,10 @@ AnimationGroup::AnimationGroup()
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void AnimationGroup::update(float deltaTime)
-{
-	bool allStopped = true;
-	for (auto &&anim : anims_)
-	{
-		if (anim->enabled)
-		{
-			anim->update(deltaTime);
-			if (anim->state() != State::STOPPED)
-				allStopped = false;
-		}
-	}
-	if (allStopped)
-		state_ = State::STOPPED;
-}
-
 void AnimationGroup::reset()
 {
+	resetDelay();
+
 	for (auto &&anim : anims_)
 		anim->reset();
 }

@@ -27,9 +27,17 @@ class EasingCurve
 	inline const LoopComponent &loop() const { return loop_; }
 	inline LoopComponent &loop() { return loop_; }
 
+	inline bool hasInitialValue() const { return withInitialValue_; }
+	inline bool &hasInitialValue() { return withInitialValue_; }
+	inline void enableInitialValue(bool withInitialValue) { withInitialValue_ = withInitialValue; }
+
 	inline float time() const { return time_; }
 	inline float &time() { return time_; }
 	void setTime(float time);
+
+	inline float initialValue() const { return initialValue_; }
+	inline float &initialValue() { return initialValue_; }
+	void setInitialValue(float initialValue);
 
 	inline float start() const { return start_; }
 	inline float &start() { return start_; }
@@ -54,8 +62,10 @@ class EasingCurve
   private:
 	Type type_;
 	LoopComponent loop_;
+	bool withInitialValue_;
 
 	float time_;
+	float initialValue_;
 	float start_;
 	float end_;
 

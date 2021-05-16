@@ -163,6 +163,7 @@ class UserInterface
 	void createSpriteWindow();
 	void createAnimationWindow();
 
+	void createDelayAnimationGui(IAnimation &anim);
 	void createLoopAnimationGui(LoopComponent &loop);
 	void createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits);
 	void createPropertyAnimationGui(PropertyAnimation &anim);

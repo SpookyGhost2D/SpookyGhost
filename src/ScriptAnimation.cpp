@@ -4,6 +4,7 @@
 #include "Script.h"
 #include "ScriptManager.h"
 #include "Sprite.h"
+#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -56,12 +57,22 @@ void ScriptAnimation::update(float deltaTime)
 	switch (state_)
 	{
 		case State::STOPPED:
+			if (curve().hasInitialValue())
+				curve().setTime(curve().initialValue());
+
+			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible)
+				runScript("update", curve_.value());
+			break;
 		case State::PAUSED:
-			if (isLocked_ && sprite_ && sprite_->visible)
+			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible)
 				runScript("update", curve_.value());
 			break;
 		case State::PLAYING:
-			curve_.next(speed_ * deltaTime);
+			if (shouldWaitDelay(deltaTime))
+				return;
+			if (curve_.loop().shouldWaitDelay(deltaTime) == false)
+				curve_.next(speed_ * deltaTime);
+
 			if (sprite_ && sprite_->visible)
 				runScript("update", curve_.value());
 			break;

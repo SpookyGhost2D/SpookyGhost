@@ -25,6 +25,10 @@ class SequentialAnimationGroup : public AnimationGroup
 
   private:
 	LoopComponent loop_;
+
+	void stopAnimations();
+	bool shouldReverseAnimDirection();
+	void reverseAnimDirection(IAnimation &anim);
 };
 
 #endif

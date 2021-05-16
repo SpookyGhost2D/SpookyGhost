@@ -114,6 +114,7 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 	serialize(ls, "name", anim->name.data());
 	serialize(ls, "enabled", anim->enabled);
 	serializePtr(ls, "parent", static_cast<const IAnimation *>(anim->parent()), *context->animationHash);
+	serialize(ls, "delay", anim->delay());
 
 	switch (anim->type())
 	{
@@ -179,6 +180,8 @@ void serialize(LuaSerializer &ls, const LoopComponent &loop)
 			serialize(ls, "loop_mode", "ping_pong");
 			break;
 	}
+
+	serialize(ls, "loop_delay", loop.delay());
 }
 
 void serialize(LuaSerializer &ls, const SequentialAnimationGroup &anim)
@@ -225,6 +228,8 @@ void serialize(LuaSerializer &ls, const char *name, const EasingCurve &curve)
 
 	serialize(ls, "type", curve.type());
 	serialize(ls, curve.loop());
+	serialize(ls, "initial_value", curve.initialValue());
+	serialize(ls, "initial_value_enabled", curve.hasInitialValue());
 	serialize(ls, "start_time", curve.start());
 	serialize(ls, "end_time", curve.end());
 	serialize(ls, "scale", curve.scale());
@@ -363,12 +368,13 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture)
 	{
 		// Then check if the filename is relative to the data textures directory
 		texturePath = nc::fs::joinPath(ui::texturesDataDir, textureName);
+		// If not then use the full path
 		if (nc::fs::isReadableFile(texturePath.data()) == false)
 			texturePath = textureName;
 	}
 
 	texture = nctl::makeUnique<Texture>(texturePath.data());
-	// Set the relative path as the texture name to allow for relocatable project files
+	// Set the texture name to its basename to allow for relocatable project files
 	texture->setName(textureName);
 }
 
@@ -410,12 +416,13 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Script> &script)
 	{
 		// Then check if the filename is relative to the data scripts directory
 		scriptPath = nc::fs::joinPath(ui::scriptsDataDir, scriptName);
+		// If not then use the full path
 		if (nc::fs::isReadableFile(scriptPath.data()) == false)
 			scriptPath = scriptName;
 	}
 
 	script = nctl::makeUnique<Script>(scriptPath.data());
-	// Set the relative path as the script name to allow for relocatable project files
+	// Set the script name to its basename to allow for relocatable project files
 	script->setName(scriptName);
 }
 
@@ -441,6 +448,7 @@ IAnimation::Type deserialize(LuaSerializer &ls, const char *name)
 
 void deserialize(LuaSerializer &ls, LoopComponent &loop)
 {
+	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
 	lua_State *L = ls.luaState();
 
 	nctl::String directionString = nc::LuaUtils::retrieveField<const char *>(L, -1, "direction");
@@ -460,6 +468,12 @@ void deserialize(LuaSerializer &ls, LoopComponent &loop)
 		loop.setMode(Loop::Mode::PING_PONG);
 	else
 		loop.setMode(Loop::Mode::DISABLED);
+
+	if (context->version >= 4)
+	{
+		const float loopDelay = nc::LuaUtils::retrieveField<float>(L, -1, "loop_delay");
+		loop.setDelay(loopDelay);
+	}
 }
 
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<SequentialAnimationGroup> &anim)
@@ -496,12 +510,18 @@ EasingCurve::Type deserialize(LuaSerializer &ls, const char *name)
 void deserialize(LuaSerializer &ls, const char *name, EasingCurve &curve)
 {
 	ASSERT(name);
+	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
 	lua_State *L = ls.luaState();
 
 	nc::LuaUtils::retrieveFieldTable(L, -1, name);
 
 	curve.setType(deserialize<EasingCurve::Type>(ls, "type"));
 	deserialize(ls, curve.loop());
+	if (context->version >= 4)
+	{
+		curve.setInitialValue(deserialize<float>(ls, "initial_value"));
+		curve.enableInitialValue(deserialize<bool>(ls, "initial_value_enabled"));
+	}
 	curve.setStart(deserialize<float>(ls, "start_time"));
 	curve.setEnd(deserialize<float>(ls, "end_time"));
 	curve.setScale(deserialize<float>(ls, "scale"));
@@ -623,6 +643,8 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 	if (parent == nullptr)
 		parent = &theAnimMgr->animGroup();
 	anim->setParent(parent);
+	if (context->version >= 4)
+		anim->setDelay(deserialize<float>(ls, "delay"));
 }
 
 void deserialize(LuaSerializer &ls, Configuration &cfg)

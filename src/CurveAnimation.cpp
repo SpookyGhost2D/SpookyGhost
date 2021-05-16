@@ -20,6 +20,9 @@ CurveAnimation::CurveAnimation(EasingCurve::Type type, Loop::Mode loopMode)
 
 void CurveAnimation::stop()
 {
+	resetDelay();
+	curve_.loop().resetDelay();
+
 	curve_.reset();
 	state_ = State::STOPPED;
 }
@@ -33,11 +36,16 @@ void CurveAnimation::play()
 
 void CurveAnimation::update(float deltaTime)
 {
-	if (state_ == State::PLAYING && curve_.loop().mode() == Loop::Mode::DISABLED)
+	if (state() != State::PLAYING)
+		return;
+
+	if (curve_.loop().mode() == Loop::Mode::DISABLED)
 	{
 		if ((curve_.loop().direction() == Loop::Direction::FORWARD && curve().time() >= curve().end()) ||
 		    (curve_.loop().direction() == Loop::Direction::BACKWARD && curve().time() <= curve().start()))
 		{
+			resetDelay();
+			curve_.loop().resetDelay();
 			state_ = State::STOPPED;
 		}
 	}
@@ -54,5 +62,6 @@ void CurveAnimation::cloneTo(CurveAnimation &other) const
 	// Always disable locking for cloned animations
 	other.isLocked_ = false;
 	other.curve_ = curve_;
+	other.curve_.loop().resetDelay();
 	other.speed_ = speed_;
 }

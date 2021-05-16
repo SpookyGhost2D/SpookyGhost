@@ -38,7 +38,7 @@ class IAnimation
 	inline State state() const { return state_; }
 	inline bool isGroup() const { return type() == Type::SEQUENTIAL_GROUP || type() == Type::PARALLEL_GROUP; }
 
-	inline virtual void stop() { state_ = State::STOPPED; }
+	virtual void stop();
 	inline virtual void pause() { state_ = State::PAUSED; }
 	inline virtual void play() { state_ = State::PLAYING; }
 
@@ -49,9 +49,21 @@ class IAnimation
 	inline const AnimationGroup *parent() const { return parent_; }
 	inline void setParent(AnimationGroup *parent) { parent_ = parent; }
 
+	inline float delay() const { return delay_; }
+	inline void setDelay(float delay) { delay_ = delay; }
+	inline float currentDelay() const { return currentDelay_; }
+
+	inline void resetDelay() { currentDelay_ = 0.0f; }
+	bool shouldWaitDelay(float deltaTime);
+
   protected:
 	State state_;
 	AnimationGroup *parent_;
+
+	/// Delay amount in seconds before an animation begins to update
+	float delay_;
+	/// The amount of time in seconds waited until now for the delay
+	float currentDelay_;
 
 	void cloneTo(IAnimation &other) const;
 };

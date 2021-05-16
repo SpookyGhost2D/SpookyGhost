@@ -6,8 +6,8 @@
 ///////////////////////////////////////////////////////////
 
 EasingCurve::EasingCurve(Type type, Loop::Mode loopMode)
-    : type_(type), loop_(loopMode), time_(0.0f),
-      start_(0.0f), end_(1.0f), scale_(1.0f), shift_(0.0f)
+    : type_(type), loop_(loopMode), withInitialValue_(false), time_(0.0f),
+      initialValue_(0.0f), start_(0.0f), end_(1.0f), scale_(1.0f), shift_(0.0f)
 {
 }
 
@@ -25,12 +25,33 @@ void EasingCurve::setTime(float time)
 		time_ = end_;
 }
 
+void EasingCurve::setInitialValue(float initialValue)
+{
+	initialValue_ = initialValue;
+
+	if (initialValue_ < start_)
+		initialValue_ = start_;
+	else if (initialValue_ > end_)
+		initialValue_ = end_;
+}
+
 void EasingCurve::reset()
 {
-	if (loop_.direction_ == Loop::Direction::FORWARD)
-		time_ = start_;
-	else if (loop_.direction_ == Loop::Direction::BACKWARD)
-		time_ = end_;
+	if (withInitialValue_ == false)
+	{
+		if (loop_.direction_ == Loop::Direction::FORWARD)
+		{
+			time_ = start_;
+			loop_.forward_ = true;
+		}
+		else if (loop_.direction_ == Loop::Direction::BACKWARD)
+		{
+			time_ = end_;
+			loop_.forward_ = false;
+		}
+	}
+	else
+		time_ = initialValue_;
 }
 
 float EasingCurve::value()
@@ -60,6 +81,8 @@ float EasingCurve::value()
 
 void EasingCurve::next(float deltaTime)
 {
+	loop_.hasJustReset_ = false;
+
 	if ((loop_.forward_ && loop_.direction_ == Loop::Direction::FORWARD) ||
 	    (!loop_.forward_ && loop_.direction_ == Loop::Direction::BACKWARD))
 		time_ += deltaTime;
@@ -73,16 +96,21 @@ void EasingCurve::next(float deltaTime)
 			if (loop_.mode_ == Loop::Mode::DISABLED)
 				time_ = start_;
 			else if (loop_.mode_ == Loop::Mode::REWIND)
+			{
 				time_ = end_ + time_;
+				loop_.hasJustReset_ = true;
+			}
 			else if (loop_.mode_ == Loop::Mode::PING_PONG)
 			{
 				time_ = 2.0f * start_ - time_;
+				loop_.hasJustReset_ = true;
 				loop_.forward_ = false;
 			}
 		}
 		else
 		{
 			time_ = 2.0f * start_ - time_;
+			loop_.hasJustReset_ = true;
 			loop_.forward_ = true;
 		}
 	}
@@ -93,16 +121,21 @@ void EasingCurve::next(float deltaTime)
 			if (loop_.mode_ == Loop::Mode::DISABLED)
 				time_ = end_;
 			else if (loop_.mode_ == Loop::Mode::REWIND)
+			{
 				time_ = time_ - end_;
+				loop_.hasJustReset_ = true;
+			}
 			else if (loop_.mode_ == Loop::Mode::PING_PONG)
 			{
 				time_ = 2.0f * end_ - time_;
+				loop_.hasJustReset_ = true;
 				loop_.forward_ = false;
 			}
 		}
 		else
 		{
 			time_ = 2.0f * end_ - time_;
+			loop_.hasJustReset_ = true;
 			loop_.forward_ = true;
 		}
 	}

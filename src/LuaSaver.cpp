@@ -12,7 +12,7 @@
 
 namespace {
 
-const int ProjectVersion = 3;
+const int ProjectVersion = 4;
 
 }
 

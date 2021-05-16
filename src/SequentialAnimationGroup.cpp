@@ -1,4 +1,5 @@
 #include "SequentialAnimationGroup.h"
+#include "CurveAnimation.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -19,24 +20,27 @@ nctl::UniquePtr<IAnimation> SequentialAnimationGroup::clone() const
 	AnimationGroup::cloneTo(*animGroup);
 
 	animGroup->loop_ = loop_;
+	animGroup->loop_.resetDelay();
 
 	return nctl::move(animGroup);
 }
 
 void SequentialAnimationGroup::stop()
 {
-	if (loop_.direction_ == Loop::Direction::FORWARD)
+	resetDelay();
+	loop_.resetDelay();
+
+	for (auto &&anim : anims_)
 	{
-		// Reverse stop to reset animations in the correct order
-		for (int i = anims_.size() - 1; i >= 0; i--)
-			anims_[i]->stop();
-	}
-	else
-	{
-		for (auto &&anim : anims_)
-			anim->stop();
+		if (anim->state() != State::STOPPED)
+		{
+			if (shouldReverseAnimDirection())
+				reverseAnimDirection(*anim);
+			break;
+		}
 	}
 
+	stopAnimations();
 	state_ = State::STOPPED;
 }
 
@@ -59,29 +63,40 @@ void SequentialAnimationGroup::pause()
 
 void SequentialAnimationGroup::play()
 {
-	if (state_ == State::PLAYING)
-		return;
+	switch (state_)
+	{
+		case State::STOPPED:
+			// Stop all animations to get the initial state
+			stopAnimations();
 
-	if (state_ == State::STOPPED)
-	{
-		if (anims_.isEmpty() == false)
-		{
-			if (loop_.direction_ == Loop::Direction::FORWARD)
-				anims_.front()->play();
-			else
-				anims_.back()->play();
-		}
-	}
-	else if (state_ == State::PAUSED)
-	{
-		for (auto &&anim : anims_)
-		{
-			if (anim->state() == State::PAUSED)
+			if (anims_.isEmpty() == false)
 			{
-				anim->play();
-				break;
+				if (loop_.direction_ == Loop::Direction::FORWARD)
+				{
+					loop_.forward_ = true;
+					anims_.front()->play();
+				}
+				else
+				{
+					loop_.forward_ = false;
+					if (shouldReverseAnimDirection())
+						reverseAnimDirection(*anims_.back());
+					anims_.back()->play();
+				}
 			}
-		}
+			break;
+		case State::PAUSED:
+			for (auto &&anim : anims_)
+			{
+				if (anim->state() == State::PAUSED)
+				{
+					anim->play();
+					break;
+				}
+			}
+			break;
+		case State::PLAYING:
+			break;
 	}
 
 	state_ = State::PLAYING;
@@ -90,27 +105,40 @@ void SequentialAnimationGroup::play()
 void SequentialAnimationGroup::update(float deltaTime)
 {
 	int playingIndex = -1;
-	for (unsigned int i = 0; i < anims_.size(); i++)
+
+	if (state_ == IAnimation::State::PLAYING)
 	{
-		if (anims_[i]->state() == State::PLAYING)
+		if (shouldWaitDelay(deltaTime) || loop_.shouldWaitDelay(deltaTime))
+			return;
+		else
 		{
-			playingIndex = i;
-			break;
+			// Check if there is an animation currently in playing state
+			for (unsigned int i = 0; i < anims_.size(); i++)
+			{
+				if (anims_[i]->state() == State::PLAYING)
+				{
+					playingIndex = i;
+					break;
+				}
+			}
 		}
 	}
 
-	if (playingIndex < 0)
-		state_ = State::STOPPED;
-	else
+	// Update all enabled animation anyway (always after checking if one is playing)
+	for (unsigned int i = 0; i < anims_.size(); i++)
 	{
-		if (anims_[playingIndex]->enabled)
-			anims_[playingIndex]->update(deltaTime);
-		else
-			anims_[playingIndex]->stop();
+		if (anims_[i]->enabled)
+			anims_[i]->update(deltaTime);
+	}
 
-		// Decide the next animation to play as the current one has just finished
+	if (playingIndex > -1 && state_ == IAnimation::State::PLAYING)
+	{
+		// Decide the next animation to play if the last playing one has just finished
 		if (anims_[playingIndex]->state() == State::STOPPED)
 		{
+			if (shouldReverseAnimDirection())
+				reverseAnimDirection(*anims_[playingIndex]);
+
 			switch (loop_.mode_)
 			{
 				case Loop::Mode::DISABLED:
@@ -119,9 +147,19 @@ void SequentialAnimationGroup::update(float deltaTime)
 				case Loop::Mode::REWIND:
 					playingIndex += (loop_.direction_ == Loop::Direction::FORWARD) ? 1 : -1;
 					if (playingIndex > static_cast<int>(anims_.size() - 1))
+					{
 						playingIndex = 0;
+						// Stop all animations to get the initial state
+						stopAnimations();
+						loop_.hasJustReset_ = true;
+					}
 					else if (playingIndex < 0)
+					{
 						playingIndex = anims_.size() - 1;
+						// Stop all animations to get the initial state
+						stopAnimations();
+						loop_.hasJustReset_ = true;
+					}
 					break;
 				case Loop::Mode::PING_PONG:
 					if (loop_.forward_)
@@ -129,7 +167,9 @@ void SequentialAnimationGroup::update(float deltaTime)
 						playingIndex++;
 						if (playingIndex >= anims_.size())
 						{
-							playingIndex = anims_.size() > 1 ? anims_.size() - 2 : anims_.size() - 1;
+							// Playing again the last animation but reverted
+							playingIndex = anims_.size() - 1;
+							loop_.hasJustReset_ = true;
 							loop_.forward_ = !loop_.forward_;
 						}
 					}
@@ -138,20 +178,69 @@ void SequentialAnimationGroup::update(float deltaTime)
 						playingIndex--;
 						if (playingIndex < 0)
 						{
-							playingIndex = anims_.size() > 1 ? 1 : 0;
+							// Playing again the first animation but reverted
+							playingIndex = 0;
+							loop_.hasJustReset_ = true;
 							loop_.forward_ = !loop_.forward_;
 						}
 					}
 					break;
 			}
+
+			// The last animation finished and looping is disabled
+			if (playingIndex < 0 || playingIndex > anims_.size() - 1)
+			{
+				resetDelay();
+				loop_.resetDelay();
+				state_ = State::STOPPED;
+			}
+			else if (anims_[playingIndex]->state() != State::PLAYING)
+			{
+				if (shouldReverseAnimDirection())
+					reverseAnimDirection(*anims_[playingIndex]);
+
+				anims_[playingIndex]->play();
+			}
 		}
-		if (playingIndex < 0 || playingIndex > anims_.size() - 1)
-			state_ = State::STOPPED;
-		else if (state_ == State::PLAYING)
+	}
+}
+
+///////////////////////////////////////////////////////////
+// PRIVATE FUNCTIONS
+///////////////////////////////////////////////////////////
+
+void SequentialAnimationGroup::stopAnimations()
+{
+	if (loop_.direction_ == Loop::Direction::FORWARD)
+	{
+		// Reverse stop to reset animations in the correct order
+		for (int i = anims_.size() - 1; i >= 0; i--)
+			anims_[i]->stop();
+	}
+	else
+	{
+		for (auto &&anim : anims_)
 		{
-			// Play the next animation in the group only if the whole group was in playing state.
-			// This allows to select and play just a single child animation in the group.
-			anims_[playingIndex]->play();
+			reverseAnimDirection(*anim);
+			anim->stop();
+			reverseAnimDirection(*anim);
 		}
+	}
+}
+
+bool SequentialAnimationGroup::shouldReverseAnimDirection()
+{
+	return ((loop_.mode_ != Loop::Mode::PING_PONG && loop_.direction_ == Loop::Direction::BACKWARD) ||
+	        (loop_.mode_ == Loop::Mode::PING_PONG && loop_.isGoingForward() == false));
+}
+
+void SequentialAnimationGroup::reverseAnimDirection(IAnimation &anim)
+{
+	if (anim.type() != Type::PARALLEL_GROUP)
+	{
+		if (anim.type() == Type::SEQUENTIAL_GROUP)
+			static_cast<SequentialAnimationGroup &>(anim).loop().reverseDirection();
+		else
+			static_cast<CurveAnimation &>(anim).curve().loop().reverseDirection();
 	}
 }

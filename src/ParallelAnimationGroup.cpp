@@ -55,3 +55,28 @@ void ParallelAnimationGroup::play()
 
 	state_ = State::PLAYING;
 }
+
+void ParallelAnimationGroup::update(float deltaTime)
+{
+	if (state() == IAnimation::State::PLAYING)
+	{
+		if (shouldWaitDelay(deltaTime))
+			return;
+	}
+
+	bool allStopped = true;
+	for (auto &&anim : anims_)
+	{
+		if (anim->enabled)
+		{
+			anim->update(deltaTime);
+			if (anim->state() != State::STOPPED)
+				allStopped = false;
+		}
+	}
+	if (allStopped)
+	{
+		resetDelay();
+		state_ = State::STOPPED;
+	}
+}

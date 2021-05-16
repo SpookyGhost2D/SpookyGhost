@@ -52,6 +52,7 @@ set(PACKAGE_SOURCES
 	src/Sprite.cpp
 	src/Texture.cpp
 	src/RenderingResources.cpp
+	src/LoopComponent.cpp
 	src/EasingCurve.cpp
 	src/IAnimation.cpp
 	src/CurveAnimation.cpp

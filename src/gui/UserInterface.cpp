@@ -384,10 +384,16 @@ bool UserInterface::loadScript(const char *filename)
 	const bool hasLoaded = script->load(filename);
 
 	theScriptingMgr->scripts().pushBack(nctl::move(script));
-	// Set the relative path as the script name to allow for relocatable project files
-	nctl::String baseName = nc::fs::baseName(filename);
-	if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.scriptsPath, baseName.data()).data()))
+	// Check if the script is in the configuration path or in the data directory
+	const nctl::String baseName = nc::fs::baseName(filename);
+	const nctl::String nameInConfigDir = nc::fs::joinPath(theCfg.scriptsPath, baseName);
+	const nctl::String nameInDataDir = nc::fs::joinPath(ui::scriptsDataDir, baseName);
+	if ((nameInConfigDir == filename && nc::fs::isReadableFile(nameInConfigDir.data())) ||
+	    (nameInDataDir == filename && nc::fs::isReadableFile(nameInDataDir.data())))
+	{
+		// Set the script name to its basename to allow for relocatable project files
 		theScriptingMgr->scripts().back()->setName(baseName);
+	}
 	selectedScriptIndex_ = theScriptingMgr->scripts().size() - 1;
 
 	if (hasLoaded)
@@ -425,10 +431,16 @@ bool UserInterface::loadTextureImpl(nctl::UniquePtr<Texture> texture, const char
 	if (texture->dataSize() > 0)
 	{
 		theSpriteMgr->textures().pushBack(nctl::move(texture));
-		// Set the relative path as the texture name to allow for relocatable project files
-		nctl::String baseName = nc::fs::baseName(name);
-		if (nc::fs::isReadableFile(nc::fs::joinPath(theCfg.texturesPath, baseName.data()).data()))
+		// Check if the texture is in the configuration path or in the data directory
+		const nctl::String baseName = nc::fs::baseName(name);
+		const nctl::String nameInConfigDir = nc::fs::joinPath(theCfg.texturesPath, baseName);
+		const nctl::String nameInDataDir = nc::fs::joinPath(ui::texturesDataDir, baseName);
+		if ((nameInConfigDir == name && nc::fs::isReadableFile(nameInConfigDir.data())) ||
+		    (nameInDataDir == name && nc::fs::isReadableFile(nameInDataDir.data())))
+		{
+			// Set the texture name to its basename to allow for relocatable project files
 			theSpriteMgr->textures().back()->setName(baseName);
+		}
 		selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
 
 		ui::auxString.format("Loaded texture \"%s\"", name);
@@ -1558,6 +1570,18 @@ void UserInterface::createSpriteWindow()
 	ImGui::End();
 }
 
+void UserInterface::createDelayAnimationGui(IAnimation &anim)
+{
+	float delay = anim.delay();
+	ImGui::SliderFloat("Delay", &delay, 0.0f, 10.0f, "%.3fs");
+	if (delay < 0.0f)
+		delay = 0.0f;
+	anim.setDelay(delay);
+	ui::auxString.format("%.3fs / %.3fs", anim.currentDelay(), anim.delay());
+	if (anim.delay() > 0)
+		ImGui::ProgressBar(anim.currentDelay() / anim.delay(), ImVec2(0.0f, 0.0f), ui::auxString.data());
+}
+
 void UserInterface::createLoopAnimationGui(LoopComponent &loop)
 {
 	int currentLoopDirection = static_cast<int>(loop.direction());
@@ -1567,10 +1591,24 @@ void UserInterface::createLoopAnimationGui(LoopComponent &loop)
 	int currentLoopMode = static_cast<int>(loop.mode());
 	ImGui::Combo("Loop Mode", &currentLoopMode, loopModes, IM_ARRAYSIZE(loopModes));
 	loop.setMode(static_cast<Loop::Mode>(currentLoopMode));
+
+	if (loop.mode() != Loop::Mode::DISABLED)
+	{
+		float loopDelay = loop.delay();
+		ImGui::SliderFloat("Loop Delay", &loopDelay, 0.0f, 10.0f, "%.3fs");
+		if (loopDelay < 0.0f)
+			loopDelay = 0.0f;
+		loop.setDelay(loopDelay);
+		ui::auxString.format("%.3fs / %.3fs", loop.currentDelay(), loopDelay);
+		if (loopDelay > 0.0f)
+			ImGui::ProgressBar(loop.currentDelay() / loopDelay, ImVec2(0.0f, 0.0f), ui::auxString.data());
+	}
 }
 
 void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits)
 {
+	createDelayAnimationGui(anim);
+
 	int currentComboCurveType = static_cast<int>(anim.curve().type());
 	ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
 	anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
@@ -1594,6 +1632,11 @@ void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAni
 	ui::auxString.format("%s##Speed", Labels::Reset);
 	if (ImGui::Button(ui::auxString.data()))
 		anim.speed() = 1.0f;
+
+	ImGui::SliderFloat("Initial", &anim.curve().initialValue(), 0.0f, 1.0f);
+	ImGui::SameLine();
+	ImGui::Checkbox("##InitialEnabled", &anim.curve().hasInitialValue());
+
 	ImGui::SliderFloat("Start", &anim.curve().start(), 0.0f, 1.0f);
 	ImGui::SliderFloat("End", &anim.curve().end(), 0.0f, 1.0f);
 	ImGui::SliderFloat("Time", &anim.curve().time(), anim.curve().start(), anim.curve().end());
@@ -1603,6 +1646,22 @@ void UserInterface::createCurveAnimationGui(CurveAnimation &anim, const CurveAni
 	{
 		anim.curve().start() = anim.curve().end();
 	}
+
+	if (anim.curve().hasInitialValue() == false)
+	{
+		if (anim.curve().loop().direction() == Loop::Direction::FORWARD)
+			anim.curve().setInitialValue(anim.curve().start());
+		else
+			anim.curve().setInitialValue(anim.curve().end());
+	}
+	else
+	{
+		if (anim.curve().initialValue() < anim.curve().start())
+			anim.curve().initialValue() = anim.curve().start();
+		else if (anim.curve().initialValue() > anim.curve().end())
+			anim.curve().initialValue() = anim.curve().end();
+	}
+
 	if (anim.curve().time() < anim.curve().start())
 		anim.curve().time() = anim.curve().start();
 	else if (anim.curve().time() > anim.curve().end())
@@ -1657,13 +1716,15 @@ void UserInterface::createAnimationWindow()
 			ImGui::InputText("Name", sequentialAnim.name.data(), IAnimation::MaxNameLength,
 			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sequentialAnim.name);
 
+			createDelayAnimationGui(anim);
 			createLoopAnimationGui(sequentialAnim.loop());
 		}
 		else if (anim.type() == IAnimation::Type::PARALLEL_GROUP)
 		{
-			// The only editable property for parallel groups is their name
 			ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
 			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+
+			createDelayAnimationGui(anim);
 		}
 	}
 
