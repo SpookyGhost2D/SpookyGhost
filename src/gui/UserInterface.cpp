@@ -634,8 +634,12 @@ void UserInterface::removeTexture()
 			updateSelectedAnimOnSpriteRemoval(sprite);
 			theAnimMgr->removeSprite(sprite);
 			theSpriteMgr->sprites().removeAt(i);
+			if (selectedSpriteIndex_ == i)
+				selectedSpriteIndex_--;
 		}
 	}
+	if (selectedSpriteIndex_ > theSpriteMgr->sprites().size() - 1)
+		selectedSpriteIndex_ = theSpriteMgr->sprites().size() - 1;
 	theSpriteMgr->textures().removeAt(selectedTextureIndex_);
 	if (selectedTextureIndex_ > 0)
 		selectedTextureIndex_--;
@@ -985,11 +989,24 @@ void UserInterface::cloneAnimation(unsigned int &selectedIndex)
 
 void UserInterface::removeAnimation()
 {
-	AnimationGroup *parent = nullptr;
+	IAnimation *newSelection = nullptr;
 	if (selectedAnimation_->parent())
-		parent = selectedAnimation_->parent();
+	{
+		nctl::Array<nctl::UniquePtr<IAnimation>> &anims = selectedAnimation_->parent()->anims();
+		const int index = selectedAnimation_->indexInParent();
+		if (index > 0)
+			newSelection = anims[index - 1].get();
+		else
+		{
+			if (anims.size() > 1)
+				newSelection = anims[index + 1].get();
+			else
+				newSelection = selectedAnimation_->parent();
+		}
+	}
+
 	theAnimMgr->removeAnimation(selectedAnimation_);
-	selectedAnimation_ = parent;
+	selectedAnimation_ = newSelection;
 }
 
 struct DragAnimationPayload
@@ -1513,6 +1530,9 @@ void UserInterface::createSpriteWindow()
 					break;
 			}
 		}
+		sprite.anchorPoint.x = roundf(sprite.anchorPoint.x);
+		sprite.anchorPoint.y = roundf(sprite.anchorPoint.y);
+
 		if (sprite.parent() != nullptr)
 		{
 			ImGui::Text("Abs Position: %f, %f", sprite.absPosition().x, sprite.absPosition().y);
@@ -1534,6 +1554,15 @@ void UserInterface::createSpriteWindow()
 		texRect.w = maxX - minX;
 		texRect.y = minY;
 		texRect.h = maxY - minY;
+		if (texRect.x < 0)
+			texRect.x = 0;
+		if (texRect.w <= 0)
+			texRect.w = 1;
+		if (texRect.y < 0)
+			texRect.y = 0;
+		if (texRect.h <= 0)
+			texRect.h = 1;
+
 		ImGui::SameLine();
 		ui::auxString.format("%s##Rect", Labels::Reset);
 		if (ImGui::Button(ui::auxString.data()))
@@ -1542,7 +1571,9 @@ void UserInterface::createSpriteWindow()
 		const nc::Recti currentTexRect = sprite.texRect();
 		if (texRect.x != currentTexRect.x || texRect.y != currentTexRect.y ||
 		    texRect.w != currentTexRect.w || texRect.h != currentTexRect.h)
+		{
 			sprite.setTexRect(texRect);
+		}
 
 		bool isFlippedX = sprite.isFlippedX();
 		ImGui::Checkbox("Flipped X", &isFlippedX);

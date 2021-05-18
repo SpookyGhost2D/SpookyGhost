@@ -56,6 +56,8 @@ class IAnimation
 	inline void resetDelay() { currentDelay_ = 0.0f; }
 	bool shouldWaitDelay(float deltaTime);
 
+	int indexInParent() const;
+
   protected:
 	State state_;
 	AnimationGroup *parent_;

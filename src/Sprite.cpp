@@ -123,9 +123,9 @@ void Sprite::updateRender()
 	const float texWidth = static_cast<float>(texture_->width());
 	const float texHeight = static_cast<float>(texture_->height());
 	const float texScaleX = flippingTexRect_.w / texWidth;
-	const float texBiasX = flippingTexRect_.x / texWidth;
+	const float texBiasX = (flippingTexRect_.x + 0.5f) / (texWidth + 0.5f);
 	const float texScaleY = flippingTexRect_.h / texHeight;
-	const float texBiasY = flippingTexRect_.y / texHeight;
+	const float texBiasY = (flippingTexRect_.y + 0.5f) / (texHeight + 0.5f);
 
 	if (gridAnimationsCounter_ == 0)
 	{

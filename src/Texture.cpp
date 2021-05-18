@@ -86,8 +86,8 @@ void Texture::load(const nc::ITextureLoader &texLoader, int width, int height)
 	FATAL_ASSERT_MSG_X(width <= maxTextureSize, "Texture width %d is bigger than device maximum %d", width, maxTextureSize);
 	FATAL_ASSERT_MSG_X(height <= maxTextureSize, "Texture height %d is bigger than device maximum %d", height, maxTextureSize);
 
-	glTexture_->texParameteri(GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexture_->texParameteri(GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexture_->texParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexture_->texParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexture_->texParameteri(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexture_->texParameteri(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 

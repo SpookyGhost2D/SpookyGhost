@@ -1,4 +1,5 @@
 #include "IAnimation.h"
+#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -29,6 +30,25 @@ bool IAnimation::shouldWaitDelay(float deltaTime)
 		currentDelay_ = delay_;
 		return false;
 	}
+}
+
+int IAnimation::indexInParent() const
+{
+	if (parent_ == nullptr)
+		return -1;
+
+	int index = -1;
+	const nctl::Array<nctl::UniquePtr<IAnimation>> &anims = parent_->anims();
+	for (unsigned int i = 0; i < anims.size(); i++)
+	{
+		if (anims[i].get() == this)
+		{
+			index = static_cast<int>(i);
+			break;
+		}
+	}
+
+	return index;
 }
 
 ///////////////////////////////////////////////////////////
