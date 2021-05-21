@@ -43,6 +43,7 @@
 #define TEXT_APPLY "Apply"
 #define TEXT_CURRENT "Current"
 #define TEXT_LOCKED "Locked"
+#define TEXT_SELECT_PARENT "Select Parent"
 
 #define TEXT_ADD "Add"
 #define TEXT_REMOVE "Remove"
@@ -98,6 +99,7 @@ static const char *Clear = TEXT_CLEAR;
 static const char *Apply = TEXT_APPLY;
 static const char *Current = TEXT_CURRENT;
 static const char *Locked = TEXT_LOCKED;
+static const char *SelectParent = TEXT_SELECT_PARENT;
 
 static const char *Add = TEXT_ADD;
 static const char *Remove = TEXT_REMOVE;
@@ -191,6 +193,7 @@ static const char *Clear = ICON_FA_BACKSPACE FA5_SPACING TEXT_CLEAR;
 static const char *Apply = ICON_FA_CHECK_CIRCLE FA5_SPACING TEXT_APPLY;
 static const char *Current = ICON_FA_SYNC FA5_SPACING TEXT_CURRENT;
 static const char *Locked = ICON_FA_LOCK;
+static const char *SelectParent = ICON_FA_OBJECT_GROUP FA5_SPACING TEXT_SELECT_PARENT;
 
 static const char *Add = ICON_FA_PLUS FA5_SPACING TEXT_ADD;
 static const char *Remove = ICON_FA_MINUS FA5_SPACING TEXT_REMOVE;

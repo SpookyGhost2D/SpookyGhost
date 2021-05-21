@@ -27,7 +27,7 @@
 
 namespace Tips {
 
-const unsigned int Count = 18;
+const unsigned int Count = 19;
 
 // A string entry should always end with a comma or it would be concatenated to the next one
 const char *Strings[Count] = {
@@ -50,6 +50,7 @@ const char *Strings[Count] = {
 	"Pressing [Alt] while clicking on the Canvas window" CANVAS_WINDOW " will drag the selected sprite around.",
 	"Pressing the arrow keys while the cursor is on the Canvas window" CANVAS_WINDOW " will move the selected sprite in one-pixel increments for precise positioning.",
 	"Right-clicking on a texture, a sprite, a script, or an animation will show a contextual menu with a series of actions that you can perform.",
+	"Animation groups have an option to override the sprite used by every contained animations. It comes in handy when you clone a group to apply the same animations to a different sprite.",
 };
 
 }

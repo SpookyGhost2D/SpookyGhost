@@ -35,6 +35,7 @@ class AnimationManager
 	void removeScript(Script *script);
 	void reloadScript(Script *script);
 	void initScriptsForSprite(Sprite *sprite);
+	void overrideSprite(AnimationGroup &animGroup, Sprite *sprite);
 
   private:
 	nctl::UniquePtr<AnimationGroup> animGroup_;

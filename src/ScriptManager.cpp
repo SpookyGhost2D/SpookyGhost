@@ -173,7 +173,8 @@ static const char *color = "get_color";
 static const char *texRect = "get_texrect";
 static const char *isFlippedX = "get_flipped_x";
 static const char *isFlippedY = "get_flipped_y";
-static const char *blendingPreset = "get_blending";
+static const char *rgbBlendingPreset = "get_rgb_blending";
+static const char *alphaBlendingPreset = "get_alpha_blending";
 static const char *numVertices = "get_num_vertices";
 static const char *vertices = "get_vertices";
 static const char *verticesXY = "get_vertices_xy";
@@ -197,7 +198,8 @@ static const char *setColor = "set_color";
 static const char *setTexRect = "set_texrect";
 static const char *setFlippedX = "set_flipped_x";
 static const char *setFlippedY = "set_flipped_y";
-static const char *setBlendingPreset = "set_blending";
+static const char *setRgbBlendingPreset = "set_rgb_blending";
+static const char *setAlphaBlendingPreset = "set_alpha_blending";
 static const char *setVertices = "set_vertices";
 static const char *setVerticesXY = "set_vertices_xy";
 static const char *setVerticesUV = "set_vertices_uv";
@@ -290,7 +292,8 @@ void ScriptManager::exposeFunctions(lua_State *L)
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::texRect, texRect);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::isFlippedX, isFlippedX);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::isFlippedY, isFlippedY);
-	nc::LuaUtils::addGlobalFunction(L, LuaNames::blendingPreset, blendingPreset);
+	nc::LuaUtils::addGlobalFunction(L, LuaNames::rgbBlendingPreset, rgbBlendingPreset);
+	nc::LuaUtils::addGlobalFunction(L, LuaNames::alphaBlendingPreset, alphaBlendingPreset);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::numVertices, numVertices);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::vertices, vertices);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::verticesXY, verticesXY);
@@ -314,7 +317,8 @@ void ScriptManager::exposeFunctions(lua_State *L)
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::setTexRect, setTexRect);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::setFlippedX, setFlippedX);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::setFlippedY, setFlippedY);
-	nc::LuaUtils::addGlobalFunction(L, LuaNames::setBlendingPreset, setBlendingPreset);
+	nc::LuaUtils::addGlobalFunction(L, LuaNames::setRgbBlendingPreset, setRgbBlendingPreset);
+	nc::LuaUtils::addGlobalFunction(L, LuaNames::setAlphaBlendingPreset, setAlphaBlendingPreset);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::setVertices, setVertices);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::setVerticesXY, setVerticesXY);
 	nc::LuaUtils::addGlobalFunction(L, LuaNames::setVerticesUV, setVerticesUV);
@@ -498,10 +502,19 @@ int ScriptManager::isFlippedY(lua_State *L)
 	return 1;
 }
 
-int ScriptManager::blendingPreset(lua_State *L)
+int ScriptManager::rgbBlendingPreset(lua_State *L)
 {
 	Sprite *sprite = retrieveSprite(L);
-	const Sprite::BlendingPreset blendingPreset = sprite ? sprite->blendingPreset() : Sprite::BlendingPreset::DISABLED;
+	const Sprite::BlendingPreset blendingPreset = sprite ? sprite->rgbBlendingPreset() : Sprite::BlendingPreset::DISABLED;
+	nc::LuaUtils::push(L, static_cast<int64_t>(blendingPreset));
+
+	return 1;
+}
+
+int ScriptManager::alphaBlendingPreset(lua_State *L)
+{
+	Sprite *sprite = retrieveSprite(L);
+	const Sprite::BlendingPreset blendingPreset = sprite ? sprite->alphaBlendingPreset() : Sprite::BlendingPreset::DISABLED;
 	nc::LuaUtils::push(L, static_cast<int64_t>(blendingPreset));
 
 	return 1;
@@ -742,13 +755,25 @@ int ScriptManager::setFlippedY(lua_State *L)
 	return 0;
 }
 
-int ScriptManager::setBlendingPreset(lua_State *L)
+int ScriptManager::setRgbBlendingPreset(lua_State *L)
 {
 	Sprite *sprite = retrieveSprite(L);
 	if (sprite)
 	{
 		const Sprite::BlendingPreset blendingPreset = static_cast<Sprite::BlendingPreset>(nc::LuaUtils::retrieve<int64_t>(L, -1));
-		sprite->setBlendingPreset(blendingPreset);
+		sprite->setRgbBlendingPreset(blendingPreset);
+	}
+
+	return 0;
+}
+
+int ScriptManager::setAlphaBlendingPreset(lua_State *L)
+{
+	Sprite *sprite = retrieveSprite(L);
+	if (sprite)
+	{
+		const Sprite::BlendingPreset blendingPreset = static_cast<Sprite::BlendingPreset>(nc::LuaUtils::retrieve<int64_t>(L, -1));
+		sprite->setAlphaBlendingPreset(blendingPreset);
 	}
 
 	return 0;

@@ -5,26 +5,44 @@
 
 namespace {
 
-void setBlendingFactors(Sprite::BlendingPreset blendingPreset)
+void setBlendingFactors(Sprite::BlendingPreset blendingPreset, GLenum &sfactor, GLenum &dfactor)
 {
 	switch (blendingPreset)
 	{
 		case Sprite::BlendingPreset::DISABLED:
-			nc::GLBlending::blendFunc(GL_ONE, GL_ZERO);
+			sfactor = GL_ONE;
+			dfactor = GL_ZERO;
 			break;
 		case Sprite::BlendingPreset::ALPHA:
-			nc::GLBlending::blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			sfactor = GL_SRC_ALPHA;
+			dfactor = GL_ONE_MINUS_SRC_ALPHA;
 			break;
 		case Sprite::BlendingPreset::PREMULTIPLIED_ALPHA:
-			nc::GLBlending::blendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+			sfactor = GL_ONE;
+			dfactor = GL_ONE_MINUS_SRC_ALPHA;
 			break;
 		case Sprite::BlendingPreset::ADDITIVE:
-			nc::GLBlending::blendFunc(GL_SRC_ALPHA, GL_ONE);
+			sfactor = GL_SRC_ALPHA;
+			dfactor = GL_ONE;
 			break;
 		case Sprite::BlendingPreset::MULTIPLY:
-			nc::GLBlending::blendFunc(GL_DST_COLOR, GL_ZERO);
+			sfactor = GL_DST_COLOR;
+			dfactor = GL_ZERO;
 			break;
 	}
+}
+
+void setBlendingFactors(Sprite::BlendingPreset rgbBlendingPreset, Sprite::BlendingPreset alphaBlendingPreset)
+{
+	GLenum rgbSourceFactor = GL_ONE;
+	GLenum rgbDestFactor = GL_ZERO;
+	GLenum alphaSourceFactor = GL_ONE;
+	GLenum alphaDestFactor = GL_ZERO;
+
+	setBlendingFactors(rgbBlendingPreset, rgbSourceFactor, rgbDestFactor);
+	setBlendingFactors(alphaBlendingPreset, alphaSourceFactor, alphaDestFactor);
+
+	nc::GLBlending::blendFunc(rgbSourceFactor, rgbDestFactor, alphaSourceFactor, alphaDestFactor);
 }
 
 }
@@ -115,7 +133,7 @@ void SpriteManager::draw(Sprite *sprite)
 		return;
 
 	sprite->updateRender();
-	setBlendingFactors(sprite->blendingPreset());
+	setBlendingFactors(sprite->rgbBlendingPreset(), sprite->alphaBlendingPreset());
 	sprite->render();
 	sprite->resetGrid();
 }

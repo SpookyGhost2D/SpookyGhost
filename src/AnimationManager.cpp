@@ -264,6 +264,46 @@ void recursiveInitScriptsForSprite(AnimationGroup &animGroup, Sprite *sprite)
 	}
 }
 
+void recursiveOverrideSprite(AnimationGroup &animGroup, Sprite *sprite)
+{
+	for (unsigned int i = 0; i < animGroup.anims().size(); i++)
+	{
+		IAnimation &anim = *animGroup.anims()[i];
+
+		switch (anim.type())
+		{
+			case IAnimation::Type::PARALLEL_GROUP:
+			case IAnimation::Type::SEQUENTIAL_GROUP:
+			{
+				AnimationGroup &innerGroup = static_cast<AnimationGroup &>(anim);
+				recursiveOverrideSprite(innerGroup, sprite);
+				break;
+			}
+			case IAnimation::Type::PROPERTY:
+			{
+				PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
+				if (propertyAnim.sprite() != sprite)
+					propertyAnim.setSprite(sprite);
+				break;
+			}
+			case IAnimation::Type::GRID:
+			{
+				GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+				if (gridAnim.sprite() != sprite)
+					gridAnim.setSprite(sprite);
+				break;
+			}
+			case IAnimation::Type::SCRIPT:
+			{
+				ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+				if (scriptAnim.sprite() != sprite)
+					scriptAnim.setSprite(sprite);
+				break;
+			}
+		}
+	}
+}
+
 }
 
 ///////////////////////////////////////////////////////////
@@ -327,4 +367,9 @@ void AnimationManager::initScriptsForSprite(Sprite *sprite)
 {
 	if (sprite != nullptr)
 		recursiveInitScriptsForSprite(*animGroup_, sprite);
+}
+
+void AnimationManager::overrideSprite(AnimationGroup &animGroup, Sprite *sprite)
+{
+	recursiveOverrideSprite(animGroup, sprite);
 }

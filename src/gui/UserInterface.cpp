@@ -835,6 +835,11 @@ void UserInterface::createSpritesWindow()
 
 			if (ImGui::BeginPopupContextItem())
 			{
+				const bool showSelectParent = sprite.parent() != nullptr;
+				if (showSelectParent && ImGui::MenuItem(Labels::SelectParent))
+					selectedSpriteIndex_ = theSpriteMgr->spriteIndex(sprite.parent());
+				if (showSelectParent)
+					ImGui::Separator();
 				if (ImGui::MenuItem(Labels::Clone))
 				{
 					selectedSpriteIndex_ = i;
@@ -1138,8 +1143,11 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 			selectedAnimation_ = &anim;
 			selectedAnimation_->stop();
 		}
-		ImGui::Separator();
-		if (anim.isGroup() == false)
+		const bool showLocked = anim.isGroup() == false;
+		const bool showSelectParent = anim.parent() && anim.parent() != &theAnimMgr->animGroup();
+		if (showLocked || showSelectParent)
+			ImGui::Separator();
+		if (showLocked)
 		{
 			CurveAnimation &curveAnim = static_cast<CurveAnimation &>(anim);
 			bool locked = curveAnim.isLocked();
@@ -1147,6 +1155,9 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 			ImGui::Checkbox(ui::auxString.data(), &locked);
 			curveAnim.setLocked(locked);
 		}
+		if (showSelectParent && ImGui::MenuItem(Labels::SelectParent))
+			selectedAnimation_ = anim.parent();
+		ImGui::Separator();
 		if (ImGui::MenuItem(Labels::Clone))
 		{
 			selectedAnimation_ = &anim;
@@ -1587,9 +1598,13 @@ void UserInterface::createSpriteWindow()
 			sprite.setFlippedY(isFlippedY);
 
 		ImGui::Separator();
-		int currentBlendingPreset = static_cast<int>(sprite.blendingPreset());
-		ImGui::Combo("Blending", &currentBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
-		sprite.setBlendingPreset(static_cast<Sprite::BlendingPreset>(currentBlendingPreset));
+		int currentRgbBlendingPreset = static_cast<int>(sprite.rgbBlendingPreset());
+		ImGui::Combo("RGB Blending", &currentRgbBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
+		sprite.setRgbBlendingPreset(static_cast<Sprite::BlendingPreset>(currentRgbBlendingPreset));
+
+		int currentAlphaBlendingPreset = static_cast<int>(sprite.alphaBlendingPreset());
+		ImGui::Combo("Alpha Blending", &currentAlphaBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
+		sprite.setAlphaBlendingPreset(static_cast<Sprite::BlendingPreset>(currentAlphaBlendingPreset));
 
 		ImGui::ColorEdit4("Color", sprite.color.data(), ImGuiColorEditFlags_AlphaBar);
 		ImGui::SameLine();
@@ -1633,6 +1648,29 @@ void UserInterface::createLoopAnimationGui(LoopComponent &loop)
 		ui::auxString.format("%.3fs / %.3fs", loop.currentDelay(), loopDelay);
 		if (loopDelay > 0.0f)
 			ImGui::ProgressBar(loop.currentDelay() / loopDelay, ImVec2(0.0f, 0.0f), ui::auxString.data());
+	}
+}
+
+void UserInterface::createOverrideSpriteGui(AnimationGroup &animGroup)
+{
+	if (animGroup.anims().isEmpty() == false)
+	{
+		static int currentSpriteCombo = 0;
+		ui::comboString.clear();
+		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+		{
+			const Sprite &sprite = *theSpriteMgr->sprites()[i];
+			ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, sprite.name.data(), sprite.width(), sprite.height());
+			ui::comboString.setLength(ui::comboString.length() + 1);
+		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		ImGui::Combo("Sprite##Override", &currentSpriteCombo, ui::comboString.data());
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Apply))
+			theAnimMgr->overrideSprite(animGroup, theSpriteMgr->sprites()[currentSpriteCombo].get());
 	}
 }
 
@@ -1747,15 +1785,19 @@ void UserInterface::createAnimationWindow()
 			ImGui::InputText("Name", sequentialAnim.name.data(), IAnimation::MaxNameLength,
 			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sequentialAnim.name);
 
-			createDelayAnimationGui(anim);
+			createDelayAnimationGui(sequentialAnim);
 			createLoopAnimationGui(sequentialAnim.loop());
+			createOverrideSpriteGui(sequentialAnim);
 		}
 		else if (anim.type() == IAnimation::Type::PARALLEL_GROUP)
 		{
-			ImGui::InputText("Name", anim.name.data(), IAnimation::MaxNameLength,
-			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &anim.name);
+			ParallelAnimationGroup &parallelAnim = static_cast<ParallelAnimationGroup &>(*selectedAnimation_);
 
-			createDelayAnimationGui(anim);
+			ImGui::InputText("Name", parallelAnim.name.data(), IAnimation::MaxNameLength,
+			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &parallelAnim.name);
+
+			createDelayAnimationGui(parallelAnim);
+			createOverrideSpriteGui(parallelAnim);
 		}
 	}
 

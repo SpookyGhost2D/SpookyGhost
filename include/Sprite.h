@@ -80,8 +80,10 @@ class Sprite
 	inline bool isFlippedY() const { return flippedY_; }
 	void setFlippedY(bool flippedY);
 
-	inline BlendingPreset blendingPreset() const { return blendingPreset_; }
-	inline void setBlendingPreset(BlendingPreset blendingPreset) { blendingPreset_ = blendingPreset; }
+	inline BlendingPreset rgbBlendingPreset() const { return rgbBlendingPreset_; }
+	inline void setRgbBlendingPreset(BlendingPreset rgbBlendingPreset) { rgbBlendingPreset_ = rgbBlendingPreset; }
+	inline BlendingPreset alphaBlendingPreset() const { return alphaBlendingPreset_; }
+	inline void setAlphaBlendingPreset(BlendingPreset alphaBlendingPreset) { alphaBlendingPreset_ = alphaBlendingPreset; }
 
 	inline const nctl::Array<Vertex> &vertexRestPositions() const { return restPositions_; }
 	inline const nctl::Array<Vertex> &interleavedVertices() const { return interleavedVertices_; }
@@ -128,7 +130,8 @@ class Sprite
 	bool flippedX_;
 	bool flippedY_;
 
-	BlendingPreset blendingPreset_;
+	BlendingPreset rgbBlendingPreset_;
+	BlendingPreset alphaBlendingPreset_;
 
 	int gridAnimationsCounter_;
 

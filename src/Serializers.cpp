@@ -87,7 +87,8 @@ void serialize(LuaSerializer &ls, const Sprite &sprite)
 	serialize(ls, "texrect", sprite.texRect());
 	serialize(ls, "flip_x", sprite.isFlippedX());
 	serialize(ls, "flip_y", sprite.isFlippedY());
-	serialize(ls, "blending", sprite.blendingPreset());
+	serialize(ls, "rgb_blending", sprite.rgbBlendingPreset());
+	serialize(ls, "alpha_blending", sprite.alphaBlendingPreset());
 
 	ls.unindent();
 	ls.buffer().append("},\n");
@@ -402,7 +403,17 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite)
 	sprite->setTexRect(deserialize<nc::Recti>(ls, "texrect"));
 	sprite->setFlippedX(deserialize<bool>(ls, "flip_x"));
 	sprite->setFlippedY(deserialize<bool>(ls, "flip_y"));
-	sprite->setBlendingPreset(deserialize<Sprite::BlendingPreset>(ls, "blending"));
+
+	if (context->version >= 5)
+	{
+		sprite->setRgbBlendingPreset(deserialize<Sprite::BlendingPreset>(ls, "rgb_blending"));
+		sprite->setAlphaBlendingPreset(deserialize<Sprite::BlendingPreset>(ls, "alpha_blending"));
+	}
+	else
+	{
+		sprite->setRgbBlendingPreset(deserialize<Sprite::BlendingPreset>(ls, "blending"));
+		sprite->setAlphaBlendingPreset(deserialize<Sprite::BlendingPreset>(ls, "blending"));
+	}
 }
 
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Script> &script)

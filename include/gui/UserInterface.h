@@ -165,6 +165,7 @@ class UserInterface
 
 	void createDelayAnimationGui(IAnimation &anim);
 	void createLoopAnimationGui(LoopComponent &loop);
+	void createOverrideSpriteGui(AnimationGroup &animGroup);
 	void createCurveAnimationGui(CurveAnimation &anim, const CurveAnimationGuiLimits &limits);
 	void createPropertyAnimationGui(PropertyAnimation &anim);
 	void createGridAnimationGui(GridAnimation &anim);

@@ -52,7 +52,8 @@ class ScriptManager
 	static int texRect(lua_State *L);
 	static int isFlippedX(lua_State *L);
 	static int isFlippedY(lua_State *L);
-	static int blendingPreset(lua_State *L);
+	static int rgbBlendingPreset(lua_State *L);
+	static int alphaBlendingPreset(lua_State *L);
 	static int numVertices(lua_State *L);
 
 	static int vertices(lua_State *L);
@@ -77,7 +78,8 @@ class ScriptManager
 	static int setTexRect(lua_State *L);
 	static int setFlippedX(lua_State *L);
 	static int setFlippedY(lua_State *L);
-	static int setBlendingPreset(lua_State *L);
+	static int setRgbBlendingPreset(lua_State *L);
+	static int setAlphaBlendingPreset(lua_State *L);
 
 	static int setVertices(lua_State *L);
 	static int setVerticesXY(lua_State *L);

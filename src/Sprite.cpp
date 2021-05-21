@@ -32,7 +32,8 @@ Sprite::Sprite(Texture *texture)
       width_(0), height_(0), localMatrix_(nc::Matrix4x4f::Identity), worldMatrix_(nc::Matrix4x4f::Identity),
       absPosition_(0.0f, 0.0f), absScaleFactor_(1.0f, 1.0f), absRotation_(0.0f), absColor_(nc::Colorf::White),
       texture_(nullptr), texRect_(0, 0, 0, 0), flippingTexRect_(0, 0, 0, 0),
-      flippedX_(false), flippedY_(false), blendingPreset_(BlendingPreset::ALPHA),
+      flippedX_(false), flippedY_(false),
+      rgbBlendingPreset_(BlendingPreset::ALPHA), alphaBlendingPreset_(BlendingPreset::ALPHA),
       gridAnimationsCounter_(0), interleavedVertices_(0), restPositions_(0),
       indices_(0), shortIndices_(0), parent_(nullptr), children_(4)
 {
@@ -84,7 +85,8 @@ nctl::UniquePtr<Sprite> Sprite::clone() const
 	sprite->flippedX_ = flippedX_;
 	sprite->flippedY_ = flippedY_;
 	sprite->setTexRect(texRect_);
-	sprite->setBlendingPreset(blendingPreset_);
+	sprite->setRgbBlendingPreset(rgbBlendingPreset_);
+	sprite->setAlphaBlendingPreset(alphaBlendingPreset_);
 
 	// Vertices and indices don't need to be copied
 
