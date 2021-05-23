@@ -1,0 +1,159 @@
+name: 'Windows'
+
+env:
+  LIBRARIES_BRANCH: libraries-OS-COMPILER
+  NCINE_SOURCE_BRANCH: BRANCH_NAME
+  DEPLOY_MESSAGE:
+    "Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
+
+     - PACKAGE_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
+  DEPLOY_BRANCH: PACKAGE_NAME-BRANCH_NAME-OS-COMPILER
+
+on: [push, workflow_dispatch]
+
+jobs:
+  Windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2016, windows-2019]
+        BuildType: [Debug, Release, BinDist]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: 'Checkout Code'
+      uses: actions/checkout@v2
+
+    - name: 'Unshallow Git Repository for Versioning'
+      if: matrix.BuildType == 'BinDist'
+      run: |
+        $env:GIT_REDIRECT_STDERR = '2>&1'
+        git fetch --unshallow; if (-not $?) { return }
+
+    - name: 'Download nCine-libraries and package data'
+      run: |
+        $env:GIT_REDIRECT_STDERR = '2>&1'
+        $env:vsversion = switch ("${{ matrix.os }}")
+        {
+          "windows-2019" {"vs2019"}
+          "windows-2016" {"vs2017"}
+        }
+
+        cd ..
+        git clone https://github.com/nCine/nCine-libraries-artifacts.git
+        cd nCine-libraries-artifacts
+
+        $env:LIBRARIES_BRANCH = $env:LIBRARIES_BRANCH -creplace "OS","windows" -creplace "COMPILER",$env:vsversion
+        git checkout $env:LIBRARIES_BRANCH
+        $env:LIBRARIES_FILE = Get-ChildItem -Path $(pwd) -Name -File | Select-Object -First 1
+        7z x $env:LIBRARIES_FILE
+
+        Move-Item -Path nCine-external -Destination ..
+
+        cd ..
+        Remove-Item nCine-libraries-artifacts -Recurse -Force
+
+        git clone https://github.com/$env:GITHUB_REPOSITORY-data.git
+
+    - name: 'Download nCine source and data'
+      run: |
+        $env:branch_name = git describe --tags --exact-match; if (-not $?) { $env:branch_name = git symbolic-ref -q --short HEAD }; if (-not $?) { $env:branch_name = git rev-parse --short HEAD }
+        $env:NCINE_SOURCE_BRANCH = $env:NCINE_SOURCE_BRANCH -creplace "BRANCH_NAME","$env:branch_name"
+
+        cd ..
+        git clone https://github.com/nCine/nCine-data.git
+        git clone https://github.com/nCine/nCine.git --branch $env:NCINE_SOURCE_BRANCH
+
+    - name: 'CMake Configuration and Make of nCine as a static library'
+      run: |
+        $env:generator = switch ("${{ matrix.os }}")
+        {
+          "windows-2019" {"Visual Studio 16 2019"}
+          "windows-2016" {"Visual Studio 15 2017"}
+        }
+
+        cd ../nCine
+        if ("${{ matrix.BuildType }}" -eq "BinDist")
+          { $nCineBuildType = "Release" }
+        else
+          { $nCineBuildType = "${{ matrix.BuildType }}" }
+
+        cmake -G "$env:generator" -A x64 -B ../nCine-build-$nCineBuildType -D CMAKE_BUILD_TYPE=$nCineBuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_BUILD_TESTS=OFF
+
+        cd ..
+        cmake --build nCine-build-$nCineBuildType --config $nCineBuildType
+
+    - name: 'CMake Configuration'
+      run: |
+        $env:package_name = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+
+        $env:generator = switch ("${{ matrix.os }}")
+        {
+          "windows-2019" {"Visual Studio 16 2019"}
+          "windows-2016" {"Visual Studio 15 2017"}
+        }
+
+        if ("${{ matrix.BuildType }}" -eq "BinDist")
+          { cmake -G "$env:generator" -A x64 -B ../$env:package_name-build-${{ matrix.BuildType }} -D PACKAGE_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-Release }
+        else
+          { cmake -G "$env:generator" -A x64 -B ../$env:package_name-build-${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-${{ matrix.BuildType }} }
+
+    - name: 'CMake Build'
+      run: |
+        $env:package_name = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+
+        if ("${{ matrix.BuildType }}" -eq "BinDist")
+          { cmake --build ../$env:package_name-build-${{ matrix.BuildType }} --config Release }
+        else
+          { cmake --build ../$env:package_name-build-${{ matrix.BuildType }} --config ${{ matrix.BuildType }} }
+
+    - name: 'Package'
+      if: matrix.BuildType == 'BinDist'
+      run: |
+        $env:package_name = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+        cmake --build ../$env:package_name-build-${{ matrix.BuildType }} --config Release --target package
+
+    - name: 'Push Artifacts'
+      if: matrix.BuildType == 'BinDist'
+      env:
+        PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+        $env:GIT_REDIRECT_STDERR = '2>&1'
+
+        $env:package_name = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+        $env:branch_name = git describe --tags --exact-match; if (-not $?) { $env:branch_name = git symbolic-ref -q --short HEAD }; if (-not $?) { $env:branch_name = git rev-parse --short HEAD }
+        $env:DEPLOY_MESSAGE = $env:DEPLOY_MESSAGE -creplace "PACKAGE_NAME",$env:package_name
+        $env:DEPLOY_MESSAGE = $env:DEPLOY_MESSAGE -creplace "BRANCH_NAME",$env:branch_name
+
+        $env:vsversion = switch ("${{ matrix.os }}")
+        {
+          "windows-2019" {"vs2019"}
+          "windows-2016" {"vs2017"}
+        }
+
+        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "PACKAGE_NAME",$env:package_name
+        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "BRANCH_NAME",$env:branch_name
+        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "OS","windows" -creplace "COMPILER",$env:vsversion
+
+        Write-Output $env:package_name
+        Write-Output $env:branch_name
+        Write-Output $env:DEPLOY_MESSAGE
+        Write-Output $env:DEPLOY_BRANCH
+
+        cd ..
+        git clone https://$env:PUBLIC_REPO_TOKEN@github.com/$env:GITHUB_REPOSITORY-artifacts.git 2>&1>$null
+        cd $env:package_name-artifacts
+        git checkout $env:DEPLOY_BRANCH; if (-not $?) { git checkout --orphan $env:DEPLOY_BRANCH }
+        git reset
+        git clean -f
+        git rm *
+
+        Move-Item -Path ..\$env:package_name-build-${{ matrix.BuildType }}\*.exe -Destination .
+        Move-Item -Path ..\$env:package_name-build-${{ matrix.BuildType }}\*.zip -Destination .
+        git add *.exe *.zip
+
+        git commit --amend -m "$env:DEPLOY_MESSAGE"; if (-not $?) { git commit -m "$env:DEPLOY_MESSAGE" }
+        git push --force; if (-not $?) { git push --set-upstream origin $env:DEPLOY_BRANCH }

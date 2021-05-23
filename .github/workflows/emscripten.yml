@@ -1,0 +1,142 @@
+name: 'Emscripten'
+
+env:
+  LIBRARIES_BRANCH: libraries-OS-COMPILER
+  NCINE_SOURCE_BRANCH: BRANCH_NAME
+  DEPLOY_MESSAGE:
+    "Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
+
+     - PACKAGE_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
+  DEPLOY_BRANCH: PACKAGE_NAME-BRANCH_NAME-OS-COMPILER
+
+on: [push, workflow_dispatch]
+
+jobs:
+  Emscripten:
+    strategy:
+      fail-fast: false
+      matrix:
+        BuildType: [Debug, Release, BinDist]
+
+    runs-on: 'ubuntu-18.04'
+
+    steps:
+    - name: 'Checkout Code'
+      uses: actions/checkout@v2
+
+    - name: 'Install Emscripten SDK'
+      run: |
+        sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+
+        cd ..
+        git clone https://github.com/emscripten-core/emsdk.git
+        cd emsdk
+        ./emsdk install latest
+        ./emsdk activate latest
+
+    - name: 'Unshallow Git Repository for Versioning'
+      if: matrix.BuildType == 'BinDist'
+      run: |
+        git fetch --unshallow || true
+
+    - name: 'Download nCine-libraries and package data'
+      run: |
+        export OS=emscripten
+        export CC=emcc
+
+        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/OS/'"$OS"'/'`
+        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/COMPILER/'"$CC"'/'`
+
+        cd ..
+        git clone https://github.com/nCine/nCine-libraries-artifacts.git
+        cd nCine-libraries-artifacts
+        git checkout $LIBRARIES_BRANCH
+        LIBRARIES_FILE=$(ls -t | head -n 1) && tar xpzf $LIBRARIES_FILE
+        mv nCine-external-emscripten ..
+
+        cd ..
+        rm -rf nCine-libraries-artifacts
+
+        git clone https://github.com/$GITHUB_REPOSITORY-data.git
+
+    - name: 'Download nCine source and data'
+      run: |
+        export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
+        export NCINE_SOURCE_BRANCH=`echo $NCINE_SOURCE_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
+
+        cd ..
+        git clone https://github.com/nCine/nCine-data.git
+        git clone https://github.com/nCine/nCine.git --branch $NCINE_SOURCE_BRANCH
+
+    - name: 'CMake Configuration and Make of nCine as a static library'
+      run: |
+        source ../emsdk/emsdk_env.sh
+
+        cd ../nCine
+        if [[ "${{ matrix.BuildType }}" == "BinDist" ]]; then
+          export NCINE_BUILD_TYPE=Release
+        else
+          export NCINE_BUILD_TYPE=${{ matrix.BuildType }}
+        fi
+        export CMAKE_ARGS="-B ../nCine-build-$NCINE_BUILD_TYPE -D CMAKE_BUILD_TYPE=$NCINE_BUILD_TYPE -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_BUILD_TESTS=OFF"
+
+        emcmake cmake $CMAKE_ARGS
+        cd ..
+        make -j2 -C nCine-build-$NCINE_BUILD_TYPE
+
+    - name: 'CMake Configuration'
+      run: |
+        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+
+        source ../emsdk/emsdk_env.sh
+        export CMAKE_ARGS="-B ../$PACKAGE_NAME-build-${{ matrix.BuildType }}"
+
+        if [[ "${{ matrix.BuildType }}" == "BinDist" ]]; then
+          emcmake cmake $CMAKE_ARGS -D PACKAGE_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-Release
+        else
+          emcmake cmake $CMAKE_ARGS -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-${{ matrix.BuildType }}
+        fi
+
+    - name: 'Make'
+      run: |
+        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        make -j2 -C ../$PACKAGE_NAME-build-${{ matrix.BuildType }}
+
+    - name: 'Package'
+      if: matrix.BuildType == 'BinDist'
+      run: |
+        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        make package -C ../$PACKAGE_NAME-build-${{ matrix.BuildType }}
+
+    - name: 'Push Artifacts'
+      if: matrix.BuildType == 'BinDist'
+      env:
+        PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+
+        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
+        export DEPLOY_MESSAGE=`sed 's/PACKAGE_NAME/'"$PACKAGE_NAME"'/' <<< "$DEPLOY_MESSAGE"`
+        export DEPLOY_MESSAGE=`sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/' <<< "$DEPLOY_MESSAGE"`
+
+        export OS=emscripten
+        export CC=emcc
+
+        cd ..
+        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/PACKAGE_NAME/'"$PACKAGE_NAME"'/'`
+        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
+        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/OS/'"$OS"'/'`
+        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/COMPILER/'"$CC"'/'`
+        git clone https://$PUBLIC_REPO_TOKEN@github.com/$GITHUB_REPOSITORY-artifacts.git >/dev/null 2>&1
+        cd $PACKAGE_NAME-artifacts
+
+        git checkout $DEPLOY_BRANCH || git checkout --orphan $DEPLOY_BRANCH
+        git reset
+        git clean -f
+        git rm * || true
+        mv -f ../$PACKAGE_NAME-build-${{ matrix.BuildType }}/*.tar.gz .
+        git add *.tar.gz
+        git commit --amend -m "$DEPLOY_MESSAGE" || git commit -m "$DEPLOY_MESSAGE"
+        git push --force || git push --set-upstream origin $DEPLOY_BRANCH

@@ -169,16 +169,12 @@ void RenderGuiWindow::create()
 					ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
-#ifdef DEMO_VERSION
-					ui_.pushStatusInfoMessage("Saving frames is not possible in the demo version");
-#else
 					theAnimMgr->play();
 					saveAnimStatus_.filename.format("%s_%03d.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveFrames_ = true;
 					theResizedCanvas->resizeTexture(frameSize);
 					// Disabling V-Sync for faster render times
 					nc::theApplication().gfxDevice().setSwapInterval(0);
-#endif
 				}
 			}
 			ImGui::SameLine();
@@ -188,9 +184,6 @@ void RenderGuiWindow::create()
 					ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
-#ifdef DEMO_VERSION
-					ui_.pushStatusInfoMessage("Saving frames is not possible in the demo version");
-#else
 					theAnimMgr->play();
 					saveAnimStatus_.filename.format("%s.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveSpritesheet_ = true;
@@ -199,7 +192,6 @@ void RenderGuiWindow::create()
 					theSpritesheet->resizeTexture(spritesheetSize);
 					// Disabling V-Sync for faster render times
 					nc::theApplication().gfxDevice().setSwapInterval(0);
-#endif
 				}
 			}
 		}

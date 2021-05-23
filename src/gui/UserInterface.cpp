@@ -561,18 +561,10 @@ void UserInterface::createMenuBar()
 			}
 
 			if (ImGui::MenuItem(Labels::Save, "CTRL + S", false, menuSaveEnabled()))
-#ifdef DEMO_VERSION
-				pushStatusInfoMessage("Saving a project file is not possible in the demo version");
-#else
 				menuSave();
-#endif
 
 			if (ImGui::MenuItem(Labels::SaveAs, nullptr, false, menuSaveAsEnabled()))
-#ifdef DEMO_VERSION
-				pushStatusInfoMessage("Saving a project file is not possible in the demo version");
-#else
 				menuSaveAs();
-#endif
 
 			if (ImGui::MenuItem(Labels::Configuration))
 				showConfigWindow = true;
@@ -2577,10 +2569,6 @@ void UserInterface::createAboutWindow()
 	ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
 	ImGui::Spacing();
 	ImGui::Text("https://encelo.itch.io/spookyghost");
-#ifdef DEMO_VERSION
-	ImGui::Spacing();
-	ImGui::TextColored(ImColor(182, 27, 255), "DEMO VERSION");
-#endif
 	for (unsigned int i = 0; i < 4; i++)
 		ImGui::Spacing();
 

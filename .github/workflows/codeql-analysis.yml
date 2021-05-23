@@ -1,0 +1,79 @@
+name: 'CodeQL'
+
+env:
+  LIBRARIES_BRANCH: libraries-OS-COMPILER
+  NCINE_SOURCE_BRANCH: BRANCH_NAME
+
+on: [push, workflow_dispatch]
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-18.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: ${{ matrix.language }}
+
+    - run: |
+        # Install nCine Build Dependencies
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev
+
+        # Download nCine-libraries and package data
+        export OS=linux
+        export CC=gcc
+        export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
+
+        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/OS/'"$OS"'/'`
+        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/COMPILER/'"$CC"'/'`
+
+        cd ..
+        git clone https://github.com/nCine/nCine-libraries-artifacts.git
+        cd nCine-libraries-artifacts
+        git checkout $LIBRARIES_BRANCH
+        LIBRARIES_FILE=$(ls -t | head -n 1) && tar xpzf $LIBRARIES_FILE
+        mv nCine-external ..
+        cd ..
+        rm -rf nCine-libraries-artifacts
+
+        git clone https://github.com/$GITHUB_REPOSITORY-data.git
+
+        # Download nCine source and data
+        export BuildType=Debug
+        export NCINE_SOURCE_BRANCH=`echo $NCINE_SOURCE_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
+
+        git clone https://github.com/nCine/nCine-data.git
+        git clone https://github.com/nCine/nCine.git --branch $NCINE_SOURCE_BRANCH
+
+        # CMake Configuration and Make of nCine as a static library
+        cd nCine
+        export CMAKE_ARGS="-B ../nCine-build-$BuildType -D CMAKE_BUILD_TYPE=$BuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_BUILD_TESTS=OFF"
+
+        export CMAKE_ARGS="$CMAKE_ARGS -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
+
+        cmake $CMAKE_ARGS
+        cd ..
+        make -j2 -C nCine-build-Debug
+
+        # CMake Configuration and Make
+        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+
+        cd $PACKAGE_NAME
+        cmake -B ../$PACKAGE_NAME-build-$BuildType -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external -D CMAKE_BUILD_TYPE=$BuildType -D nCine_DIR=$(pwd)/../nCine-build-$BuildType
+
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../nCine-external/lib
+        make -j2 -C ../$PACKAGE_NAME-build-$BuildType
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1

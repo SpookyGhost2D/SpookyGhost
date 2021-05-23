@@ -8,6 +8,12 @@
 
 #define NCINE_INCLUDE_OPENGL
 #include <ncine/common_headers.h>
+#ifdef __MINGW32__
+	#undef ERROR
+	#undef DELETE
+	#undef far
+	#undef near
+#endif
 
 #include "singletons.h"
 #include "main.h"
