@@ -11,7 +11,7 @@ class Script;
 
 class LoopComponent;
 class IAnimation;
-class SequentialAnimationGroup;
+class AnimationGroup;
 class PropertyAnimation;
 class GridAnimation;
 class ScriptAnimation;
@@ -28,7 +28,7 @@ void serialize(LuaSerializer &ls, const Sprite &sprite);
 void serialize(LuaSerializer &ls, const Script &script);
 
 void serialize(LuaSerializer &ls, const IAnimation *anim);
-void serialize(LuaSerializer &ls, const SequentialAnimationGroup &anim);
+void serialize(LuaSerializer &ls, const AnimationGroup &anim);
 void serialize(LuaSerializer &ls, const PropertyAnimation &anim);
 void serialize(LuaSerializer &ls, const GridAnimation &anim);
 void serialize(LuaSerializer &ls, const ScriptAnimation &anim);

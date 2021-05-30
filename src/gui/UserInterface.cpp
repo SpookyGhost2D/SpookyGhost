@@ -807,7 +807,8 @@ void UserInterface::createSpritesWindow()
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
 		ImGui::Separator();
-		for (unsigned int i = 0; i < theSpriteMgr->sprites().size(); i++)
+		// Reverse the sprites order so that higher in the list means above as a rendering layer
+		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
 		{
 			// Creating a group to use the whole entry line as a drag source or target
 			ImGui::BeginGroup();
@@ -1039,7 +1040,7 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 	if (anim.type() == IAnimation::Type::PROPERTY)
 	{
 		PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
-		ui::auxString.formatAppend("%s property", propertyAnim.propertyName().data());
+		ui::auxString.formatAppend("%s property", propertyAnim.propertyName());
 		if (propertyAnim.sprite() != nullptr)
 		{
 			if (propertyAnim.sprite()->name.isEmpty() == false)
@@ -1276,7 +1277,7 @@ void UserInterface::createAnimationsWindow()
 				break;
 			case AnimationTypesEnum::PROPERTY:
 				anims->insertAt(++selectedIndex, nctl::makeUnique<PropertyAnimation>(selectedSprite));
-				static_cast<PropertyAnimation &>(*(*anims)[selectedIndex]).setPropertyName(Properties::Strings[0]);
+				static_cast<PropertyAnimation &>(*(*anims)[selectedIndex]).setProperty(Properties::Types::NONE);
 				break;
 			case AnimationTypesEnum::GRID:
 				anims->insertAt(++selectedIndex, nctl::makeUnique<GridAnimation>(selectedSprite));
@@ -1789,6 +1790,7 @@ void UserInterface::createAnimationWindow()
 			                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &parallelAnim.name);
 
 			createDelayAnimationGui(parallelAnim);
+			createLoopAnimationGui(parallelAnim.loop());
 			createOverrideSpriteGui(parallelAnim);
 		}
 	}
@@ -1832,25 +1834,12 @@ void UserInterface::createPropertyAnimationGui(PropertyAnimation &anim)
 		Sprite &sprite = *theSpriteMgr->sprites()[spriteIndex];
 
 		static int currentComboProperty = -1;
-		const nctl::String &propertyName = anim.propertyName();
-		currentComboProperty = Properties::Types::NONE;
-		if (anim.property() != nullptr)
-		{
-			for (unsigned int i = 0; i < IM_ARRAYSIZE(Properties::Strings); i++)
-			{
-				if (propertyName == Properties::Strings[i])
-				{
-					currentComboProperty = static_cast<Properties::Types>(i);
-					break;
-				}
-			}
-		}
+		currentComboProperty = static_cast<Properties::Types>(anim.propertyType());
 
 		bool setCurveShift = false;
 		if (ImGui::Combo("Property", &currentComboProperty, Properties::Strings, IM_ARRAYSIZE(Properties::Strings)))
 			setCurveShift = true;
-		anim.setPropertyName(Properties::Strings[currentComboProperty]);
-		Properties::assign(anim, static_cast<Properties::Types>(currentComboProperty));
+		anim.setProperty(static_cast<Properties::Types>(currentComboProperty));
 		switch (currentComboProperty)
 		{
 			case Properties::Types::NONE:

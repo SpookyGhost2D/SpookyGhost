@@ -45,40 +45,10 @@ void ScriptAnimation::play()
 		runScript("init", curve_.value());
 }
 
-void ScriptAnimation::stop()
+void ScriptAnimation::perform()
 {
-	CurveAnimation::stop();
-	if (sprite_)
+	if (sprite_ && sprite_->visible)
 		runScript("update", curve_.value());
-}
-
-void ScriptAnimation::update(float deltaTime)
-{
-	switch (state_)
-	{
-		case State::STOPPED:
-			if (curve().hasInitialValue())
-				curve().setTime(curve().initialValue());
-
-			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible)
-				runScript("update", curve_.value());
-			break;
-		case State::PAUSED:
-			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible)
-				runScript("update", curve_.value());
-			break;
-		case State::PLAYING:
-			if (shouldWaitDelay(deltaTime))
-				return;
-			if (curve_.loop().shouldWaitDelay(deltaTime) == false)
-				curve_.next(speed_ * deltaTime);
-
-			if (sprite_ && sprite_->visible)
-				runScript("update", curve_.value());
-			break;
-	}
-
-	CurveAnimation::update(deltaTime);
 }
 
 void ScriptAnimation::setSprite(Sprite *sprite)

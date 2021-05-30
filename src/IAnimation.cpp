@@ -65,3 +65,16 @@ void IAnimation::cloneTo(IAnimation &other) const
 	other.delay_ = delay_;
 	other.currentDelay_ = 0.0f;
 }
+
+bool IAnimation::insideSequential() const
+{
+	IAnimation *parent = parent_;
+	while (parent != nullptr)
+	{
+		if (parent->type() == Type::SEQUENTIAL_GROUP)
+			return true;
+		parent = parent->parent_;
+	}
+
+	return false;
+}

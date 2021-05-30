@@ -121,7 +121,9 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 	{
 		case IAnimation::Type::PARALLEL_GROUP:
 		{
+			const ParallelAnimationGroup &parallelGroup = static_cast<const ParallelAnimationGroup &>(*anim);
 			serialize(ls, "type", "parallel_group");
+			serialize(ls, parallelGroup);
 			break;
 		}
 		case IAnimation::Type::SEQUENTIAL_GROUP:
@@ -185,7 +187,7 @@ void serialize(LuaSerializer &ls, const LoopComponent &loop)
 	serialize(ls, "loop_delay", loop.delay());
 }
 
-void serialize(LuaSerializer &ls, const SequentialAnimationGroup &anim)
+void serialize(LuaSerializer &ls, const AnimationGroup &anim)
 {
 	serialize(ls, anim.loop());
 }
@@ -247,7 +249,7 @@ void serialize(LuaSerializer &ls, const PropertyAnimation &anim)
 	serializePtr(ls, "sprite", anim.sprite(), *context->spriteHash);
 	serialize(ls, "speed", anim.speed());
 	serialize(ls, "curve", anim.curve());
-	serialize(ls, "property_name", anim.propertyName().data());
+	serialize(ls, "property_name", anim.propertyName());
 }
 
 void serialize(LuaSerializer &ls, const GridAnimation &anim)
@@ -487,7 +489,7 @@ void deserialize(LuaSerializer &ls, LoopComponent &loop)
 	}
 }
 
-void deserialize(LuaSerializer &ls, nctl::UniquePtr<SequentialAnimationGroup> &anim)
+void deserialize(LuaSerializer &ls, AnimationGroup *anim)
 {
 	deserialize(ls, anim->loop());
 }
@@ -550,8 +552,7 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<PropertyAnimation> &anim)
 	anim->setSpeed(deserialize<float>(ls, "speed"));
 	deserialize(ls, "curve", anim->curve());
 	const char *propertyName = deserialize<const char *>(ls, "property_name");
-	anim->setPropertyName(propertyName);
-	Properties::assign(*anim, propertyName);
+	anim->setProperty(propertyName);
 }
 
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<GridAnimation> &anim)
@@ -614,13 +615,15 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim)
 		case IAnimation::Type::PARALLEL_GROUP:
 		{
 			nctl::UniquePtr<ParallelAnimationGroup> parallelGroup = nctl::makeUnique<ParallelAnimationGroup>();
+			if (context->version >= 6)
+				deserialize(ls, parallelGroup.get());
 			anim = nctl::move(parallelGroup);
 			break;
 		}
 		case IAnimation::Type::SEQUENTIAL_GROUP:
 		{
 			nctl::UniquePtr<SequentialAnimationGroup> sequentialGroup = nctl::makeUnique<SequentialAnimationGroup>();
-			deserialize(ls, sequentialGroup);
+			deserialize(ls, sequentialGroup.get());
 			anim = nctl::move(sequentialGroup);
 			break;
 		}

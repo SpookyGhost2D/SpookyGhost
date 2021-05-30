@@ -13,9 +13,8 @@ PropertyAnimation::PropertyAnimation()
 
 PropertyAnimation::PropertyAnimation(Sprite *sprite)
     : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
-      property_(nullptr), propertyName_(64), sprite_(nullptr)
+      propertyType_(Properties::Types::NONE), property_(nullptr), sprite_(nullptr)
 {
-	setSprite(sprite);
 }
 
 ///////////////////////////////////////////////////////////
@@ -27,109 +26,93 @@ nctl::UniquePtr<IAnimation> PropertyAnimation::clone() const
 	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(sprite_);
 	CurveAnimation::cloneTo(*anim);
 
-	anim->property_ = property_;
-	anim->propertyName_.assign(propertyName_);
+	anim->setProperty(propertyType_);
 
 	return nctl::move(anim);
 }
 
-void PropertyAnimation::stop()
+void PropertyAnimation::perform()
 {
-	CurveAnimation::stop();
 	if (property_)
-		*property_ = curve().value();
+		*property_ = curve_.value();
 }
 
-void PropertyAnimation::update(float deltaTime)
+const char *PropertyAnimation::propertyName() const
 {
-	switch (state_)
+	const int index = static_cast<int>(propertyType_);
+	return Properties::Strings[index];
+}
+
+void PropertyAnimation::setProperty(Properties::Types propertyType)
+{
+	if (sprite_ == nullptr)
 	{
-		case State::STOPPED:
-			if (curve().hasInitialValue())
-				curve().setTime(curve().initialValue());
-
-			if (parent_->state() != State::PLAYING && isLocked_ && property_)
-				*property_ = curve().value();
-			break;
-		case State::PAUSED:
-			if (parent_->state() != State::PLAYING && isLocked_ && property_)
-				*property_ = curve().value();
-			break;
-		case State::PLAYING:
-			if (shouldWaitDelay(deltaTime))
-				return;
-			if (curve_.loop().shouldWaitDelay(deltaTime) == false)
-				curve_.next(speed_ * deltaTime);
-
-			const float value = curve_.value();
-			if (property_)
-				*property_ = value;
-			break;
-	}
-
-	CurveAnimation::update(deltaTime);
-}
-
-namespace Properties {
-
-void assign(PropertyAnimation &anim, Types type)
-{
-	if (anim.sprite() == nullptr)
+		propertyType_ = Properties::Types::NONE;
+		property_ = nullptr;
 		return;
+	}
 
-	anim.setProperty(nullptr);
-	switch (type)
+	propertyType_ = propertyType;
+	switch (propertyType)
 	{
-		case Types::NONE:
-			anim.setProperty(nullptr);
+		case Properties::Types::NONE:
+			property_ = nullptr;
 			break;
-		case Types::POSITION_X:
-			anim.setProperty(&anim.sprite()->x);
+		case Properties::Types::POSITION_X:
+			property_ = &sprite_->x;
 			break;
-		case Types::POSITION_Y:
-			anim.setProperty(&anim.sprite()->y);
+		case Properties::Types::POSITION_Y:
+			property_ = &sprite_->y;
 			break;
-		case Types::ROTATION:
-			anim.setProperty(&anim.sprite()->rotation);
+		case Properties::Types::ROTATION:
+			property_ = &sprite_->rotation;
 			break;
-		case Types::SCALE_X:
-			anim.setProperty(&anim.sprite()->scaleFactor.x);
+		case Properties::Types::SCALE_X:
+			property_ = &sprite_->scaleFactor.x;
 			break;
-		case Types::SCALE_Y:
-			anim.setProperty(&anim.sprite()->scaleFactor.y);
+		case Properties::Types::SCALE_Y:
+			property_ = &sprite_->scaleFactor.y;
 			break;
-		case Types::ANCHOR_X:
-			anim.setProperty(&anim.sprite()->anchorPoint.x);
+		case Properties::Types::ANCHOR_X:
+			property_ = &sprite_->anchorPoint.x;
 			break;
-		case Types::ANCHOR_Y:
-			anim.setProperty(&anim.sprite()->anchorPoint.y);
+		case Properties::Types::ANCHOR_Y:
+			property_ = &sprite_->anchorPoint.y;
 			break;
-		case Types::OPACITY:
-			anim.setProperty(&anim.sprite()->color.data()[3]);
+		case Properties::Types::OPACITY:
+			property_ = &sprite_->color.data()[3];
 			break;
-		case Types::COLOR_R:
-			anim.setProperty(&anim.sprite()->color.data()[0]);
+		case Properties::Types::COLOR_R:
+			property_ = &sprite_->color.data()[0];
 			break;
-		case Types::COLOR_G:
-			anim.setProperty(&anim.sprite()->color.data()[1]);
+		case Properties::Types::COLOR_G:
+			property_ = &sprite_->color.data()[1];
 			break;
-		case Types::COLOR_B:
-			anim.setProperty(&anim.sprite()->color.data()[2]);
+		case Properties::Types::COLOR_B:
+			property_ = &sprite_->color.data()[2];
 			break;
 	}
 }
 
-void assign(PropertyAnimation &anim, const char *name)
+void PropertyAnimation::setProperty(const char *name)
 {
+	ASSERT(name != nullptr);
 	nctl::String string(name);
-	for (unsigned int i = 0; i < Count; i++)
+	for (unsigned int i = 0; i < Properties::Count; i++)
 	{
-		if (string == Strings[i])
+		if (string == Properties::Strings[i])
 		{
-			assign(anim, static_cast<Types>(i));
+			setProperty(static_cast<Properties::Types>(i));
 			break;
 		}
 	}
 }
 
+void PropertyAnimation::setSprite(Sprite *sprite)
+{
+	if (sprite_ != sprite)
+	{
+		sprite_ = sprite;
+		setProperty(propertyType_);
+	}
 }

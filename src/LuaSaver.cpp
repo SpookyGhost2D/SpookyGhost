@@ -12,7 +12,7 @@
 
 namespace {
 
-const int ProjectVersion = 5;
+const int ProjectVersion = 6;
 
 }
 
@@ -69,6 +69,9 @@ bool LuaSaver::load(const char *filename, Data &data)
 		data.animMgr.anims().setCapacity(anims.size());
 	for (unsigned int i = 0; i < anims.size(); i++)
 		anims[i]->parent()->anims().pushBack(nctl::move(anims[i]));
+
+	// Stop all animations to get the initial state
+	data.animMgr.animGroup().stop();
 
 	return true;
 }

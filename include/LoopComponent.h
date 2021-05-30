@@ -35,9 +35,11 @@ class LoopComponent
 
 	inline bool isGoingForward() const { return forward_; }
 	inline void goForward(bool forward) { forward_ = forward; }
+	inline void toggleForward() { forward_ = !forward_; }
 
 	/// Returns true if the loop is starting again this frame
 	inline bool hasJustReset() const { return hasJustReset_; };
+	inline void justResetNow() { hasJustReset_ = true; };
 
 	inline float delay() const { return delay_; }
 	inline void setDelay(float loopDelay) { delay_ = loopDelay; }
@@ -59,9 +61,6 @@ class LoopComponent
 	float currentDelay_;
 	/// A flag indicating if an animation should wait for the loop delay
 	bool waitDelay_;
-
-	friend class EasingCurve;
-	friend class SequentialAnimationGroup;
 };
 
 #endif

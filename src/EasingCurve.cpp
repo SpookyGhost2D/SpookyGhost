@@ -39,15 +39,15 @@ void EasingCurve::reset()
 {
 	if (withInitialValue_ == false)
 	{
-		if (loop_.direction_ == Loop::Direction::FORWARD)
+		if (loop_.direction() == Loop::Direction::FORWARD)
 		{
 			time_ = start_;
-			loop_.forward_ = true;
+			loop_.goForward(true);
 		}
-		else if (loop_.direction_ == Loop::Direction::BACKWARD)
+		else if (loop_.direction() == Loop::Direction::BACKWARD)
 		{
 			time_ = end_;
-			loop_.forward_ = false;
+			loop_.goForward(false);
 		}
 	}
 	else
@@ -81,62 +81,60 @@ float EasingCurve::value()
 
 void EasingCurve::next(float deltaTime)
 {
-	loop_.hasJustReset_ = false;
-
-	if ((loop_.forward_ && loop_.direction_ == Loop::Direction::FORWARD) ||
-	    (!loop_.forward_ && loop_.direction_ == Loop::Direction::BACKWARD))
+	if ((loop_.isGoingForward() && loop_.direction() == Loop::Direction::FORWARD) ||
+	    (!loop_.isGoingForward() && loop_.direction() == Loop::Direction::BACKWARD))
 		time_ += deltaTime;
 	else
 		time_ -= deltaTime;
 
 	if (time_ < start_)
 	{
-		if (loop_.direction_ == Loop::Direction::BACKWARD)
+		if (loop_.direction() == Loop::Direction::BACKWARD)
 		{
-			if (loop_.mode_ == Loop::Mode::DISABLED)
+			if (loop_.mode() == Loop::Mode::DISABLED)
 				time_ = start_;
-			else if (loop_.mode_ == Loop::Mode::REWIND)
+			else if (loop_.mode() == Loop::Mode::REWIND)
 			{
 				time_ = end_ + time_;
-				loop_.hasJustReset_ = true;
+				loop_.justResetNow();
 			}
-			else if (loop_.mode_ == Loop::Mode::PING_PONG)
+			else if (loop_.mode() == Loop::Mode::PING_PONG)
 			{
 				time_ = 2.0f * start_ - time_;
-				loop_.hasJustReset_ = true;
-				loop_.forward_ = false;
+				loop_.justResetNow();
+				loop_.goForward(false);
 			}
 		}
 		else
 		{
 			time_ = 2.0f * start_ - time_;
-			loop_.hasJustReset_ = true;
-			loop_.forward_ = true;
+			loop_.justResetNow();
+			loop_.goForward(true);
 		}
 	}
 	else if (time_ > end_)
 	{
-		if (loop_.direction_ == Loop::Direction::FORWARD)
+		if (loop_.direction() == Loop::Direction::FORWARD)
 		{
-			if (loop_.mode_ == Loop::Mode::DISABLED)
+			if (loop_.mode() == Loop::Mode::DISABLED)
 				time_ = end_;
-			else if (loop_.mode_ == Loop::Mode::REWIND)
+			else if (loop_.mode() == Loop::Mode::REWIND)
 			{
 				time_ = time_ - end_;
-				loop_.hasJustReset_ = true;
+				loop_.justResetNow();
 			}
-			else if (loop_.mode_ == Loop::Mode::PING_PONG)
+			else if (loop_.mode() == Loop::Mode::PING_PONG)
 			{
 				time_ = 2.0f * end_ - time_;
-				loop_.hasJustReset_ = true;
-				loop_.forward_ = false;
+				loop_.justResetNow();
+				loop_.goForward(false);
 			}
 		}
 		else
 		{
 			time_ = 2.0f * end_ - time_;
-			loop_.hasJustReset_ = true;
-			loop_.forward_ = true;
+			loop_.justResetNow();
+			loop_.goForward(true);
 		}
 	}
 }

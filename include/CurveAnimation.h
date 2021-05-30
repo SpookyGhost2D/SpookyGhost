@@ -19,7 +19,7 @@ class CurveAnimation : public IAnimation
 	void play() override;
 
 	void update(float deltaTime) override;
-	inline void reset() override { curve_.reset(); }
+	virtual void perform() = 0;
 
 	inline const EasingCurve &curve() const { return curve_; }
 	inline EasingCurve &curve() { return curve_; }

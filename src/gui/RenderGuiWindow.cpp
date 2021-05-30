@@ -169,7 +169,6 @@ void RenderGuiWindow::create()
 					ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
-					theAnimMgr->play();
 					saveAnimStatus_.filename.format("%s_%03d.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveFrames_ = true;
 					theResizedCanvas->resizeTexture(frameSize);
@@ -184,7 +183,6 @@ void RenderGuiWindow::create()
 					ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 				else
 				{
-					theAnimMgr->play();
 					saveAnimStatus_.filename.format("%s.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 					shouldSaveSpritesheet_ = true;
 					saveAnimStatus_.sheetDestPos.set(0, 0);

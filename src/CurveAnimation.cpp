@@ -1,4 +1,5 @@
 #include "CurveAnimation.h"
+#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -29,25 +30,60 @@ void CurveAnimation::stop()
 
 void CurveAnimation::play()
 {
-	if (state_ == State::STOPPED)
-		curve_.reset();
-	state_ = State::PLAYING;
+	if (enabled)
+	{
+		if (state_ == State::STOPPED)
+			curve_.reset();
+		state_ = State::PLAYING;
+	}
 }
 
 void CurveAnimation::update(float deltaTime)
 {
-	if (state() != State::PLAYING)
-		return;
-
-	if (curve_.loop().mode() == Loop::Mode::DISABLED)
+	switch (state_)
 	{
-		if ((curve_.loop().direction() == Loop::Direction::FORWARD && curve().time() >= curve().end()) ||
-		    (curve_.loop().direction() == Loop::Direction::BACKWARD && curve().time() <= curve().start()))
-		{
-			resetDelay();
-			curve_.loop().resetDelay();
-			state_ = State::STOPPED;
-		}
+		case State::STOPPED:
+			if (curve().hasInitialValue())
+				curve().setTime(curve().initialValue());
+
+			if (parent_->state() != State::PLAYING && isLocked_)
+				perform();
+			break;
+		case State::PAUSED:
+			if (parent_->state() != State::PLAYING && isLocked_)
+				perform();
+			break;
+		case State::PLAYING:
+			if (shouldWaitDelay(deltaTime))
+				return;
+
+			if (insideSequential() && curve_.loop().mode() != Loop::Mode::DISABLED)
+			{
+				// Disable looping if the animation is inside a sequential group
+				const Loop::Mode loopMode = curve_.loop().mode();
+				curve_.loop().setMode(Loop::Mode::DISABLED);
+				curve_.next(speed_ * deltaTime);
+				curve_.loop().setMode(loopMode);
+			}
+			else
+			{
+				if (curve_.loop().shouldWaitDelay(deltaTime) == false)
+					curve_.next(speed_ * deltaTime);
+			}
+
+			perform();
+
+			if (curve_.loop().mode() == Loop::Mode::DISABLED)
+			{
+				if ((curve_.loop().direction() == Loop::Direction::FORWARD && curve().time() >= curve().end()) ||
+				    (curve_.loop().direction() == Loop::Direction::BACKWARD && curve().time() <= curve().start()))
+				{
+					resetDelay();
+					curve_.loop().resetDelay();
+					state_ = State::STOPPED;
+				}
+			}
+			break;
 	}
 }
 

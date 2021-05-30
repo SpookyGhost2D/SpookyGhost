@@ -1,14 +1,4 @@
 #include "SequentialAnimationGroup.h"
-#include "CurveAnimation.h"
-
-///////////////////////////////////////////////////////////
-// CONSTRUCTORS and DESTRUCTOR
-///////////////////////////////////////////////////////////
-
-SequentialAnimationGroup::SequentialAnimationGroup()
-    : loop_(Loop::Mode::DISABLED)
-{
-}
 
 ///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
@@ -19,29 +9,7 @@ nctl::UniquePtr<IAnimation> SequentialAnimationGroup::clone() const
 	nctl::UniquePtr<SequentialAnimationGroup> animGroup = nctl::makeUnique<SequentialAnimationGroup>();
 	AnimationGroup::cloneTo(*animGroup);
 
-	animGroup->loop_ = loop_;
-	animGroup->loop_.resetDelay();
-
 	return nctl::move(animGroup);
-}
-
-void SequentialAnimationGroup::stop()
-{
-	resetDelay();
-	loop_.resetDelay();
-
-	for (auto &&anim : anims_)
-	{
-		if (anim->state() != State::STOPPED)
-		{
-			if (shouldReverseAnimDirection())
-				reverseAnimDirection(*anim);
-			break;
-		}
-	}
-
-	stopAnimations();
-	state_ = State::STOPPED;
 }
 
 void SequentialAnimationGroup::pause()
@@ -51,6 +19,7 @@ void SequentialAnimationGroup::pause()
 
 	for (auto &&anim : anims_)
 	{
+		// The sequential group pauses the first and only playing animation
 		if (anim->state() == State::PLAYING)
 		{
 			anim->pause();
@@ -63,25 +32,42 @@ void SequentialAnimationGroup::pause()
 
 void SequentialAnimationGroup::play()
 {
+	if (enabled == false)
+		return;
+
 	switch (state_)
 	{
 		case State::STOPPED:
-			// Stop all animations to get the initial state
-			stopAnimations();
-
 			if (anims_.isEmpty() == false)
 			{
-				if (loop_.direction_ == Loop::Direction::FORWARD)
+				// Stop all animations to get the initial state
+				stopAnimations();
+
+				if (loop_.direction() == Loop::Direction::FORWARD)
 				{
-					loop_.forward_ = true;
-					anims_.front()->play();
+					loop_.goForward(true);
+
+					// Find first enabled animation
+					unsigned int firstEnabled = 0;
+					while (firstEnabled < anims_.size() && anims_[firstEnabled]->enabled == false)
+						firstEnabled++;
+
+					if (firstEnabled < anims_.size())
+						anims_[firstEnabled]->play();
 				}
 				else
 				{
-					loop_.forward_ = false;
+					loop_.goForward(false);
 					if (shouldReverseAnimDirection())
 						reverseAnimDirection(*anims_.back());
-					anims_.back()->play();
+
+					// Find last enabled animation
+					int lastEnabled = anims_.size() - 1;
+					while (lastEnabled >= 0 && anims_[lastEnabled]->enabled == false)
+						lastEnabled--;
+
+					if (lastEnabled >= 0)
+						anims_[lastEnabled]->play();
 				}
 			}
 			break;
@@ -108,8 +94,11 @@ void SequentialAnimationGroup::update(float deltaTime)
 
 	if (state_ == IAnimation::State::PLAYING)
 	{
-		if (shouldWaitDelay(deltaTime) || loop_.shouldWaitDelay(deltaTime))
+		if (shouldWaitDelay(deltaTime) ||
+		    (insideSequential() == false && loop_.shouldWaitDelay(deltaTime)))
+		{
 			return;
+		}
 		else
 		{
 			// Check if there is an animation currently in playing state
@@ -124,11 +113,13 @@ void SequentialAnimationGroup::update(float deltaTime)
 		}
 	}
 
-	// Update all enabled animation anyway (always after checking if one is playing)
+	// Update all enabled animations anyway (always after checking if one is playing)
 	for (unsigned int i = 0; i < anims_.size(); i++)
 	{
 		if (anims_[i]->enabled)
 			anims_[i]->update(deltaTime);
+		else if (anims_[i]->state() == IAnimation::State::PLAYING)
+			anims_[i]->stop();
 	}
 
 	if (playingIndex > -1 && state_ == IAnimation::State::PLAYING)
@@ -136,56 +127,17 @@ void SequentialAnimationGroup::update(float deltaTime)
 		// Decide the next animation to play if the last playing one has just finished
 		if (anims_[playingIndex]->state() == State::STOPPED)
 		{
+			const Loop::Mode loopMode = loop_.mode();
+			// Disable looping if the animation is inside a sequential group
+			if (insideSequential())
+				loop_.setMode(Loop::Mode::DISABLED);
+
 			if (shouldReverseAnimDirection())
 				reverseAnimDirection(*anims_[playingIndex]);
 
-			switch (loop_.mode_)
-			{
-				case Loop::Mode::DISABLED:
-					playingIndex += (loop_.direction_ == Loop::Direction::FORWARD) ? 1 : -1;
-					break;
-				case Loop::Mode::REWIND:
-					playingIndex += (loop_.direction_ == Loop::Direction::FORWARD) ? 1 : -1;
-					if (playingIndex > static_cast<int>(anims_.size() - 1))
-					{
-						playingIndex = 0;
-						// Stop all animations to get the initial state
-						stopAnimations();
-						loop_.hasJustReset_ = true;
-					}
-					else if (playingIndex < 0)
-					{
-						playingIndex = anims_.size() - 1;
-						// Stop all animations to get the initial state
-						stopAnimations();
-						loop_.hasJustReset_ = true;
-					}
-					break;
-				case Loop::Mode::PING_PONG:
-					if (loop_.forward_)
-					{
-						playingIndex++;
-						if (playingIndex >= anims_.size())
-						{
-							// Playing again the last animation but reverted
-							playingIndex = anims_.size() - 1;
-							loop_.hasJustReset_ = true;
-							loop_.forward_ = !loop_.forward_;
-						}
-					}
-					else
-					{
-						playingIndex--;
-						if (playingIndex < 0)
-						{
-							// Playing again the first animation but reverted
-							playingIndex = 0;
-							loop_.hasJustReset_ = true;
-							loop_.forward_ = !loop_.forward_;
-						}
-					}
-					break;
-			}
+			playingIndex = nextPlayingIndex(playingIndex);
+
+			loop_.setMode(loopMode);
 
 			// The last animation finished and looping is disabled
 			if (playingIndex < 0 || playingIndex > anims_.size() - 1)
@@ -209,38 +161,82 @@ void SequentialAnimationGroup::update(float deltaTime)
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-void SequentialAnimationGroup::stopAnimations()
+int SequentialAnimationGroup::nextPlayingIndex(int playingIndex)
 {
-	if (loop_.direction_ == Loop::Direction::FORWARD)
+	int firstEnabled = -1;
+	for (unsigned int i = 0; i < anims_.size(); i++)
 	{
-		// Reverse stop to reset animations in the correct order
-		for (int i = anims_.size() - 1; i >= 0; i--)
-			anims_[i]->stop();
-	}
-	else
-	{
-		for (auto &&anim : anims_)
+		if (anims_[i]->enabled)
 		{
-			reverseAnimDirection(*anim);
-			anim->stop();
-			reverseAnimDirection(*anim);
+			firstEnabled = i;
+			break;
 		}
 	}
-}
 
-bool SequentialAnimationGroup::shouldReverseAnimDirection()
-{
-	return ((loop_.mode_ != Loop::Mode::PING_PONG && loop_.direction_ == Loop::Direction::BACKWARD) ||
-	        (loop_.mode_ == Loop::Mode::PING_PONG && loop_.isGoingForward() == false));
-}
+	// Check if there are no enabled animations in the group
+	if (firstEnabled < 0)
+		return -1;
 
-void SequentialAnimationGroup::reverseAnimDirection(IAnimation &anim)
-{
-	if (anim.type() != Type::PARALLEL_GROUP)
+	int lastEnabled = anims_.size() - 1;
+	for (int i = anims_.size() - 1; i >= 0; i--)
 	{
-		if (anim.type() == Type::SEQUENTIAL_GROUP)
-			static_cast<SequentialAnimationGroup &>(anim).loop().reverseDirection();
-		else
-			static_cast<CurveAnimation &>(anim).curve().loop().reverseDirection();
+		if (anims_[i]->enabled)
+		{
+			lastEnabled = i;
+			break;
+		}
 	}
+
+	do
+	{
+		switch (loop_.mode())
+		{
+			case Loop::Mode::DISABLED:
+				playingIndex += (loop_.direction() == Loop::Direction::FORWARD) ? 1 : -1;
+				break;
+			case Loop::Mode::REWIND:
+				playingIndex += (loop_.direction() == Loop::Direction::FORWARD) ? 1 : -1;
+				if (playingIndex > lastEnabled)
+				{
+					playingIndex = firstEnabled;
+					// Stop all animations to get the initial state
+					stopAnimations();
+					loop_.justResetNow();
+				}
+				else if (playingIndex < firstEnabled)
+				{
+					playingIndex = lastEnabled;
+					// Stop all animations to get the initial state
+					stopAnimations();
+					loop_.justResetNow();
+				}
+				break;
+			case Loop::Mode::PING_PONG:
+				if (loop_.isGoingForward())
+				{
+					playingIndex++;
+					if (playingIndex > lastEnabled)
+					{
+						// Playing again the last animation but reverted
+						playingIndex = lastEnabled;
+						loop_.justResetNow();
+						loop_.toggleForward();
+					}
+				}
+				else
+				{
+					playingIndex--;
+					if (playingIndex < firstEnabled)
+					{
+						// Playing again the first animation but reverted
+						playingIndex = firstEnabled;
+						loop_.justResetNow();
+						loop_.toggleForward();
+					}
+				}
+				break;
+		}
+	} while (anims_[playingIndex]->enabled == false);
+
+	return playingIndex;
 }

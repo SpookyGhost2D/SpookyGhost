@@ -20,8 +20,7 @@ class GridAnimation : public CurveAnimation
 
 	inline Type type() const override { return Type::GRID; }
 
-	void stop() override;
-	void update(float deltaTime) override;
+	void perform() override;
 
 	inline const Sprite *sprite() const { return sprite_; }
 	inline Sprite *sprite() { return sprite_; }

@@ -170,7 +170,9 @@ void MyEventHandler::onFrameStart()
 	{
 		if (saveAnimStatus.numSavedFrames == 0)
 		{
-			theAnimMgr->reset();
+			// Reset to initial state before playing
+			theAnimMgr->stop();
+			theAnimMgr->play();
 			theAnimMgr->update(0.0f);
 		}
 	}
@@ -203,12 +205,20 @@ void MyEventHandler::onFrameStart()
 			theSpritesheet->unbindTexture();
 		}
 
-		const bool shouldSaveSpritesheet = ui_->shouldSaveSpritesheet();
+		const bool shouldSaveBefore = (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet());
+		const bool shouldSaveSpritesheetBefore = ui_->shouldSaveSpritesheet();
 		ui_->signalFrameSaved();
-		// If this was the last frame to blit then we save the spritesheet
-		if (shouldSaveSpritesheet && ui_->shouldSaveSpritesheet() == false)
-			theSpritesheet->save(saveAnimStatus.filename.data());
-		theAnimMgr->update(saveAnimStatus.inverseFps());
+		const bool shouldSaveAfter = (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet());
+		// Check if this was the last frame
+		if (shouldSaveBefore != shouldSaveAfter)
+		{
+			if (shouldSaveSpritesheetBefore)
+				theSpritesheet->save(saveAnimStatus.filename.data());
+			// Stop animations after the saving process is complete
+			theAnimMgr->stop();
+		}
+		else
+			theAnimMgr->update(saveAnimStatus.inverseFps());
 	}
 
 	ui_->createGui();

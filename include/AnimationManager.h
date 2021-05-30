@@ -26,7 +26,6 @@ class AnimationManager
 	inline void play() { animGroup_->play(); }
 
 	void update(float deltaTime);
-	void reset();
 	void clear();
 
 	void removeAnimation(IAnimation *anim);

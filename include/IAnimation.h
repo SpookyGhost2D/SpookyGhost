@@ -43,7 +43,6 @@ class IAnimation
 	inline virtual void play() { state_ = State::PLAYING; }
 
 	virtual void update(float deltaTime) = 0;
-	virtual void reset() = 0;
 
 	inline AnimationGroup *parent() { return parent_; }
 	inline const AnimationGroup *parent() const { return parent_; }
@@ -68,6 +67,8 @@ class IAnimation
 	float currentDelay_;
 
 	void cloneTo(IAnimation &other) const;
+
+	bool insideSequential() const;
 };
 
 #endif

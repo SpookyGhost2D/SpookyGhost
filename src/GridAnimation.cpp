@@ -35,43 +35,10 @@ nctl::UniquePtr<IAnimation> GridAnimation::clone() const
 	return nctl::move(anim);
 }
 
-void GridAnimation::stop()
+void GridAnimation::perform()
 {
-	if (state_ == State::STOPPED)
-		return;
-
-	CurveAnimation::stop();
-	if (sprite_ && gridFunction_)
+	if (sprite_ && sprite_->visible && gridFunction_)
 		gridFunction_->execute(*this);
-}
-
-void GridAnimation::update(float deltaTime)
-{
-	switch (state_)
-	{
-		case State::STOPPED:
-			if (curve().hasInitialValue())
-				curve().setTime(curve().initialValue());
-
-			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible && gridFunction_)
-				gridFunction_->execute(*this);
-			break;
-		case State::PAUSED:
-			if (parent_->state() != State::PLAYING && isLocked_ && sprite_ && sprite_->visible && gridFunction_)
-				gridFunction_->execute(*this);
-			break;
-		case State::PLAYING:
-			if (shouldWaitDelay(deltaTime))
-				return;
-			if (curve_.loop().shouldWaitDelay(deltaTime) == false)
-				curve_.next(speed_ * deltaTime);
-
-			if (sprite_ && sprite_->visible && gridFunction_)
-				gridFunction_->execute(*this);
-			break;
-	}
-
-	CurveAnimation::update(deltaTime);
 }
 
 void GridAnimation::setSprite(Sprite *sprite)

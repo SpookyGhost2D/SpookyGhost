@@ -19,7 +19,7 @@ void resetAnimation(IAnimation &anim)
 		case IAnimation::Type::PROPERTY:
 		{
 			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
-			propertyAnim.setProperty(nullptr);
+			propertyAnim.setProperty(Properties::Types::NONE);
 			propertyAnim.setSprite(nullptr);
 			propertyAnim.stop();
 			break;
@@ -322,11 +322,6 @@ AnimationManager::AnimationManager()
 void AnimationManager::update(float deltaTime)
 {
 	animGroup_->update(deltaTime);
-}
-
-void AnimationManager::reset()
-{
-	animGroup_->reset();
 }
 
 void AnimationManager::clear()
