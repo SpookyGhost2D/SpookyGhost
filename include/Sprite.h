@@ -67,6 +67,7 @@ class Sprite
 
 	inline nc::Recti texRect() const { return texRect_; }
 	void setTexRect(const nc::Recti &texRect);
+	inline nc::Recti flippingTexRect() const { return flippingTexRect_; }
 
 	inline const Texture &texture() const { return *texture_; }
 	inline Texture &texture() { return *texture_; }

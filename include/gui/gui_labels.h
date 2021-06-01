@@ -16,6 +16,8 @@
 #define TEXT_MENU_FILE_OPENBUNDLED "Open Bundled"
 #define TEXT_MENU_FILE_SAVE "Save"
 #define TEXT_MENU_FILE_SAVEAS "Save as..."
+#define TEXT_MENU_FILE_QUICKOPEN "Quick Open"
+#define TEXT_MENU_FILE_QUICKSAVE "Quick Save"
 #define TEXT_MENU_FILE_CONFIGURATION "Configuration"
 #define TEXT_MENU_FILE_QUIT "Quit"
 #define TEXT_MENU_DOCUMENTATION "Documentation"
@@ -75,6 +77,8 @@ static const char *Open = TEXT_MENU_FILE_OPEN;
 static const char *OpenBundled = TEXT_MENU_FILE_OPENBUNDLED;
 static const char *Save = TEXT_MENU_FILE_SAVE;
 static const char *SaveAs = TEXT_MENU_FILE_SAVEAS;
+static const char *QuickOpen = TEXT_MENU_FILE_QUICKOPEN;
+static const char *QuickSave = TEXT_MENU_FILE_QUICKSAVE;
 static const char *Configuration = TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = TEXT_MENU_FILE_QUIT;
 static const char *Documentation = TEXT_MENU_DOCUMENTATION;
@@ -169,6 +173,8 @@ static const char *Open = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_MENU_FILE_OPEN;
 static const char *OpenBundled = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_MENU_FILE_OPENBUNDLED;
 static const char *Save = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVE;
 static const char *SaveAs = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_SAVEAS;
+static const char *QuickOpen = ICON_FA_FOLDER_OPEN FA5_SPACING TEXT_MENU_FILE_QUICKOPEN;
+static const char *QuickSave = ICON_FA_SAVE FA5_SPACING TEXT_MENU_FILE_QUICKSAVE;
 static const char *Configuration = ICON_FA_TOOLS FA5_SPACING TEXT_MENU_FILE_CONFIGURATION;
 static const char *Quit = ICON_FA_POWER_OFF FA5_SPACING TEXT_MENU_FILE_QUIT;
 static const char *Documentation = ICON_FA_QUESTION_CIRCLE FA5_SPACING TEXT_MENU_DOCUMENTATION;

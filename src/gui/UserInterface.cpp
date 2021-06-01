@@ -1,3 +1,4 @@
+#include <ctime>
 #include "gui/gui_common.h"
 #include <ncine/imgui_internal.h>
 #include <ncine/Application.h>
@@ -56,12 +57,16 @@ const char *docsFile = "../docs/documentation.html";
 
 static bool showTipsWindow = false;
 static bool showAboutWindow = false;
+static bool showQuitPopup = false;
 static bool hoveringOnCanvasWindow = false;
 static bool hoveringOnCanvas = false;
 static bool deleteKeyPressed = false;
 
 static int numFrames = 0;
 static unsigned int currentTipIndex = 0;
+
+const float imageTooltipSize = 100.0f;
+const float imageTooltipDelay = 0.5f;
 
 }
 
@@ -173,6 +178,7 @@ void UserInterface::closeModalsAndUndockables()
 {
 	showTipsWindow = false;
 	showAboutWindow = false;
+	showQuitPopup = false;
 	FileDialog::config.windowOpen = false;
 }
 
@@ -203,18 +209,23 @@ bool UserInterface::menuSaveEnabled()
 {
 	return (lastLoadedProject_.isEmpty() == false &&
 	        nc::fs::isReadableFile(lastLoadedProject_.data()) &&
-	        (theSpriteMgr->textures().isEmpty() == false ||
-	         theSpriteMgr->sprites().isEmpty() == false ||
-	         theScriptingMgr->scripts().isEmpty() == false ||
-	         theAnimMgr->anims().isEmpty() == false));
+	        menuNewEnabled());
 }
 
 bool UserInterface::menuSaveAsEnabled()
 {
-	return (theSpriteMgr->textures().isEmpty() == false ||
-	        theSpriteMgr->sprites().isEmpty() == false ||
-	        theScriptingMgr->scripts().isEmpty() == false ||
-	        theAnimMgr->anims().isEmpty() == false);
+	return menuNewEnabled();
+}
+
+bool UserInterface::menuQuickOpenEnabled()
+{
+	return (lastQuickSavedProject_.isEmpty() == false &&
+	        nc::fs::isReadableFile(lastQuickSavedProject_.data()));
+}
+
+bool UserInterface::menuQuickSaveEnabled()
+{
+	return menuNewEnabled();
 }
 
 void UserInterface::menuNew()
@@ -258,6 +269,40 @@ void UserInterface::menuSaveAs()
 	FileDialog::config.windowOpen = true;
 }
 
+void UserInterface::menuQuickOpen()
+{
+	if (openProject(lastQuickSavedProject_.data()))
+		numFrames = 0; // force focus on the canvas
+}
+
+void UserInterface::menuQuickSave()
+{
+	time_t now;
+	struct tm *ts;
+	now = time(nullptr);
+	ts = localtime(&now);
+
+	lastQuickSavedProject_ = theCfg.projectsPath;
+	nctl::String fileName(ui::MaxStringLength);
+
+	const unsigned int length = strftime(fileName.data(), fileName.capacity() - 1, "quicksave_%Y%m%d_%H%M%S.lua", ts);
+	fileName.setLength(length);
+	lastQuickSavedProject_ = nc::fs::joinPath(lastQuickSavedProject_, fileName);
+
+	theSaver->save(lastQuickSavedProject_.data(), saverData_);
+	ui::auxString.format("Saved project file \"%s\"\n", lastQuickSavedProject_.data());
+	pushStatusInfoMessage(ui::auxString.data());
+}
+
+void UserInterface::quit()
+{
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+	nc::theApplication().quit();
+#else
+	showQuitPopup = true;
+#endif
+}
+
 bool UserInterface::openDocumentationEnabled()
 {
 #ifdef __ANDROID__
@@ -292,6 +337,9 @@ void UserInterface::reloadScript()
 		Script *script = theScriptingMgr->scripts()[selectedScriptIndex_].get();
 		script->reload();
 		theAnimMgr->reloadScript(script);
+
+		ui::auxString.format("Reloaded script \"%s\"\n", script->name().data());
+		pushStatusInfoMessage(ui::auxString.data());
 	}
 }
 
@@ -333,6 +381,9 @@ void UserInterface::createGui()
 
 	if (showAboutWindow)
 		createAboutWindow();
+
+	if (showQuitPopup)
+		createQuitPopup();
 
 	createConfigWindow();
 
@@ -566,13 +617,23 @@ void UserInterface::createMenuBar()
 			if (ImGui::MenuItem(Labels::SaveAs, nullptr, false, menuSaveAsEnabled()))
 				menuSaveAs();
 
+			ImGui::Separator();
+
+			if (ImGui::MenuItem(Labels::QuickOpen, "F9", false, menuQuickOpenEnabled()))
+				menuQuickOpen();
+
+			if (ImGui::MenuItem(Labels::QuickSave, "F5", false, menuQuickSaveEnabled()))
+				menuQuickSave();
+
+			ImGui::Separator();
+
 			if (ImGui::MenuItem(Labels::Configuration))
 				showConfigWindow = true;
 
 			ImGui::Separator();
 
 			if (ImGui::MenuItem(Labels::Quit, "CTRL + Q"))
-				nc::theApplication().quit();
+				quit();
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Help"))
@@ -653,6 +714,7 @@ void UserInterface::createTexturesWindow()
 			ui::comboString.formatAppend("%s", TexturesStrings::Names[i]);
 			ui::comboString.setLength(ui::comboString.length() + 1);
 		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
 
@@ -700,6 +762,24 @@ void UserInterface::createTexturesWindow()
 
 			ImGui::TreeNodeEx(static_cast<void *>(&texture), nodeFlags, "#%u: \"%s\" (%d x %d)",
 			                  i, texture.name().data(), texture.width(), texture.height());
+
+			if (ImGui::IsItemHovered() && ImGui::GetCurrentContext()->HoveredIdTimer > imageTooltipDelay)
+			{
+				if (texture.width() > 0 && texture.height() > 0)
+				{
+					const float aspectRatio = texture.width() / static_cast<float>(texture.height());
+					float width = imageTooltipSize;
+					float height = imageTooltipSize;
+					if (aspectRatio > 1.0f)
+						height = width / aspectRatio;
+					else
+						width *= aspectRatio;
+
+					ImGui::BeginTooltip();
+					ImGui::Image(texture.imguiTexId(), ImVec2(width, height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+					ImGui::EndTooltip();
+				}
+			}
 			if (ImGui::IsItemClicked())
 				selectedTextureIndex_ = i;
 
@@ -823,6 +903,31 @@ void UserInterface::createSpritesWindow()
 			ui::auxString.format("#%u: \"%s\" (%d x %d) %s", i, sprite.name.data(), sprite.width(), sprite.height(),
 			                     &sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get() ? Labels::SelectedTextureIcon : "");
 			ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "%s", ui::auxString.data());
+
+			if (ImGui::IsItemHovered() && ImGui::GetCurrentContext()->HoveredIdTimer > imageTooltipDelay)
+			{
+				if (sprite.texture().width() > 0 && sprite.texture().height() > 0 &&
+				    sprite.texRect().w > 0 && sprite.texRect().h > 0)
+				{
+					const float invTextureWidth = 1.0f / sprite.texture().width();
+					const float invTextureHeight = 1.0f / sprite.texture().height();
+					const float aspectRatio = sprite.texRect().w / static_cast<float>(sprite.texRect().h);
+					const nc::Recti texRect = sprite.flippingTexRect();
+					const ImVec2 uv0(texRect.x * invTextureWidth, texRect.y * invTextureHeight);
+					const ImVec2 uv1(uv0.x + texRect.w * invTextureWidth, uv0.y + texRect.h * invTextureHeight);
+
+					float width = imageTooltipSize;
+					float height = imageTooltipSize;
+					if (aspectRatio > 1.0f)
+						height = width / aspectRatio;
+					else
+						width *= aspectRatio;
+
+					ImGui::BeginTooltip();
+					ImGui::Image(sprite.texture().imguiTexId(), ImVec2(width, height), uv0, uv1);
+					ImGui::EndTooltip();
+				}
+			}
 			if (ImGui::IsItemClicked())
 				selectedSpriteIndex_ = i;
 
@@ -900,6 +1005,7 @@ void UserInterface::createScriptsWindow()
 			ui::comboString.formatAppend("%s", ScriptsStrings::Names[i]);
 			ui::comboString.setLength(ui::comboString.length() + 1);
 		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
 
@@ -1027,7 +1133,7 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		animGroup = static_cast<AnimationGroup *>(&anim);
 
 	// To preserve indentation no group is created
-	ui::auxString.format("%s###Anim%u", anim.enabled ? Labels::EnabledAnimIcon : Labels::DisabledAnimIcon, uintptr_t(&anim));
+	ui::auxString.format("%s###Anim%lu", anim.enabled ? Labels::EnabledAnimIcon : Labels::DisabledAnimIcon, uintptr_t(&anim));
 	ImGui::Checkbox(ui::auxString.data(), &anim.enabled);
 	ImGui::SameLine();
 	ui::auxString.format("#%u: ", index);
@@ -2581,6 +2687,31 @@ void UserInterface::createAboutWindow()
 		showAboutWindow = false;
 
 	ImGui::End();
+}
+
+void UserInterface::createQuitPopup()
+{
+	const ImVec2 windowPos = ImVec2(ImGui::GetWindowViewport()->Size.x * 0.5f, ImGui::GetWindowViewport()->Size.y * 0.5f);
+	ImGui::SetNextWindowPos(windowPos, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+	ImGui::OpenPopup(Labels::Quit);
+	ImGui::BeginPopupModal(Labels::Quit, nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+	ImGui::TextUnformatted("Quit the program?");
+	if (ImGui::Button(Labels::Ok))
+	{
+		nc::theApplication().quit();
+		showQuitPopup = false;
+		ImGui::CloseCurrentPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Cancel))
+	{
+		showQuitPopup = false;
+		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::EndPopup();
 }
 
 void UserInterface::mouseWheelCanvasZoom()

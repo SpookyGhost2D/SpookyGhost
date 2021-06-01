@@ -28,6 +28,7 @@ class MyEventHandler :
 
 	void onKeyPressed(const nc::KeyboardEvent &event) override;
 	void onKeyReleased(const nc::KeyboardEvent &event) override;
+	bool onQuitRequest() override;
 
   private:
 	nctl::UniquePtr<UserInterface> ui_;

@@ -234,14 +234,18 @@ void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)
 			ui_->menuOpen();
 		else if (event.sym == nc::KeySym::S && ui_->menuSaveEnabled())
 			ui_->menuSave();
+		else if (event.sym == nc::KeySym::R)
+			ui_->reloadScript();
 		else if (event.sym == nc::KeySym::Q)
-			nc::theApplication().quit();
+			ui_->quit();
 	}
 
 	if (event.sym == nc::KeySym::F1 && ui_->openDocumentationEnabled())
 		ui_->openDocumentation();
 	if (event.sym == nc::KeySym::F5)
-		ui_->reloadScript();
+		ui_->menuQuickSave();
+	if (event.sym == nc::KeySym::F9)
+		ui_->menuQuickOpen();
 	if (event.sym == nc::KeySym::SPACE)
 		ui_->toggleAnimation();
 	else if (event.sym == nc::KeySym::DELETE)
@@ -263,4 +267,11 @@ void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 		ui_->closeModalsAndUndockables();
 		ui_->cancelRender();
 	}
+}
+
+bool MyEventHandler::onQuitRequest()
+{
+	ui_->quit();
+	// Ignore the quit request
+	return false;
 }

@@ -27,7 +27,7 @@
 
 namespace Tips {
 
-const unsigned int Count = 19;
+const unsigned int Count = 20;
 
 // A string entry should always end with a comma or it would be concatenated to the next one
 const char *Strings[Count] = {
@@ -37,11 +37,12 @@ const char *Strings[Count] = {
 	"If you press [Ctrl] while clicking on a slider or a drag box you can input the value with the keyboard.",
 	"You can modify the speed of change of drag boxes by pressing [Shift] (faster) or [Alt] (slower)",
 	"You can drag and drop colors around, for example, the background color of the Canvas window" CANVAS_WINDOW "onto the sprite color in the Sprite window" SPRITE_WINDOW ".",
+	"Pressing [F5] will save your work using a name based on date and time, so you can quick save multiple versions without ever overwriting any. Pressing [F9] will load the latest one.",
 	"You can delete the selected texture, sprite, script, or animation with the [Delete] key when the mouse is over the relative window",
 	"You can reorder sprites or animations with drag and drop.",
 	"The texture icon" TEXTURE_ICON "at the end of a sprite entry indicates that the sprite is using the currently selected texture.",
 	"The checkmark" CHECKMARK_ICON "or cross" CROSS_ICON "icon at the end of a script entry indicates that the script can be run or not.\nHovering with the mouse on a script that cannot run will show additional information about the error.",
-	"You can reload a script by pressing [F5].",
+	"You can reload a script by pressing [CTRL + R].",
 	"Pressing [Space] when hovering on the Canvas window" CANVAS_WINDOW "will toggle the animation state between playing and paused.",
 	"The sprite icon" SPRITE_ICON "at the end of an animation entry indicates that the animation is assigned to the currently selected sprite.\nWhen you select a different animation its assigned sprite will be automatically selected.",
 	"You can use the TexRect window" TEXRECT_WINDOW "to help you set up the texture rectangle of a sprite using the mouse.",

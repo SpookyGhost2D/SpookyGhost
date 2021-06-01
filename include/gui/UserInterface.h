@@ -51,10 +51,15 @@ class UserInterface
 	bool menuNewEnabled();
 	bool menuSaveEnabled();
 	bool menuSaveAsEnabled();
+	bool menuQuickOpenEnabled();
+	bool menuQuickSaveEnabled();
 	void menuNew();
 	void menuOpen();
 	void menuSave();
 	void menuSaveAs();
+	void menuQuickOpen();
+	void menuQuickSave();
+	void quit();
 	bool openDocumentationEnabled();
 	void openDocumentation();
 	void toggleAnimation();
@@ -126,6 +131,7 @@ class UserInterface
 #endif
 
 	nctl::String lastLoadedProject_ = nctl::String(ui::MaxStringLength);
+	nctl::String lastQuickSavedProject_ = nctl::String(ui::MaxStringLength);
 
 	nctl::String statusMessage_ = nctl::String(ui::MaxStringLength);
 	nc::TimeStamp lastStatus_;
@@ -175,8 +181,9 @@ class UserInterface
 	void createCanvasWindow();
 	void createTexRectWindow();
 	void createConfigWindow();
-	void createAboutWindow();
 	void createTipsWindow();
+	void createAboutWindow();
+	void createQuitPopup();
 
 	void applyDarkStyle();
 	void mouseWheelCanvasZoom();
