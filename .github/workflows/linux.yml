@@ -6,8 +6,8 @@ env:
   DEPLOY_MESSAGE:
     "Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
 
-     - PACKAGE_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
-  DEPLOY_BRANCH: PACKAGE_NAME-BRANCH_NAME-OS-COMPILER
+     - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
+  DEPLOY_BRANCH: PROJECT_NAME-BRANCH_NAME-OS-COMPILER
 
 on: [push, workflow_dispatch]
 
@@ -57,7 +57,7 @@ jobs:
       run: |
         git fetch --unshallow || true
 
-    - name: 'Download nCine-libraries and package data'
+    - name: 'Download nCine-libraries and project data'
       run: |
         export OS=linux
         export CC=${{ matrix.CC }}
@@ -105,32 +105,32 @@ jobs:
 
     - name: 'CMake Configuration'
       run: |
-        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
 
-        export CMAKE_ARGS="-B ../$PACKAGE_NAME-build-${{ matrix.BuildType }}"
+        export CMAKE_ARGS="-B ../$PROJECT_NAME-build-${{ matrix.BuildType }}"
 
         export CC= ${{ matrix.CC }}
         export CXX=${{ matrix.CXX }}
         export CMAKE_ARGS="$CMAKE_ARGS -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
 
         if [[ "${{ matrix.BuildType }}" == "BinDist" ]]; then
-          cmake $CMAKE_ARGS -D PACKAGE_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-Release
+          cmake $CMAKE_ARGS -D NCPROJECT_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-Release
         else
           cmake $CMAKE_ARGS -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-${{ matrix.BuildType }}
         fi
 
     - name: 'Make'
       run: |
-        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
 
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../nCine-external/lib
-        make -j2 -C ../$PACKAGE_NAME-build-${{ matrix.BuildType }}
+        make -j2 -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}
 
     - name: 'Package'
       if: matrix.BuildType == 'BinDist'
       run: |
-        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
-        make package -C ../$PACKAGE_NAME-build-${{ matrix.BuildType }}
+        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        make package -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}
 
     - name: 'Generate and Push Documentation'
       if: matrix.BuildType == 'BinDist' && matrix.CC == 'gcc'
@@ -167,28 +167,28 @@ jobs:
         git config --global user.email "actions@github.com"
         git config --global user.name "GitHub Actions"
 
-        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
         export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
-        export DEPLOY_MESSAGE=`sed 's/PACKAGE_NAME/'"$PACKAGE_NAME"'/' <<< "$DEPLOY_MESSAGE"`
+        export DEPLOY_MESSAGE=`sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/' <<< "$DEPLOY_MESSAGE"`
         export DEPLOY_MESSAGE=`sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/' <<< "$DEPLOY_MESSAGE"`
 
         export OS=linux
         export CC=${{ matrix.CC }}
-        export PACKAGE_EXT=tar.gz
+        export PROJECT_EXT=tar.gz
 
         cd ..
-        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/PACKAGE_NAME/'"$PACKAGE_NAME"'/'`
+        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/'`
         export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
         export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/OS/'"$OS"'/'`
         export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/COMPILER/'"$CC"'/'`
         git clone https://$PUBLIC_REPO_TOKEN@github.com/$GITHUB_REPOSITORY-artifacts.git >/dev/null 2>&1
-        cd $PACKAGE_NAME-artifacts
+        cd $PROJECT_NAME-artifacts
 
         git checkout $DEPLOY_BRANCH || git checkout --orphan $DEPLOY_BRANCH
         git reset
         git clean -f
         git rm * || true
-        mv -f ../$PACKAGE_NAME-build-${{ matrix.BuildType }}/*.$PACKAGE_EXT .
-        git add *.$PACKAGE_EXT
+        mv -f ../$PROJECT_NAME-build-${{ matrix.BuildType }}/*.$PROJECT_EXT .
+        git add *.$PROJECT_EXT
         git commit --amend -m "$DEPLOY_MESSAGE" || git commit -m "$DEPLOY_MESSAGE"
         git push --force || git push --set-upstream origin $DEPLOY_BRANCH

@@ -32,7 +32,7 @@ if(CUSTOM_WITH_FONTAWESOME)
 			file(COPY ${CMAKE_BINARY_DIR}/Font-Awesome-${FONTAWESOME_VERSION_TAG_DIR}/webfonts/fa-brands-400.ttf
 				${CMAKE_BINARY_DIR}/Font-Awesome-${FONTAWESOME_VERSION_TAG_DIR}/webfonts/fa-regular-400.ttf
 				${CMAKE_BINARY_DIR}/Font-Awesome-${FONTAWESOME_VERSION_TAG_DIR}/webfonts/fa-solid-900.ttf
-				DESTINATION ${PACKAGE_DATA_DIR}/data/fonts)
+				DESTINATION ${NCPROJECT_DATA_DIR}/data/fonts)
 		else()
 			set(CUSTOM_WITH_FONTAWESOME FALSE)
 		endif()
@@ -61,12 +61,12 @@ if(CUSTOM_WITH_FONTAWESOME)
 		if(FONTAWESOME_ERROR)
 			set(CUSTOM_WITH_FONTAWESOME FALSE)
 		else()
-			execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PACKAGE_DATA_DIR}/data/fonts
+			execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${NCPROJECT_DATA_DIR}/data/fonts
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different
 					${CMAKE_BINARY_DIR}/fontawesome-src/webfonts/fa-brands-400.ttf
 					${CMAKE_BINARY_DIR}/fontawesome-src/webfonts/fa-regular-400.ttf
 					${CMAKE_BINARY_DIR}/fontawesome-src/webfonts/fa-solid-900.ttf
-					${PACKAGE_DATA_DIR}/data/fonts)
+					${NCPROJECT_DATA_DIR}/data/fonts)
 		endif()
 	endif()
 endif()

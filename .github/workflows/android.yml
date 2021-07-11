@@ -6,7 +6,7 @@ env:
   DEPLOY_MESSAGE:
     "Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
 
-     - PACKAGE_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
+     - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
 
 on: [push, workflow_dispatch]
 
@@ -33,7 +33,7 @@ jobs:
       run: |
         git fetch --unshallow || true
 
-    - name: 'Download nCine-libraries and package data'
+    - name: 'Download nCine-libraries and project data'
       run: |
         export OS=linux
         export CC=gcc
@@ -80,14 +80,14 @@ jobs:
 
     - name: 'CMake Configuration'
       run: |
-        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
 
-        cmake -B ../$PACKAGE_NAME-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D PACKAGE_NDK_ARCHITECTURES=${{ matrix.ARCH }} -D PACKAGE_BUILD_ANDROID=ON -D PACKAGE_ASSEMBLE_APK=ON -D nCine_DIR=$(pwd)/../nCine-build-${{ matrix.BuildType }} -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external
+        cmake -B ../$PROJECT_NAME-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D NCPROJECT_NDK_ARCHITECTURES=${{ matrix.ARCH }} -D NCPROJECT_BUILD_ANDROID=ON -D NCPROJECT_ASSEMBLE_APK=ON -D nCine_DIR=$(pwd)/../nCine-build-${{ matrix.BuildType }} -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external
 
     - name: 'Gradle Assemble'
       run: |
-        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
-        cd ../$PACKAGE_NAME-build-${{ matrix.BuildType }}/android
+        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        cd ../$PROJECT_NAME-build-${{ matrix.BuildType }}/android
         gradle assemble${{ matrix.BuildType }}
 
     - name: 'Push Artifacts'
@@ -97,21 +97,21 @@ jobs:
         git config --global user.email "actions@github.com"
         git config --global user.name "GitHub Actions"
 
-        export PACKAGE_NAME=${GITHUB_REPOSITORY##*/}
+        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
         export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
-        export DEPLOY_MESSAGE=`sed 's/PACKAGE_NAME/'"$PACKAGE_NAME"'/' <<< "$DEPLOY_MESSAGE"`
+        export DEPLOY_MESSAGE=`sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/' <<< "$DEPLOY_MESSAGE"`
         export DEPLOY_MESSAGE=`sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/' <<< "$DEPLOY_MESSAGE"`
 
         cd ..
-        export DEPLOY_BRANCH=$PACKAGE_NAME-$BRANCH_NAME-android-${{ matrix.ARCH }}-${{ matrix.BuildType }}
+        export DEPLOY_BRANCH=$PROJECT_NAME-$BRANCH_NAME-android-${{ matrix.ARCH }}-${{ matrix.BuildType }}
         git clone https://$PUBLIC_REPO_TOKEN@github.com/$GITHUB_REPOSITORY-artifacts.git >/dev/null 2>&1
-        cd $PACKAGE_NAME-artifacts
+        cd $PROJECT_NAME-artifacts
 
         git checkout $DEPLOY_BRANCH || git checkout --orphan $DEPLOY_BRANCH
         git reset
         git clean -f
         git rm * || true
-        mv -f ../$PACKAGE_NAME-build-${{ matrix.BuildType }}/android/build/outputs/apk/*/*.apk .
+        mv -f ../$PROJECT_NAME-build-${{ matrix.BuildType }}/android/build/outputs/apk/*/*.apk .
         git add *.apk
         git commit --amend -m "$DEPLOY_MESSAGE" || git commit -m "$DEPLOY_MESSAGE"
         git push --force || git push --set-upstream origin $DEPLOY_BRANCH
