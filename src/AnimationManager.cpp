@@ -311,7 +311,7 @@ void recursiveOverrideSprite(AnimationGroup &animGroup, Sprite *sprite)
 ///////////////////////////////////////////////////////////
 
 AnimationManager::AnimationManager()
-    : animGroup_(nctl::makeUnique<ParallelAnimationGroup>())
+    : speedMultiplier_(1.0f), animGroup_(nctl::makeUnique<ParallelAnimationGroup>())
 {
 }
 
@@ -321,7 +321,7 @@ AnimationManager::AnimationManager()
 
 void AnimationManager::update(float deltaTime)
 {
-	animGroup_->update(deltaTime);
+	animGroup_->update(deltaTime * speedMultiplier_);
 }
 
 void AnimationManager::clear()

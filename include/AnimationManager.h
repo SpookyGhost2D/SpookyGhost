@@ -21,6 +21,10 @@ class AnimationManager
 
 	inline IAnimation::State state() const { return animGroup_->state(); }
 
+	inline float speedMultiplier() const { return speedMultiplier_; }
+	inline float &speedMultiplier() { return speedMultiplier_; }
+	inline void setSpeedMultiplier(float speedMultiplier) { speedMultiplier_ = speedMultiplier; }
+
 	inline void stop() { animGroup_->stop(); }
 	inline void pause() { animGroup_->pause(); }
 	inline void play() { animGroup_->play(); }
@@ -37,6 +41,7 @@ class AnimationManager
 	void overrideSprite(AnimationGroup &animGroup, Sprite *sprite);
 
   private:
+	float speedMultiplier_;
 	nctl::UniquePtr<AnimationGroup> animGroup_;
 };
 

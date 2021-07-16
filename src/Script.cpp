@@ -31,7 +31,7 @@ bool Script::load(const char *filename)
 	const bool hasLoaded = nc::fs::isReadableFile(filename);
 	if (hasLoaded)
 	{
-		name_.assign(filename);
+		name_ = filename;
 		run(filename, nc::fs::baseName(filename).data());
 	}
 

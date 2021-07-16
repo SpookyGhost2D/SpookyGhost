@@ -71,7 +71,7 @@ Sprite::Sprite(Texture *texture)
 nctl::UniquePtr<Sprite> Sprite::clone() const
 {
 	nctl::UniquePtr<Sprite> sprite = nctl::makeUnique<Sprite>(texture_);
-	sprite->name.assign(name);
+	sprite->name = name;
 	sprite->visible = visible;
 	sprite->x = x;
 	sprite->y = y;

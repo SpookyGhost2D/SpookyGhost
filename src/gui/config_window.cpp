@@ -106,9 +106,6 @@ void UserInterface::createConfigWindow()
 	ImGui::NewLine();
 	ImGui::SliderInt("Canvas Width", &theCfg.canvasWidth, 0, 1024);
 	ImGui::SliderInt("Canvas Height", &theCfg.canvasHeight, 0, 1024);
-	int saveFileSize = theCfg.saveFileMaxSize / 1024;
-	ImGui::SliderInt("Savefile Size", &saveFileSize, 0, 256, "%d KB");
-	theCfg.saveFileMaxSize = saveFileSize * 1024;
 
 	ImGui::NewLine();
 	ImGui::SliderFloat("GUI Scaling", &theCfg.guiScaling, 0.5f, 2.0f, "%.1f");
@@ -165,9 +162,6 @@ void UserInterface::sanitizeConfigValues()
 		theCfg.canvasWidth = 16;
 	if (theCfg.canvasHeight < 16)
 		theCfg.canvasHeight = 16;
-
-	if (theCfg.saveFileMaxSize < 8 * 1024)
-		theCfg.saveFileMaxSize = 8 * 1024;
 
 	if (theCfg.guiScaling < 0.5f)
 		theCfg.guiScaling = 0.5f;

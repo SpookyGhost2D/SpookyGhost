@@ -314,7 +314,6 @@ void serialize(LuaSerializer &ls, const Configuration &cfg)
 	serializeGlobal(ls, "canvas_width", cfg.canvasWidth);
 	serializeGlobal(ls, "canvas_height", cfg.canvasHeight);
 	serializeGlobal(ls, "gui_scaling", cfg.guiScaling);
-	serializeGlobal(ls, "savefile_maxsize", cfg.saveFileMaxSize);
 	serializeGlobal(ls, "startup_project_name", cfg.startupProjectName);
 	serializeGlobal(ls, "auto_play_on_start", cfg.autoPlayOnStart);
 	serializeGlobal(ls, "projects_path", cfg.projectsPath);
@@ -674,7 +673,6 @@ void deserialize(LuaSerializer &ls, Configuration &cfg)
 	cfg.frameLimit = deserializeGlobal<int>(ls, "frame_limit");
 	cfg.canvasWidth = deserializeGlobal<int>(ls, "canvas_width");
 	cfg.canvasHeight = deserializeGlobal<int>(ls, "canvas_height");
-	cfg.saveFileMaxSize = deserializeGlobal<int>(ls, "savefile_maxsize");
 
 	if (version >= 2)
 		cfg.guiScaling = deserializeGlobal<float>(ls, "gui_scaling");

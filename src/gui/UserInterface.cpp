@@ -1477,6 +1477,14 @@ void UserInterface::createAnimationsWindow()
 		}
 	}
 
+	ImGui::PushItemWidth(200.0f);
+	ImGui::SliderFloat("Speed Multiplier", &theAnimMgr->speedMultiplier(), 0.0f, 5.0f);
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+	ui::auxString.format("%s##Speed Multiplier", Labels::Reset);
+	if (ImGui::Button(ui::auxString.data()))
+		theAnimMgr->speedMultiplier() = 1.0f;
+
 	ImGui::Separator();
 
 	// Special animation list entry for the root animation group in the animation manager

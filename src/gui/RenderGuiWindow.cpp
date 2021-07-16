@@ -17,7 +17,7 @@ RenderGuiWindow::RenderGuiWindow(UserInterface &ui)
     : ui_(ui)
 {
 #ifdef __ANDROID__
-	filename.assign("animation");
+	filename = "animation";
 #endif
 }
 

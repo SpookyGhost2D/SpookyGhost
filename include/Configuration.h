@@ -22,7 +22,6 @@ struct Configuration
 
 	int canvasWidth = 256;
 	int canvasHeight = 256;
-	int saveFileMaxSize = 32 * 1024;
 
 #ifdef __ANDROID__
 	float guiScaling = 2.0f; // Added in version 2

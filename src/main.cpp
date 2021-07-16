@@ -147,7 +147,7 @@ void MyEventHandler::onInit()
 	theSpritesheet = nctl::makeUnique<Canvas>();
 	theSpriteMgr = nctl::makeUnique<SpriteManager>();
 	theAnimMgr = nctl::makeUnique<AnimationManager>();
-	theSaver = nctl::makeUnique<LuaSaver>(theCfg.saveFileMaxSize);
+	theSaver = nctl::makeUnique<LuaSaver>(32 * 1024);
 	theScriptingMgr = nctl::makeUnique<ScriptManager>();
 
 	ui_ = nctl::makeUnique<UserInterface>();
