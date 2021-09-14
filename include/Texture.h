@@ -21,9 +21,7 @@ class Texture
 	static const unsigned int MaxNameLength = 64;
 
 	Texture(const char *filename);
-	Texture(const char *filename, int width, int height);
 	Texture(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize);
-	Texture(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize, int width, int height);
 
 	inline const nctl::String &name() const { return name_; }
 	inline void setName(const nctl::String &name) { name_ = name; }
@@ -35,8 +33,10 @@ class Texture
 	inline unsigned int numChannels() const { return numChannels_; }
 	inline unsigned int dataSize() const { return dataSize_; }
 
-	void bind();
+	bool loadFromFile(const char *filename);
+	bool loadFromMemory(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize);
 
+	void bind();
 	void *imguiTexId();
 
   private:
@@ -47,9 +47,8 @@ class Texture
 	unsigned int numChannels_;
 	unsigned long dataSize_;
 
-	bool loadFromFile(const char *filename, int width, int height);
-	bool loadFromMemory(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize, int width, int height);
-	void load(const nc::ITextureLoader &texLoader, int width, int height);
+	void initialize(const nc::ITextureLoader &texLoader);
+	void load(const nc::ITextureLoader &texLoader);
 
 	friend class Sprite;
 };

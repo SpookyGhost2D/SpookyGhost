@@ -80,10 +80,16 @@ UserInterface::UserInterface()
       saverData_(*theCanvas, *theSpriteMgr, *theScriptingMgr, *theAnimMgr)
 {
 #ifdef __EMSCRIPTEN__
-	textureLocalFile_.setLoadedCallback([](const nc::EmscriptenLocalFile &localFile, void *userData) {
+	loadTextureLocalFile_.setLoadedCallback([](const nc::EmscriptenLocalFile &localFile, void *userData) {
 		UserInterface *ui = reinterpret_cast<UserInterface *>(userData);
 		if (localFile.size() > 0)
 			ui->loadTexture(localFile.filename(), localFile.data(), localFile.size());
+	}, this);
+
+	reloadTextureLocalFile_.setLoadedCallback([](const nc::EmscriptenLocalFile &localFile, void *userData) {
+		UserInterface *ui = reinterpret_cast<UserInterface *>(userData);
+		if (localFile.size() > 0)
+			ui->reloadTexture(localFile.filename(), localFile.data(), localFile.size());
 	}, this);
 #endif
 
@@ -426,7 +432,21 @@ bool UserInterface::openProject(const char *filename)
 bool UserInterface::loadTexture(const char *filename)
 {
 	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>(filename);
-	return loadTextureImpl(nctl::move(texture), filename);
+	const bool hasLoaded = postLoadTexture(texture, filename);
+
+	if (texture->dataSize() > 0)
+	{
+		theSpriteMgr->textures().pushBack(nctl::move(texture));
+		selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
+	}
+	return hasLoaded;
+}
+
+bool UserInterface::reloadTexture(const char *filename)
+{
+	nctl::UniquePtr<Texture> &texture = theSpriteMgr->textures()[selectedTextureIndex_];
+	texture->loadFromFile(filename);
+	return postLoadTexture(texture, filename);
 }
 
 bool UserInterface::loadScript(const char *filename)
@@ -473,15 +493,30 @@ bool UserInterface::loadScript(const char *filename)
 bool UserInterface::loadTexture(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize)
 {
 	nctl::UniquePtr<Texture> texture = nctl::makeUnique<Texture>(bufferName, reinterpret_cast<const unsigned char *>(bufferPtr), bufferSize);
-	return loadTextureImpl(nctl::move(texture), bufferName);
-}
-#endif
+	const bool hasLoaded = postLoadTexture(texture, bufferName);
 
-bool UserInterface::loadTextureImpl(nctl::UniquePtr<Texture> texture, const char *name)
-{
 	if (texture->dataSize() > 0)
 	{
 		theSpriteMgr->textures().pushBack(nctl::move(texture));
+		selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
+	}
+	return hasLoaded;
+}
+#endif
+
+#ifdef __EMSCRIPTEN__
+bool UserInterface::reloadTexture(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize)
+{
+	nctl::UniquePtr<Texture> &texture = theSpriteMgr->textures()[selectedTextureIndex_];
+	texture->loadFromMemory(bufferName, reinterpret_cast<const unsigned char *>(bufferPtr), bufferSize);
+	return postLoadTexture(texture, bufferName);
+}
+#endif
+
+bool UserInterface::postLoadTexture(nctl::UniquePtr<Texture> &texture, const char *name)
+{
+	if (texture->dataSize() > 0)
+	{
 		// Check if the texture is in the configuration path or in the data directory
 		const nctl::String baseName = nc::fs::baseName(name);
 		const nctl::String nameInConfigDir = nc::fs::joinPath(theCfg.texturesPath, baseName);
@@ -490,9 +525,8 @@ bool UserInterface::loadTextureImpl(nctl::UniquePtr<Texture> texture, const char
 		    (nameInDataDir == name && nc::fs::isReadableFile(nameInDataDir.data())))
 		{
 			// Set the texture name to its basename to allow for relocatable project files
-			theSpriteMgr->textures().back()->setName(baseName);
+			texture->setName(baseName);
 		}
-		selectedTextureIndex_ = theSpriteMgr->textures().size() - 1;
 
 		ui::auxString.format("Loaded texture \"%s\"", name);
 		pushStatusInfoMessage(ui::auxString.data());
@@ -698,6 +732,18 @@ void UserInterface::removeTexture()
 		selectedTextureIndex_--;
 }
 
+void openReloadTextureDialog()
+{
+	FileDialog::config.directory = theCfg.texturesPath;
+	FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
+	FileDialog::config.windowTitle = "Reload texture file";
+	FileDialog::config.okButton = Labels::Ok;
+	FileDialog::config.selectionType = FileDialog::SelectionType::FILE;
+	FileDialog::config.extensions = "png\0\0";
+	FileDialog::config.action = FileDialog::Action::RELOAD_TEXTURE;
+	FileDialog::config.windowOpen = true;
+}
+
 void UserInterface::createTexturesWindow()
 {
 	ImGui::Begin(Labels::Textures);
@@ -739,7 +785,7 @@ void UserInterface::createTexturesWindow()
 		FileDialog::config.action = FileDialog::Action::LOAD_TEXTURE;
 		FileDialog::config.windowOpen = true;
 #else
-		textureLocalFile_.load();
+		loadTextureLocalFile_.load();
 #endif
 	}
 
@@ -748,6 +794,17 @@ void UserInterface::createTexturesWindow()
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
 			removeTexture();
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Reload))
+		{
+#ifndef __EMSCRIPTEN__
+			openReloadTextureDialog();
+#else
+			reloadTextureLocalFile_.load();
+#endif
+		}
 	}
 
 	if (theSpriteMgr->textures().isEmpty() == false)
@@ -785,6 +842,15 @@ void UserInterface::createTexturesWindow()
 
 			if (ImGui::BeginPopupContextItem())
 			{
+				if (ImGui::MenuItem(Labels::Reload))
+				{
+					selectedTextureIndex_ = i;
+#ifndef __EMSCRIPTEN__
+					openReloadTextureDialog();
+#else
+					reloadTextureLocalFile_.load();
+#endif
+				}
 				if (ImGui::MenuItem(Labels::Remove))
 				{
 					selectedTextureIndex_ = i;
@@ -798,10 +864,31 @@ void UserInterface::createTexturesWindow()
 	ImGui::End();
 }
 
+void recursiveCloneSprite(const Sprite *parentSprite, Sprite *clonedParentSprite)
+{
+	// Reverse for loop to add cloned child sprites after the original ones
+	for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
+	{
+		const Sprite *childSprite = theSpriteMgr->sprites()[i].get();
+		if (childSprite->parent() == parentSprite)
+		{
+			theSpriteMgr->sprites().insertAt(i + 1, nctl::move(childSprite->clone()));
+			Sprite *clonedChildSprite = theSpriteMgr->sprites()[i + 1].get();
+			clonedChildSprite->setParent(clonedParentSprite);
+			theAnimMgr->cloneSpriteAnimations(childSprite, clonedChildSprite);
+			recursiveCloneSprite(childSprite, clonedChildSprite);
+		}
+	}
+}
+
 void UserInterface::cloneSprite()
 {
-	Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
-	theSpriteMgr->sprites().insertAt(++selectedSpriteIndex_, nctl::move(selectedSprite->clone()));
+	const Sprite *selectedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_].get();
+	theSpriteMgr->sprites().insertAt(selectedSpriteIndex_ + 1, nctl::move(selectedSprite->clone()));
+	Sprite *clonedSprite = theSpriteMgr->sprites()[selectedSpriteIndex_ + 1].get();
+	theAnimMgr->cloneSpriteAnimations(selectedSprite, clonedSprite);
+	recursiveCloneSprite(selectedSprite, clonedSprite);
+	selectedSpriteIndex_ = theSpriteMgr->spriteIndex(clonedSprite);
 }
 
 void UserInterface::removeSprite()
@@ -818,6 +905,8 @@ void UserInterface::removeSprite()
 
 void UserInterface::createSpritesWindow()
 {
+	static bool editSpriteName = false;
+
 	ImGui::Begin(Labels::Sprites);
 
 	if (theSpriteMgr->textures().isEmpty() == false)
@@ -837,7 +926,7 @@ void UserInterface::createSpritesWindow()
 		if (theSpriteMgr->sprites().isEmpty() == false)
 		{
 			ImGui::SameLine();
-			if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+			if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered() && editSpriteName == false))
 				removeSprite();
 		}
 		// Repeat the check after the remove button
@@ -855,37 +944,34 @@ void UserInterface::createSpritesWindow()
 
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
-		const bool needsMoveUpButton = selectedSpriteIndex_ > 0;
-		const bool needsMoveDownButton = selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1;
+		const bool needsMoveUpButton = selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1;
+		const bool needsMoveDownButton = selectedSpriteIndex_ > 0;
 
-		if (needsMoveUpButton || needsMoveDownButton)
-		{
-			ImGui::SameLine();
-			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		}
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-		if (needsMoveUpButton)
+		ImGui::BeginDisabled(needsMoveUpButton == false);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::MoveUp))
 		{
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::MoveUp))
-			{
-				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ - 1]);
-				selectedSpriteIndex_--;
-			}
+			nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ + 1]);
+			selectedSpriteIndex_++;
 		}
-		if (needsMoveDownButton)
+		ImGui::EndDisabled();
+
+		ImGui::BeginDisabled(needsMoveDownButton == false);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::MoveDown))
 		{
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::MoveDown))
-			{
-				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ + 1]);
-				selectedSpriteIndex_++;
-			}
+			nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ - 1]);
+			selectedSpriteIndex_--;
 		}
+		ImGui::EndDisabled();
 	}
 
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
+		static bool setFocus = false;
 		ImGui::Separator();
 		// Reverse the sprites order so that higher in the list means above as a rendering layer
 		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
@@ -902,9 +988,24 @@ void UserInterface::createSpritesWindow()
 			ImGui::SameLine();
 			ui::auxString.format("#%u: \"%s\" (%d x %d) %s", i, sprite.name.data(), sprite.width(), sprite.height(),
 			                     &sprite.texture() == theSpriteMgr->textures()[selectedTextureIndex_].get() ? Labels::SelectedTextureIcon : "");
-			ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "%s", ui::auxString.data());
 
-			if (ImGui::IsItemHovered() && ImGui::GetCurrentContext()->HoveredIdTimer > imageTooltipDelay)
+			if (editSpriteName && i == selectedSpriteIndex_)
+			{
+				ui::auxString.format("###SpriteName%d", i);
+				if (setFocus)
+				{
+					ImGui::SetKeyboardFocusHere();
+					setFocus = false;
+				}
+				ImGui::InputText(ui::auxString.data(), sprite.name.data(), sprite.name.capacity(),
+				                 ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_EnterReturnsTrue, ui::inputTextCallback, &sprite.name);
+				if (ImGui::IsItemDeactivated())
+					editSpriteName = false;
+			}
+			else
+				ImGui::TreeNodeEx(static_cast<void *>(&sprite), nodeFlags, "%s", ui::auxString.data());
+
+			if (ImGui::IsItemHovered() && ImGui::GetCurrentContext()->HoveredIdTimer > imageTooltipDelay && editSpriteName == false)
 			{
 				if (sprite.texture().width() > 0 && sprite.texture().height() > 0 &&
 				    sprite.texRect().w > 0 && sprite.texRect().h > 0)
@@ -929,7 +1030,16 @@ void UserInterface::createSpritesWindow()
 				}
 			}
 			if (ImGui::IsItemClicked())
+			{
+				if (i != selectedSpriteIndex_)
+					editSpriteName = false;
 				selectedSpriteIndex_ = i;
+				if (ImGui::GetIO().KeyCtrl)
+				{
+					editSpriteName = true;
+					setFocus = true;
+				}
+			}
 
 			if (ImGui::BeginPopupContextItem())
 			{
@@ -1119,10 +1229,15 @@ struct DragAnimationPayload
 	unsigned int index;
 };
 
+namespace {
 IAnimation *removeAnimWithContextMenu = nullptr;
+bool editAnimName = false;
+}
 
 void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int index)
 {
+	static bool setFocus = false;
+
 	ImGuiTreeNodeFlags nodeFlags = anim.isGroup() ? (ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_DefaultOpen)
 	                                              : (ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen);
 	if (&anim == selectedAnimation_)
@@ -1201,10 +1316,42 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		if (animGroup == selectedAnimation_->parent())
 			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 	}
-	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&anim), nodeFlags, "%s", ui::auxString.data());
+
+	bool treeIsOpen = false;
+	if (editAnimName && selectedAnimation_ == &anim)
+	{
+		ui::auxString.format("###AnimationName%x", &anim);
+		if (setFocus)
+		{
+			ImGui::SetKeyboardFocusHere();
+			setFocus = false;
+		}
+
+		if ((nodeFlags & ImGuiTreeNodeFlags_Leaf) == 0)
+		{
+			nodeFlags |= ImGuiTreeNodeFlags_AllowItemOverlap;
+			treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&anim), nodeFlags, "");
+			ImGui::SameLine();
+		}
+		ImGui::InputText(ui::auxString.data(), anim.name.data(), anim.name.capacity(),
+		                 ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_EnterReturnsTrue, ui::inputTextCallback, &anim.name);
+		if (ImGui::IsItemDeactivated())
+			editAnimName = false;
+	}
+	else
+		treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&anim), nodeFlags, "%s", ui::auxString.data());
+
 	if (ImGui::IsItemClicked())
 	{
+		if (selectedAnimation_ != &anim)
+			editAnimName = false;
 		selectedAnimation_ = &anim;
+		if (ImGui::GetIO().KeyCtrl)
+		{
+			editAnimName = true;
+			setFocus = true;
+		}
+
 		int spriteIndex = -1;
 		if (anim.type() == IAnimation::Type::PROPERTY)
 		{
@@ -1413,7 +1560,7 @@ void UserInterface::createAnimationsWindow()
 	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
 	{
 		ImGui::SameLine();
-		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered() && editAnimName == false))
 			removeAnimation();
 	}
 
@@ -1457,24 +1604,20 @@ void UserInterface::createAnimationsWindow()
 		const bool needsMoveUpButton = selectedIndex > 0;
 		const bool needsMoveDownButton = selectedIndex < selectedAnimation_->parent()->anims().size() - 1;
 
-		if (needsMoveUpButton || needsMoveDownButton)
-		{
-			ImGui::SameLine();
-			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		}
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-		if (needsMoveUpButton)
-		{
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::MoveUp))
-				nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex - 1]);
-		}
-		if (needsMoveDownButton)
-		{
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::MoveDown))
-				nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex + 1]);
-		}
+		ImGui::BeginDisabled(needsMoveUpButton == false);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::MoveUp))
+			nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex - 1]);
+		ImGui::EndDisabled();
+
+		ImGui::BeginDisabled(needsMoveDownButton == false);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::MoveDown))
+			nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex + 1]);
+		ImGui::EndDisabled();
 	}
 
 	ImGui::PushItemWidth(200.0f);
@@ -1565,11 +1708,25 @@ void UserInterface::createSpriteWindow()
 	{
 		Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
 
-		Texture &tex = sprite.texture();
-		ImGui::Text("Texture: %s (%dx%d)", tex.name().data(), tex.width(), tex.height());
-
 		ImGui::InputText("Name", sprite.name.data(), Sprite::MaxNameLength,
 		                 ImGuiInputTextFlags_CallbackResize, ui::inputTextCallback, &sprite.name);
+
+		int currentTextureCombo = theSpriteMgr->textureIndex(&sprite.texture());
+		ui::comboString.clear();
+		for (unsigned int i = 0; i < theSpriteMgr->textures().size(); i++)
+		{
+			const Texture &currentTex = *theSpriteMgr->textures()[i];
+			ui::comboString.formatAppend("#%u: \"%s\" (%d x %d)", i, currentTex.name().data(), currentTex.width(), currentTex.height());
+			ui::comboString.setLength(ui::comboString.length() + 1);
+		}
+		ui::comboString.setLength(ui::comboString.length() + 1);
+		// Append a second '\0' to signal the end of the combo item list
+		ui::comboString[ui::comboString.length() - 1] = '\0';
+
+		ImGui::Combo("Texture", &currentTextureCombo, ui::comboString.data());
+		Texture *newTexture = theSpriteMgr->textures()[currentTextureCombo].get();
+		if (&sprite.texture() != newTexture)
+			sprite.setTexture(newTexture);
 
 		// Create an array of sprites that can be a parent of the selected one
 		spriteGraph_.clear();
@@ -1583,7 +1740,7 @@ void UserInterface::createSpriteWindow()
 				spriteGraph_.pushBack(SpriteStruct(i, theSpriteMgr->sprites()[i].get()));
 		}
 
-		int currentParentCombo = 0; // None
+		int currentComboParent = 0; // None
 		ui::comboString.clear();
 		for (unsigned int i = 0; i < spriteGraph_.size(); i++)
 		{
@@ -1596,22 +1753,24 @@ void UserInterface::createSpriteWindow()
 			ui::comboString.setLength(ui::comboString.length() + 1);
 
 			if (sprite.parent() == &currentSprite)
-				currentParentCombo = i;
+				currentComboParent = i;
 		}
 		ui::comboString.setLength(ui::comboString.length() + 1);
 		// Append a second '\0' to signal the end of the combo item list
 		ui::comboString[ui::comboString.length() - 1] = '\0';
 
-		ImGui::Combo("Parent", &currentParentCombo, ui::comboString.data());
+		ImGui::Combo("Parent", &currentComboParent, ui::comboString.data());
 
 		const Sprite *prevParent = sprite.parent();
 		const nc::Vector2f absPosition = sprite.absPosition();
-		Sprite *parent = spriteGraph_[currentParentCombo].sprite;
+		Sprite *parent = spriteGraph_[currentComboParent].sprite;
 		if (prevParent != parent)
 		{
 			sprite.setParent(parent);
 			sprite.setAbsPosition(absPosition);
 		}
+
+		ImGui::Separator();
 
 		nc::Vector2f position(sprite.x, sprite.y);
 		ImGui::SliderFloat2("Position", position.data(), 0.0f, static_cast<float>(theCanvas->texWidth()));
@@ -1662,11 +1821,11 @@ void UserInterface::createSpriteWindow()
 		nc::Recti texRect = sprite.texRect();
 		int minX = texRect.x;
 		int maxX = minX + texRect.w;
-		ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, tex.width());
+		ImGui::DragIntRange2("Rect X", &minX, &maxX, 1.0f, 0, sprite.texture().width());
 
 		int minY = texRect.y;
 		int maxY = minY + texRect.h;
-		ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, tex.height());
+		ImGui::DragIntRange2("Rect Y", &minY, &maxY, 1.0f, 0, sprite.texture().height());
 
 		texRect.x = minX;
 		texRect.w = maxX - minX;
@@ -1684,7 +1843,7 @@ void UserInterface::createSpriteWindow()
 		ImGui::SameLine();
 		ui::auxString.format("%s##Rect", Labels::Reset);
 		if (ImGui::Button(ui::auxString.data()))
-			texRect = nc::Recti(0, 0, tex.width(), tex.height());
+			texRect = nc::Recti(0, 0, sprite.texture().width(), sprite.texture().height());
 
 		const nc::Recti currentTexRect = sprite.texRect();
 		if (texRect.x != currentTexRect.x || texRect.y != currentTexRect.y ||
@@ -2276,6 +2435,9 @@ void UserInterface::createFileDialog()
 			case FileDialog::Action::LOAD_TEXTURE:
 				loadTexture(selection.data());
 				break;
+			case FileDialog::Action::RELOAD_TEXTURE:
+				reloadTexture(selection.data());
+				break;
 			case FileDialog::Action::LOAD_SCRIPT:
 				loadScript(selection.data());
 				break;
@@ -2619,22 +2781,25 @@ void UserInterface::createTipsWindow()
 
 	ImGui::NewLine();
 	ImGui::Checkbox("Show Tips On Start", &theCfg.showTipsOnStart);
+
 	ImGui::SameLine();
 	ui::auxString.format("%s Prev", Labels::PreviousIcon);
+	const bool enablePrevButton = (currentTipIndex >= 1);
+	ImGui::BeginDisabled(enablePrevButton == false);
 	if (ImGui::Button(ui::auxString.data()))
-	{
-		if (currentTipIndex >= 1)
-			currentTipIndex--;
-	}
+		currentTipIndex--;
+	ImGui::EndDisabled();
+
 	ImGui::SameLine();
 	ImGui::Text("%u / %u", currentTipIndex + 1, Tips::Count);
+
 	ImGui::SameLine();
 	ui::auxString.format("Next %s", Labels::NextIcon);
+	const bool enableNextButton = (currentTipIndex <= Tips::Count - 2);
+	ImGui::BeginDisabled(enableNextButton == false);
 	if (ImGui::Button(ui::auxString.data()))
-	{
-		if (currentTipIndex <= Tips::Count - 2)
-			currentTipIndex++;
-	}
+		currentTipIndex++;
+	ImGui::EndDisabled();
 
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Close))

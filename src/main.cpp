@@ -216,6 +216,8 @@ void MyEventHandler::onFrameStart()
 				theSpritesheet->save(saveAnimStatus.filename.data());
 			// Stop animations after the saving process is complete
 			theAnimMgr->stop();
+			// Notify the user about the end of the saving process on desktop platforms
+			nc::theApplication().gfxDevice().flashWindow();
 		}
 		else
 			theAnimMgr->update(saveAnimStatus.inverseFps());

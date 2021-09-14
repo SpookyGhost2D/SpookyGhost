@@ -39,6 +39,7 @@ class AnimationManager
 	void reloadScript(Script *script);
 	void initScriptsForSprite(Sprite *sprite);
 	void overrideSprite(AnimationGroup &animGroup, Sprite *sprite);
+	void cloneSpriteAnimations(const Sprite *fromSprite, Sprite *toSprite);
 
   private:
 	float speedMultiplier_;

@@ -35,6 +35,9 @@ nctl::UniquePtr<IAnimation> ScriptAnimation::clone() const
 	nctl::UniquePtr<ScriptAnimation> anim = nctl::makeUnique<ScriptAnimation>(sprite_, script_);
 	CurveAnimation::cloneTo(*anim);
 
+	anim->setSprite(sprite_);
+	anim->setScript(script_);
+
 	return nctl::move(anim);
 }
 

@@ -127,7 +127,8 @@ class UserInterface
 	LuaSaver::Data saverData_;
 
 #ifdef __EMSCRIPTEN__
-	nc::EmscriptenLocalFile textureLocalFile_;
+	nc::EmscriptenLocalFile loadTextureLocalFile_;
+	nc::EmscriptenLocalFile reloadTextureLocalFile_;
 #endif
 
 	nctl::String lastLoadedProject_ = nctl::String(ui::MaxStringLength);
@@ -141,13 +142,14 @@ class UserInterface
 
 	bool openProject(const char *filename);
 	bool loadTexture(const char *filename);
+	bool reloadTexture(const char *filename);
 	bool loadScript(const char *filename);
 
 #ifdef __EMSCRIPTEN__
 	bool loadTexture(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize);
+	bool reloadTexture(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize);
 #endif
-
-	bool loadTextureImpl(nctl::UniquePtr<Texture> texture, const char *name);
+	bool postLoadTexture(nctl::UniquePtr<Texture> &texture, const char *name);
 
 	void createDockingSpace();
 	void createInitialDocking();

@@ -218,7 +218,7 @@ void Sprite::setTexRect(const nc::Recti &rect)
 
 void Sprite::loadTexture(const char *filename)
 {
-	texture_->loadFromFile(filename, 0, 0);
+	texture_->loadFromFile(filename);
 	setTexRect(nc::Recti(0, 0, texture_->width(), texture_->height()));
 }
 

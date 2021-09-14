@@ -29,6 +29,7 @@ nctl::UniquePtr<IAnimation> GridAnimation::clone() const
 	nctl::UniquePtr<GridAnimation> anim = nctl::makeUnique<GridAnimation>(sprite_);
 	CurveAnimation::cloneTo(*anim);
 
+	anim->setSprite(sprite_);
 	anim->gridFunction_ = gridFunction_;
 	anim->params_ = params_;
 

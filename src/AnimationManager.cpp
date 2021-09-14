@@ -88,7 +88,7 @@ void recursiveRemoveSprite(AnimationGroup &animGroup, Sprite *sprite)
 				PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
 				if (propertyAnim.sprite() == sprite)
 				{
-					propertyAnim.setProperty(nullptr);
+					propertyAnim.setProperty(Properties::Types::NONE);
 					propertyAnim.setSprite(nullptr);
 					propertyAnim.stop();
 					animGroup.anims().removeAt(i);
@@ -304,6 +304,117 @@ void recursiveOverrideSprite(AnimationGroup &animGroup, Sprite *sprite)
 	}
 }
 
+bool recursiveCheckAnimationSprite(AnimationGroup &animGroup, const Sprite *sprite)
+{
+	for (int i = animGroup.anims().size() - 1; i >= 0; i--)
+	{
+		IAnimation &anim = *animGroup.anims()[i];
+
+		switch (anim.type())
+		{
+			case IAnimation::Type::PARALLEL_GROUP:
+			case IAnimation::Type::SEQUENTIAL_GROUP:
+			{
+				AnimationGroup &innerGroup = static_cast<AnimationGroup &>(anim);
+				return recursiveCheckAnimationSprite(innerGroup, sprite);
+				break;
+			}
+			case IAnimation::Type::PROPERTY:
+			{
+				PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
+				if (propertyAnim.sprite() != sprite)
+					return false;
+				break;
+			}
+			case IAnimation::Type::GRID:
+			{
+				GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+				if (gridAnim.sprite() != sprite)
+					return false;
+				break;
+			}
+			case IAnimation::Type::SCRIPT:
+			{
+				ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+				if (scriptAnim.sprite() != sprite)
+					return false;
+				break;
+			}
+		}
+	}
+
+	return true;
+}
+
+void recursiveCloneSpriteAnimations(AnimationGroup &animGroup, const Sprite *fromSprite, Sprite *toSprite)
+{
+	// Reverse for loop to add cloned animations after the original ones
+	for (int i = animGroup.anims().size() - 1; i >= 0; i--)
+	{
+		IAnimation &anim = *animGroup.anims()[i];
+
+		switch (anim.type())
+		{
+			case IAnimation::Type::PARALLEL_GROUP:
+			case IAnimation::Type::SEQUENTIAL_GROUP:
+			{
+				AnimationGroup &innerGroup = static_cast<AnimationGroup &>(anim);
+				// If the group only contains animations associated to the same sprite then create a new group
+				const bool createNewGroup = recursiveCheckAnimationSprite(innerGroup, fromSprite);
+				if (createNewGroup)
+				{
+					animGroup.anims().insertAt(i + 1, innerGroup.clone());
+					AnimationGroup &clonedGroup = static_cast<AnimationGroup &>(*animGroup.anims()[i + 1]);
+					recursiveOverrideSprite(clonedGroup, toSprite);
+				}
+				else
+					recursiveCloneSpriteAnimations(innerGroup, fromSprite, toSprite);
+
+				break;
+			}
+			case IAnimation::Type::PROPERTY:
+			{
+				PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
+				if (propertyAnim.sprite() == fromSprite)
+				{
+					animGroup.anims().insertAt(i + 1, propertyAnim.clone());
+					PropertyAnimation &clonedAnim = static_cast<PropertyAnimation &>(*animGroup.anims()[i + 1]);
+					clonedAnim.setSprite(toSprite);
+					// Retain locked flag as the cloned animation has been assigned to a different sprite
+					clonedAnim.setLocked(propertyAnim.isLocked());
+				}
+				break;
+			}
+			case IAnimation::Type::GRID:
+			{
+				GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+				if (gridAnim.sprite() == fromSprite)
+				{
+					animGroup.anims().insertAt(i + 1, gridAnim.clone());
+					GridAnimation &clonedAnim = static_cast<GridAnimation &>(*animGroup.anims()[i + 1]);
+					clonedAnim.setSprite(toSprite);
+					// Retain locked flag as the cloned animation has been assigned to a different sprite
+					clonedAnim.setLocked(gridAnim.isLocked());
+				}
+				break;
+			}
+			case IAnimation::Type::SCRIPT:
+			{
+				ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
+				if (scriptAnim.sprite() == fromSprite)
+				{
+					animGroup.anims().insertAt(i + 1, scriptAnim.clone());
+					ScriptAnimation &clonedAnim = static_cast<ScriptAnimation &>(*animGroup.anims()[i + 1]);
+					clonedAnim.setSprite(toSprite);
+					// Retain locked flag as the cloned animation has been assigned to a different sprite
+					clonedAnim.setLocked(scriptAnim.isLocked());
+				}
+				break;
+			}
+		}
+	}
+}
+
 }
 
 ///////////////////////////////////////////////////////////
@@ -366,5 +477,12 @@ void AnimationManager::initScriptsForSprite(Sprite *sprite)
 
 void AnimationManager::overrideSprite(AnimationGroup &animGroup, Sprite *sprite)
 {
-	recursiveOverrideSprite(animGroup, sprite);
+	if (sprite != nullptr)
+		recursiveOverrideSprite(animGroup, sprite);
+}
+
+void AnimationManager::cloneSpriteAnimations(const Sprite *fromSprite, Sprite *toSprite)
+{
+	if (fromSprite != nullptr && toSprite != nullptr && fromSprite != toSprite)
+		recursiveCloneSpriteAnimations(*animGroup_, fromSprite, toSprite);
 }

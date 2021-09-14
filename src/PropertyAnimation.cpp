@@ -26,6 +26,7 @@ nctl::UniquePtr<IAnimation> PropertyAnimation::clone() const
 	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(sprite_);
 	CurveAnimation::cloneTo(*anim);
 
+	anim->setSprite(sprite_);
 	anim->setProperty(propertyType_);
 
 	return nctl::move(anim);
@@ -96,14 +97,18 @@ void PropertyAnimation::setProperty(Properties::Types propertyType)
 
 void PropertyAnimation::setProperty(const char *name)
 {
-	ASSERT(name != nullptr);
-	nctl::String string(name);
-	for (unsigned int i = 0; i < Properties::Count; i++)
+	if (name == nullptr)
+		setProperty(Properties::Types::NONE);
+	else
 	{
-		if (string == Properties::Strings[i])
+		nctl::String string(name);
+		for (unsigned int i = 0; i < Properties::Count; i++)
 		{
-			setProperty(static_cast<Properties::Types>(i));
-			break;
+			if (string == Properties::Strings[i])
+			{
+				setProperty(static_cast<Properties::Types>(i));
+				break;
+			}
 		}
 	}
 }
