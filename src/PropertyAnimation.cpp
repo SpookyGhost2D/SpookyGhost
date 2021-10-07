@@ -13,7 +13,7 @@ PropertyAnimation::PropertyAnimation()
 
 PropertyAnimation::PropertyAnimation(Sprite *sprite)
     : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
-      propertyType_(Properties::Types::NONE), property_(nullptr), sprite_(nullptr)
+      propertyType_(Properties::Types::NONE), property_(nullptr), sprite_(sprite)
 {
 }
 

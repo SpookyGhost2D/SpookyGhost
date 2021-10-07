@@ -61,6 +61,7 @@ static bool showQuitPopup = false;
 static bool hoveringOnCanvasWindow = false;
 static bool hoveringOnCanvas = false;
 static bool deleteKeyPressed = false;
+static bool enableKeyboardNav = true;
 
 static int numFrames = 0;
 static unsigned int currentTipIndex = 0;
@@ -134,6 +135,7 @@ UserInterface::UserInterface()
 	if (theCfg.autoPlayOnStart)
 		theAnimMgr->play();
 
+	Tips::initStrings();
 	if (theCfg.showTipsOnStart)
 		showTipsWindow = true;
 	currentTipIndex = nc::random().fastInteger(0, Tips::Count);
@@ -375,8 +377,7 @@ void UserInterface::createGui()
 	if (numFrames == 1)
 		ImGui::SetNextWindowFocus();
 	createCanvasWindow();
-	if (theSpriteMgr->sprites().isEmpty() == false)
-		createTexRectWindow();
+	createTexRectWindow();
 
 	ImGui::Begin("Status");
 	ImGui::Text("%s", statusMessage_.data());
@@ -394,6 +395,12 @@ void UserInterface::createGui()
 	createConfigWindow();
 
 	deleteKeyPressed = false;
+	if (enableKeyboardNav)
+	{
+		// Enable keyboard navigation again
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	}
+	enableKeyboardNav = true;
 	if (numFrames < 2)
 		numFrames++;
 }
@@ -590,6 +597,9 @@ void UserInterface::createInitialDocking()
 	ImGuiID dockIdLeft = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Left, 0.275f, nullptr, &dockMainId);
 	ImGuiID dockIdRight = ImGui::DockBuilderSplitNode(dockMainId, ImGuiDir_Right, 0.5f, nullptr, &dockMainId);
 	ImGuiViewport *viewport = ImGui::GetMainViewport();
+	ImGui::DockBuilderSetNodeSize(dockIdUp, ImVec2(viewport->Size.x, ImGui::GetFrameHeight()));
+	ImGui::DockBuilderSetNodeSize(dockIdDown, ImVec2(viewport->Size.x, ImGui::GetFrameHeight()));
+	ImGui::DockBuilderSetNodeSize(dockIdLeft, ImVec2(viewport->Size.x * 0.32f, viewport->Size.y));
 	ImGui::DockBuilderSetNodeSize(dockIdRight, ImVec2(viewport->Size.x * 0.275f, viewport->Size.y));
 	ImGuiID dockIdLeftDown = ImGui::DockBuilderSplitNode(dockIdLeft, ImGuiDir_Down, 0.35f, nullptr, &dockIdLeft);
 	ImGuiID dockIdRightDown = ImGui::DockBuilderSplitNode(dockIdRight, ImGuiDir_Down, 0.33f, nullptr, &dockIdRight);
@@ -705,6 +715,17 @@ void UserInterface::createToolbarWindow()
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::SaveAs) && menuSaveAsEnabled())
 		menuSaveAs();
+
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::QuickOpen) && menuQuickOpenEnabled())
+		menuQuickOpen();
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::QuickSave) && menuQuickSaveEnabled())
+		menuQuickSave();
+
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Quit))
+		quit();
 	ImGui::PopStyleVar(2);
 
 	ImGui::End();
@@ -789,27 +810,28 @@ void UserInterface::createTexturesWindow()
 #endif
 	}
 
-	if (theSpriteMgr->textures().isEmpty() == false)
+	const bool enableButtons = theSpriteMgr->textures().isEmpty() == false;
+	ImGui::BeginDisabled(enableButtons == false);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+		removeTexture();
+	ImGui::SameLine();
+	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Reload))
 	{
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
-			removeTexture();
-		ImGui::SameLine();
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Reload))
-		{
 #ifndef __EMSCRIPTEN__
-			openReloadTextureDialog();
+		openReloadTextureDialog();
 #else
-			reloadTextureLocalFile_.load();
+		reloadTextureLocalFile_.load();
 #endif
-		}
 	}
+	ImGui::EndDisabled();
+
+	ImGui::Separator();
 
 	if (theSpriteMgr->textures().isEmpty() == false)
 	{
-		ImGui::Separator();
 		for (unsigned int i = 0; i < theSpriteMgr->textures().size(); i++)
 		{
 			Texture &texture = *theSpriteMgr->textures()[i];
@@ -842,9 +864,10 @@ void UserInterface::createTexturesWindow()
 
 			if (ImGui::BeginPopupContextItem())
 			{
+				selectedTextureIndex_ = i;
+
 				if (ImGui::MenuItem(Labels::Reload))
 				{
-					selectedTextureIndex_ = i;
 #ifndef __EMSCRIPTEN__
 					openReloadTextureDialog();
 #else
@@ -852,10 +875,7 @@ void UserInterface::createTexturesWindow()
 #endif
 				}
 				if (ImGui::MenuItem(Labels::Remove))
-				{
-					selectedTextureIndex_ = i;
 					removeTexture();
-				}
 				ImGui::EndPopup();
 			}
 		}
@@ -923,34 +943,29 @@ void UserInterface::createSpritesWindow()
 				selectedSpriteIndex_ = theSpriteMgr->sprites().size() - 1;
 			}
 		}
-		if (theSpriteMgr->sprites().isEmpty() == false)
-		{
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered() && editSpriteName == false))
-				removeSprite();
-		}
-		// Repeat the check after the remove button
-		if (theSpriteMgr->sprites().isEmpty() == false)
-		{
-			ImGui::SameLine();
-			ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-			ImGui::SameLine();
-			if (ImGui::Button(Labels::Clone))
-				cloneSprite();
-		}
-	}
-	else
-		ImGui::Text("Load at least one texture in order to add sprites");
 
-	if (theSpriteMgr->sprites().isEmpty() == false)
-	{
-		const bool needsMoveUpButton = selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1;
-		const bool needsMoveDownButton = selectedSpriteIndex_ > 0;
+		const bool enableRemoveButton = theSpriteMgr->sprites().isEmpty() == false;
+		ImGui::BeginDisabled(enableRemoveButton == false);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered() && editSpriteName == false))
+			removeSprite();
+		ImGui::EndDisabled();
+
+		// Repeat the check after the remove button
+		const bool enableCloneButton = theSpriteMgr->sprites().isEmpty() == false;
+		ImGui::BeginDisabled(enableCloneButton == false);
+		ImGui::SameLine();
+		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+		ImGui::SameLine();
+		if (ImGui::Button(Labels::Clone))
+			cloneSprite();
+		ImGui::EndDisabled();
 
 		ImGui::SameLine();
 		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
-		ImGui::BeginDisabled(needsMoveUpButton == false);
+		const bool enableMoveUpButton = enableCloneButton && selectedSpriteIndex_ < theSpriteMgr->sprites().size() - 1;
+		ImGui::BeginDisabled(enableMoveUpButton == false);
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::MoveUp))
 		{
@@ -959,7 +974,8 @@ void UserInterface::createSpritesWindow()
 		}
 		ImGui::EndDisabled();
 
-		ImGui::BeginDisabled(needsMoveDownButton == false);
+		const bool enableMoveDownButton = enableCloneButton && selectedSpriteIndex_ > 0;
+		ImGui::BeginDisabled(enableMoveDownButton == false);
 		ImGui::SameLine();
 		if (ImGui::Button(Labels::MoveDown))
 		{
@@ -967,12 +983,34 @@ void UserInterface::createSpritesWindow()
 			selectedSpriteIndex_--;
 		}
 		ImGui::EndDisabled();
+
+		if (ImGui::IsWindowHovered())
+		{
+			// Disable keyboard navigation
+			ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
+			enableKeyboardNav = false;
+
+			if (enableMoveUpButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
+			{
+				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ + 1]);
+				selectedSpriteIndex_++;
+			}
+			if (enableMoveDownButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
+			{
+				nctl::swap(theSpriteMgr->sprites()[selectedSpriteIndex_], theSpriteMgr->sprites()[selectedSpriteIndex_ - 1]);
+				selectedSpriteIndex_--;
+			}
+		}
+
+		ImGui::Separator();
 	}
+	else
+		ImGui::Text("Load at least one texture in order to add sprites");
 
 	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
 		static bool setFocus = false;
-		ImGui::Separator();
+
 		// Reverse the sprites order so that higher in the list means above as a rendering layer
 		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
 		{
@@ -1043,21 +1081,18 @@ void UserInterface::createSpritesWindow()
 
 			if (ImGui::BeginPopupContextItem())
 			{
-				const bool showSelectParent = sprite.parent() != nullptr;
-				if (showSelectParent && ImGui::MenuItem(Labels::SelectParent))
+				selectedSpriteIndex_ = i;
+
+				const bool enableSelectParent = sprite.parent() != nullptr;
+				ImGui::BeginDisabled(enableSelectParent == false);
+				if (ImGui::MenuItem(Labels::SelectParent))
 					selectedSpriteIndex_ = theSpriteMgr->spriteIndex(sprite.parent());
-				if (showSelectParent)
-					ImGui::Separator();
+				ImGui::EndDisabled();
+				ImGui::Separator();
 				if (ImGui::MenuItem(Labels::Clone))
-				{
-					selectedSpriteIndex_ = i;
 					cloneSprite();
-				}
 				if (ImGui::MenuItem(Labels::Remove))
-				{
-					selectedSpriteIndex_ = i;
 					removeSprite();
-				}
 				ImGui::EndPopup();
 			}
 
@@ -1139,22 +1174,23 @@ void UserInterface::createScriptsWindow()
 		FileDialog::config.windowOpen = true;
 	}
 
+	const bool enableButtons = theScriptingMgr->scripts().isEmpty() == false;
+	ImGui::BeginDisabled(enableButtons == false);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
+		removeScript();
+
+	ImGui::SameLine();
+	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Reload))
+		reloadScript();
+	ImGui::EndDisabled();
+
+	ImGui::Separator();
+
 	if (theScriptingMgr->scripts().isEmpty() == false)
 	{
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered()))
-			removeScript();
-
-		ImGui::SameLine();
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Reload))
-			reloadScript();
-	}
-
-	if (theScriptingMgr->scripts().isEmpty() == false)
-	{
-		ImGui::Separator();
 		for (unsigned int i = 0; i < theScriptingMgr->scripts().size(); i++)
 		{
 			Script &script = *theScriptingMgr->scripts()[i];
@@ -1178,27 +1214,18 @@ void UserInterface::createScriptsWindow()
 
 			if (ImGui::BeginPopupContextItem())
 			{
+				selectedScriptIndex_ = i;
+
 				if (ImGui::MenuItem(Labels::Reload))
-				{
-					selectedScriptIndex_ = i;
 					reloadScript();
-				}
 				if (ImGui::MenuItem(Labels::Remove))
-				{
-					selectedScriptIndex_ = i;
 					removeScript();
-				}
 				ImGui::EndPopup();
 			}
 		}
 	}
 
 	ImGui::End();
-}
-
-void UserInterface::cloneAnimation(unsigned int &selectedIndex)
-{
-	selectedAnimation_->parent()->anims().insertAt(++selectedIndex, nctl::move(selectedAnimation_->clone()));
 }
 
 void UserInterface::removeAnimation()
@@ -1234,7 +1261,7 @@ IAnimation *removeAnimWithContextMenu = nullptr;
 bool editAnimName = false;
 }
 
-void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int index)
+void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int index, unsigned int &animId)
 {
 	static bool setFocus = false;
 
@@ -1248,10 +1275,10 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		animGroup = static_cast<AnimationGroup *>(&anim);
 
 	// To preserve indentation no group is created
-	ui::auxString.format("%s###Anim%lu", anim.enabled ? Labels::EnabledAnimIcon : Labels::DisabledAnimIcon, uintptr_t(&anim));
+	ui::auxString.format("%s###Anim%lu", anim.enabled ? Labels::EnabledAnimIcon : Labels::DisabledAnimIcon, reinterpret_cast<uintptr_t>(&anim));
 	ImGui::Checkbox(ui::auxString.data(), &anim.enabled);
 	ImGui::SameLine();
-	ui::auxString.format("#%u: ", index);
+	ui::auxString.format("#%u: ", animId);
 	if (anim.name.isEmpty() == false)
 		ui::auxString.formatAppend("\"%s\" (", anim.name.data());
 	if (anim.type() == IAnimation::Type::PARALLEL_GROUP)
@@ -1320,7 +1347,7 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 	bool treeIsOpen = false;
 	if (editAnimName && selectedAnimation_ == &anim)
 	{
-		ui::auxString.format("###AnimationName%x", &anim);
+		ui::auxString.format("###AnimationName%lu", reinterpret_cast<uintptr_t>(&anim));
 		if (setFocus)
 		{
 			ImGui::SetKeyboardFocusHere();
@@ -1374,25 +1401,18 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 
 	if (ImGui::BeginPopupContextItem())
 	{
+		selectedAnimation_ = &anim;
+
 		if (ImGui::MenuItem(Labels::Play))
-		{
-			selectedAnimation_ = &anim;
 			selectedAnimation_->play();
-		}
 		if (ImGui::MenuItem(Labels::Pause))
-		{
-			selectedAnimation_ = &anim;
 			selectedAnimation_->pause();
-		}
 		if (ImGui::MenuItem(Labels::Stop))
-		{
-			selectedAnimation_ = &anim;
 			selectedAnimation_->stop();
-		}
+
+		ImGui::Separator();
+
 		const bool showLocked = anim.isGroup() == false;
-		const bool showSelectParent = anim.parent() && anim.parent() != &theAnimMgr->animGroup();
-		if (showLocked || showSelectParent)
-			ImGui::Separator();
 		if (showLocked)
 		{
 			CurveAnimation &curveAnim = static_cast<CurveAnimation &>(anim);
@@ -1401,14 +1421,13 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 			ImGui::Checkbox(ui::auxString.data(), &locked);
 			curveAnim.setLocked(locked);
 		}
-		if (showSelectParent && ImGui::MenuItem(Labels::SelectParent))
+		if (ImGui::MenuItem(Labels::SelectParent))
 			selectedAnimation_ = anim.parent();
+
 		ImGui::Separator();
+
 		if (ImGui::MenuItem(Labels::Clone))
-		{
-			selectedAnimation_ = &anim;
-			cloneAnimation(index);
-		}
+			selectedAnimation_->parent()->anims().insertAt(++index, nctl::move(selectedAnimation_->clone()));
 		if (ImGui::MenuItem(Labels::Remove))
 			removeAnimWithContextMenu = &anim;
 
@@ -1449,6 +1468,7 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 			if (dragIsPossible)
 			{
 				nctl::UniquePtr<IAnimation> dragAnimation(nctl::move(dragPayload.parent.anims()[dragPayload.index]));
+				selectedAnimation_ = dragAnimation.get(); // set before moving the unique pointer
 				dragPayload.parent.anims().removeAt(dragPayload.index);
 				if (anim.isGroup())
 				{
@@ -1466,10 +1486,11 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		}
 	}
 
+	animId++;
 	if (anim.isGroup() && treeIsOpen)
 	{
 		for (unsigned int i = 0; i < animGroup->anims().size(); i++)
-			createAnimationListEntry(*animGroup->anims()[i], i);
+			createAnimationListEntry(*animGroup->anims()[i], i, animId);
 
 		ImGui::TreePop();
 	}
@@ -1557,67 +1578,65 @@ void UserInterface::createAnimationsWindow()
 		removeAnimWithContextMenu = nullptr;
 	}
 
-	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
-	{
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered() && editAnimName == false))
-			removeAnimation();
-	}
+	const bool enableRemoveButton = selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup();
+	ImGui::BeginDisabled(enableRemoveButton == false);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Remove) || (deleteKeyPressed && ImGui::IsWindowHovered() && editAnimName == false))
+		removeAnimation();
+	ImGui::EndDisabled();
 
 	// Search the index of the selected animation in its parent
-	unsigned int selectedIndex = 0;
-	if (selectedAnimation_ && selectedAnimation_->parent())
-	{
-		AnimationGroup *parent = selectedAnimation_->parent();
-		selectedIndex = parent->anims().size() - 1;
-		for (unsigned int i = 0; i < parent->anims().size(); i++)
-		{
-			if (parent->anims()[i].get() == selectedAnimation_)
-			{
-				selectedIndex = i;
-				break;
-			}
-		}
-	}
+	int selectedIndex = selectedAnimation_ ? selectedAnimation_->indexInParent() : -1;
 
 	// Repeat the check after the remove button
-	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
-	{
-		ImGui::SameLine();
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::Clone))
-			selectedAnimation_->parent()->anims().insertAt(++selectedIndex, nctl::move(selectedAnimation_->clone()));
-	}
+	const bool enableCloneButton = selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup();
+	ImGui::BeginDisabled(enableCloneButton == false);
+	ImGui::SameLine();
+	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Clone))
+		selectedAnimation_->parent()->anims().insertAt(++selectedIndex, nctl::move(selectedAnimation_->clone()));
+	ImGui::EndDisabled();
 
-	if (ImGui::Button(Labels::Stop) && selectedAnimation_)
+	const bool enablePlayButtons = selectedAnimation_ != nullptr && theAnimMgr->anims().isEmpty() == false;
+	ImGui::BeginDisabled(enablePlayButtons == false);
+	if (ImGui::Button(Labels::Stop))
 		selectedAnimation_->stop();
 	ImGui::SameLine();
-	if (ImGui::Button(Labels::Pause) && selectedAnimation_)
+	if (ImGui::Button(Labels::Pause))
 		selectedAnimation_->pause();
 	ImGui::SameLine();
-	if (ImGui::Button(Labels::Play) && selectedAnimation_)
+	if (ImGui::Button(Labels::Play))
 		selectedAnimation_->play();
+	ImGui::EndDisabled();
 
-	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
+	ImGui::SameLine();
+	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
+	const bool enableMoveUpButton = enableCloneButton && selectedIndex > 0;
+	ImGui::BeginDisabled(enableMoveUpButton == false);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::MoveUp))
+		nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex - 1]);
+	ImGui::EndDisabled();
+
+	const bool enableMoveDownButton = enableCloneButton && selectedIndex < selectedAnimation_->parent()->anims().size() - 1;
+	ImGui::BeginDisabled(enableMoveDownButton == false);
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::MoveDown))
+		nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex + 1]);
+	ImGui::EndDisabled();
+
+	if (ImGui::IsWindowHovered())
 	{
-		const bool needsMoveUpButton = selectedIndex > 0;
-		const bool needsMoveDownButton = selectedIndex < selectedAnimation_->parent()->anims().size() - 1;
+		// Disable keyboard navigation
+		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
+		enableKeyboardNav = false;
 
-		ImGui::SameLine();
-		ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
-
-		ImGui::BeginDisabled(needsMoveUpButton == false);
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::MoveUp))
+		if (enableMoveUpButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
 			nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex - 1]);
-		ImGui::EndDisabled();
-
-		ImGui::BeginDisabled(needsMoveDownButton == false);
-		ImGui::SameLine();
-		if (ImGui::Button(Labels::MoveDown))
+		if (enableMoveDownButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
 			nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex + 1]);
-		ImGui::EndDisabled();
 	}
 
 	ImGui::PushItemWidth(200.0f);
@@ -1630,71 +1649,67 @@ void UserInterface::createAnimationsWindow()
 
 	ImGui::Separator();
 
-	// Special animation list entry for the root animation group in the animation manager
-	ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_DefaultOpen;
-	if (selectedAnimation_ == &theAnimMgr->animGroup())
-		nodeFlags |= ImGuiTreeNodeFlags_Selected;
-
-	ui::auxString.format("Root (%u children)", theAnimMgr->anims().size());
-	if (theAnimMgr->animGroup().state() == IAnimation::State::STOPPED)
-		ui::auxString.formatAppend(" %s", Labels::StopIcon);
-	else if (theAnimMgr->animGroup().state() == IAnimation::State::PAUSED)
-		ui::auxString.formatAppend(" %s", Labels::PauseIcon);
-	else if (theAnimMgr->animGroup().state() == IAnimation::State::PLAYING)
-		ui::auxString.formatAppend(" %s", Labels::PlayIcon);
-
-	// Force tree expansion to see the selected animation
-	if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
-		ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-	const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&theAnimMgr->animGroup()), nodeFlags, "%s", ui::auxString.data());
-	if (ImGui::IsItemClicked())
-		selectedAnimation_ = &theAnimMgr->animGroup();
-
-	if (ImGui::BeginPopupContextItem())
+	if (theAnimMgr->anims().isEmpty() == false)
 	{
-		if (ImGui::MenuItem(Labels::Play))
+		// Special animation list entry for the root animation group in the animation manager
+		ImGuiTreeNodeFlags nodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_DefaultOpen;
+		if (selectedAnimation_ == &theAnimMgr->animGroup())
+			nodeFlags |= ImGuiTreeNodeFlags_Selected;
+
+		ui::auxString.format("Root (%u children)", theAnimMgr->anims().size());
+		if (theAnimMgr->animGroup().state() == IAnimation::State::STOPPED)
+			ui::auxString.formatAppend(" %s", Labels::StopIcon);
+		else if (theAnimMgr->animGroup().state() == IAnimation::State::PAUSED)
+			ui::auxString.formatAppend(" %s", Labels::PauseIcon);
+		else if (theAnimMgr->animGroup().state() == IAnimation::State::PLAYING)
+			ui::auxString.formatAppend(" %s", Labels::PlayIcon);
+
+		// Force tree expansion to see the selected animation
+		if (selectedAnimation_ && selectedAnimation_ != &theAnimMgr->animGroup())
+			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+		const bool treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&theAnimMgr->animGroup()), nodeFlags, "%s", ui::auxString.data());
+		if (ImGui::IsItemClicked())
+			selectedAnimation_ = &theAnimMgr->animGroup();
+
+		if (ImGui::BeginPopupContextItem())
 		{
 			selectedAnimation_ = &theAnimMgr->animGroup();
-			theAnimMgr->animGroup().play();
+
+			if (ImGui::MenuItem(Labels::Play))
+				theAnimMgr->animGroup().play();
+			if (ImGui::MenuItem(Labels::Pause))
+				theAnimMgr->animGroup().pause();
+			if (ImGui::MenuItem(Labels::Stop))
+				theAnimMgr->animGroup().stop();
+			ImGui::EndPopup();
 		}
-		if (ImGui::MenuItem(Labels::Pause))
+
+		if (ImGui::BeginDragDropTarget())
 		{
-			selectedAnimation_ = &theAnimMgr->animGroup();
-			theAnimMgr->animGroup().pause();
+			if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("ANIMATION_TREENODE"))
+			{
+				IM_ASSERT(payload->DataSize == sizeof(DragAnimationPayload));
+				const DragAnimationPayload &dragPayload = *reinterpret_cast<const DragAnimationPayload *>(payload->Data);
+
+				nctl::UniquePtr<IAnimation> dragAnimation(nctl::move(dragPayload.parent.anims()[dragPayload.index]));
+				selectedAnimation_ = dragAnimation.get(); // set before moving the unique pointer
+				dragPayload.parent.anims().removeAt(dragPayload.index);
+
+				dragAnimation->setParent(&theAnimMgr->animGroup());
+				theAnimMgr->anims().pushBack(nctl::move(dragAnimation));
+
+				ImGui::EndDragDropTarget();
+			}
 		}
-		if (ImGui::MenuItem(Labels::Stop))
+
+		if (treeIsOpen)
 		{
-			selectedAnimation_ = &theAnimMgr->animGroup();
-			theAnimMgr->animGroup().stop();
+			unsigned int animId = 0;
+			for (unsigned int i = 0; i < theAnimMgr->anims().size(); i++)
+				createAnimationListEntry(*theAnimMgr->anims()[i], i, animId);
+
+			ImGui::TreePop();
 		}
-		ImGui::EndPopup();
-	}
-
-	if (ImGui::BeginDragDropTarget())
-	{
-		if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("ANIMATION_TREENODE"))
-		{
-			IM_ASSERT(payload->DataSize == sizeof(DragAnimationPayload));
-			const DragAnimationPayload &dragPayload = *reinterpret_cast<const DragAnimationPayload *>(payload->Data);
-
-			nctl::UniquePtr<IAnimation> dragAnimation(nctl::move(dragPayload.parent.anims()[dragPayload.index]));
-			dragPayload.parent.anims().removeAt(dragPayload.index);
-
-			dragAnimation->setParent(&theAnimMgr->animGroup());
-			theAnimMgr->anims().pushBack(nctl::move(dragAnimation));
-
-			selectedAnimation_ = dragAnimation.get();
-
-			ImGui::EndDragDropTarget();
-		}
-	}
-
-	if (treeIsOpen)
-	{
-		for (unsigned int i = 0; i < theAnimMgr->anims().size(); i++)
-			createAnimationListEntry(*theAnimMgr->anims()[i], i);
-
-		ImGui::TreePop();
 	}
 
 	ImGui::End();
@@ -2516,6 +2531,7 @@ void UserInterface::createCanvasWindow()
 	{
 		// Disable keyboard navigation for an easier sprite move with arrow keys
 		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
+		enableKeyboardNav = false;
 
 		hoveringOnCanvas = true;
 		const ImVec2 mousePos = ImGui::GetMousePos();
@@ -2598,11 +2614,6 @@ void UserInterface::createCanvasWindow()
 			ctrlAndClick = false;
 		}
 	}
-	else
-	{
-		// Enable keyboard navigation again
-		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	}
 
 	mouseWheelCanvasZoom();
 
@@ -2617,9 +2628,9 @@ void UserInterface::createTexRectWindow()
 	static ImVec2 endPos(0.0f, 0.0f);
 
 	Sprite &sprite = *theSpriteMgr->sprites()[selectedSpriteIndex_];
-	nc::Recti texRect = sprite.texRect();
-
-	ImVec2 size = ImVec2(sprite.texture().width() * canvasZoom, sprite.texture().height() * canvasZoom);
+	ImVec2 size = (theSpriteMgr->sprites().isEmpty() == false)
+	        ? ImVec2(sprite.texture().width() * canvasZoom, sprite.texture().height() * canvasZoom)
+	        : ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom);
 	ImGui::SetNextWindowSize(size, ImGuiCond_Once);
 
 	ImGui::Begin(Labels::TexRect, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
@@ -2637,130 +2648,131 @@ void UserInterface::createTexRectWindow()
 		canvasGuiSection_.resetZoom();
 	ImGui::Separator();
 
-	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
-	ImGui::Image(sprite.imguiTexId(), size);
-
-	mouseWheelCanvasZoom();
-
-	if (ImGui::IsItemHovered())
+	if (theSpriteMgr->sprites().isEmpty() == false)
 	{
-		const ImVec2 mousePos = ImGui::GetMousePos();
-		ImVec2 relPos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
+		const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
+		ImGui::Image(sprite.imguiTexId(), size);
 
-		relPos.x = roundf(relPos.x / canvasZoom);
-		relPos.y = roundf(relPos.y / canvasZoom);
+		mouseWheelCanvasZoom();
 
-		// One frame lasting message
-		statusMessage_.format("Coordinates: %d, %d", static_cast<int>(relPos.x), static_cast<int>(relPos.y));
-	}
-
-	if (ImGui::IsItemHovered())
-	{
-		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		if (ImGui::IsItemHovered())
 		{
-			mouseStatus_ = MouseStatus::CLICKED;
-			startPos = ImGui::GetMousePos();
+			const ImVec2 mousePos = ImGui::GetMousePos();
+			ImVec2 relPos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
+
+			relPos.x = roundf(relPos.x / canvasZoom);
+			relPos.y = roundf(relPos.y / canvasZoom);
+
+			// One frame lasting message
+			statusMessage_.format("Coordinates: %d, %d", static_cast<int>(relPos.x), static_cast<int>(relPos.y));
+
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			{
+				mouseStatus_ = MouseStatus::CLICKED;
+				startPos = ImGui::GetMousePos();
+			}
 		}
-	}
 
-	if (ImGui::IsWindowHovered() && mouseStatus_ != MouseStatus::IDLE && mouseStatus_ != MouseStatus::RELEASED)
-	{
-		if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+		if (ImGui::IsWindowHovered() && mouseStatus_ != MouseStatus::IDLE && mouseStatus_ != MouseStatus::RELEASED)
 		{
-			mouseStatus_ = MouseStatus::DRAGGING;
-			endPos = ImGui::GetMousePos();
+			if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+			{
+				mouseStatus_ = MouseStatus::DRAGGING;
+				endPos = ImGui::GetMousePos();
+			}
+			else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				mouseStatus_ = MouseStatus::RELEASED;
+				endPos = ImGui::GetMousePos();
+			}
 		}
-		else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-		{
+		else if (mouseStatus_ == MouseStatus::CLICKED || mouseStatus_ == MouseStatus::DRAGGING)
 			mouseStatus_ = MouseStatus::RELEASED;
-			endPos = ImGui::GetMousePos();
-		}
-	}
-	else if (mouseStatus_ == MouseStatus::CLICKED || mouseStatus_ == MouseStatus::DRAGGING)
-		mouseStatus_ = MouseStatus::RELEASED;
 
-	if (mouseStatus_ == MouseStatus::CLICKED)
-	{
-		// Clipping to image
-		if (startPos.x > cursorScreenPos.x + size.x)
-			startPos.x = cursorScreenPos.x + size.x;
-		if (startPos.y > cursorScreenPos.y + size.y)
-			startPos.y = cursorScreenPos.y + size.y;
-
-		// Zoomed pixel snapping
-		if (canvasZoom > 1.0f)
+		if (mouseStatus_ == MouseStatus::CLICKED)
 		{
-			startPos.x = roundf((startPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
-			startPos.y = roundf((startPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+			// Clipping to image
+			if (startPos.x > cursorScreenPos.x + size.x)
+				startPos.x = cursorScreenPos.x + size.x;
+			if (startPos.y > cursorScreenPos.y + size.y)
+				startPos.y = cursorScreenPos.y + size.y;
+
+			// Zoomed pixel snapping
+			if (canvasZoom > 1.0f)
+			{
+				startPos.x = roundf((startPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
+				startPos.y = roundf((startPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+			}
 		}
-	}
-	else if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
-	{
-		// Clipping to image
-		if (endPos.x < cursorScreenPos.x)
-			endPos.x = cursorScreenPos.x;
-		if (endPos.y < cursorScreenPos.y)
-			endPos.y = cursorScreenPos.y;
-
-		if (endPos.x > cursorScreenPos.x + size.x)
-			endPos.x = cursorScreenPos.x + size.x;
-		if (endPos.y > cursorScreenPos.y + size.y)
-			endPos.y = cursorScreenPos.y + size.y;
-
-		// Zoomed pixel snapping
-		if (canvasZoom > 1.0f)
+		else if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
 		{
-			endPos.x = roundf((endPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
-			endPos.y = roundf((endPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+			// Clipping to image
+			if (endPos.x < cursorScreenPos.x)
+				endPos.x = cursorScreenPos.x;
+			if (endPos.y < cursorScreenPos.y)
+				endPos.y = cursorScreenPos.y;
+
+			if (endPos.x > cursorScreenPos.x + size.x)
+				endPos.x = cursorScreenPos.x + size.x;
+			if (endPos.y > cursorScreenPos.y + size.y)
+				endPos.y = cursorScreenPos.y + size.y;
+
+			// Zoomed pixel snapping
+			if (canvasZoom > 1.0f)
+			{
+				endPos.x = roundf((endPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
+				endPos.y = roundf((endPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+			}
 		}
-	}
 
-	ImVec2 minRect(startPos);
-	ImVec2 maxRect(endPos);
+		ImVec2 minRect(startPos);
+		ImVec2 maxRect(endPos);
+		nc::Recti texRect = sprite.texRect();
 
-	if (mouseStatus_ == MouseStatus::IDLE || mouseStatus_ == MouseStatus::CLICKED ||
-	    (!(maxRect.x - minRect.x != 0.0f && maxRect.y - minRect.y != 0.0f) && mouseStatus_ != MouseStatus::DRAGGING))
-	{
-		// Setting the non covered rect from the sprite texrect
-		minRect.x = cursorScreenPos.x + (texRect.x * canvasZoom);
-		minRect.y = cursorScreenPos.y + (texRect.y * canvasZoom);
-		maxRect.x = minRect.x + (texRect.w * canvasZoom);
-		maxRect.y = minRect.y + (texRect.h * canvasZoom);
-	}
-	else
-	{
-		// Setting the non covered rect from the mouse dragged area
-		if (minRect.x > maxRect.x)
-			nctl::swap(minRect.x, maxRect.x);
-		if (minRect.y > maxRect.y)
-			nctl::swap(minRect.y, maxRect.y);
-	}
+		if (mouseStatus_ == MouseStatus::IDLE || mouseStatus_ == MouseStatus::CLICKED ||
+		    (!(maxRect.x - minRect.x != 0.0f && maxRect.y - minRect.y != 0.0f) && mouseStatus_ != MouseStatus::DRAGGING))
+		{
+			// Setting the non covered rect from the sprite texrect
+			minRect.x = cursorScreenPos.x + (texRect.x * canvasZoom);
+			minRect.y = cursorScreenPos.y + (texRect.y * canvasZoom);
+			maxRect.x = minRect.x + (texRect.w * canvasZoom);
+			maxRect.y = minRect.y + (texRect.h * canvasZoom);
+		}
+		else
+		{
+			// Setting the non covered rect from the mouse dragged area
+			if (minRect.x > maxRect.x)
+				nctl::swap(minRect.x, maxRect.x);
+			if (minRect.y > maxRect.y)
+				nctl::swap(minRect.y, maxRect.y);
+		}
 
-	const ImU32 darkGray = IM_COL32(0, 0, 0, 85);
-	ImRect top(ImVec2(cursorScreenPos.x, cursorScreenPos.y), ImVec2(cursorScreenPos.x + size.x, minRect.y));
-	ImRect left(ImVec2(cursorScreenPos.x, minRect.y), ImVec2(minRect.x, cursorScreenPos.y + size.y));
-	ImRect right(ImVec2(maxRect.x, minRect.y), ImVec2(cursorScreenPos.x + size.x, cursorScreenPos.y + size.y));
-	ImRect bottom(ImVec2(minRect.x, maxRect.y), ImVec2(maxRect.x, cursorScreenPos.y + size.y));
-	ImDrawList *drawList = ImGui::GetWindowDrawList();
-	drawList->AddRectFilled(top.Min, top.Max, darkGray);
-	drawList->AddRectFilled(left.Min, left.Max, darkGray);
-	drawList->AddRectFilled(right.Min, right.Max, darkGray);
-	drawList->AddRectFilled(bottom.Min, bottom.Max, darkGray);
+		const ImU32 darkGray = IM_COL32(0, 0, 0, 85);
+		ImRect top(ImVec2(cursorScreenPos.x, cursorScreenPos.y), ImVec2(cursorScreenPos.x + size.x, minRect.y));
+		ImRect left(ImVec2(cursorScreenPos.x, minRect.y), ImVec2(minRect.x, cursorScreenPos.y + size.y));
+		ImRect right(ImVec2(maxRect.x, minRect.y), ImVec2(cursorScreenPos.x + size.x, cursorScreenPos.y + size.y));
+		ImRect bottom(ImVec2(minRect.x, maxRect.y), ImVec2(maxRect.x, cursorScreenPos.y + size.y));
+		ImDrawList *drawList = ImGui::GetWindowDrawList();
+		drawList->AddRectFilled(top.Min, top.Max, darkGray);
+		drawList->AddRectFilled(left.Min, left.Max, darkGray);
+		drawList->AddRectFilled(right.Min, right.Max, darkGray);
+		drawList->AddRectFilled(bottom.Min, bottom.Max, darkGray);
 
-	if (mouseStatus_ == MouseStatus::RELEASED)
-	{
-		texRect.x = (minRect.x - cursorScreenPos.x) / canvasZoom;
-		texRect.y = (minRect.y - cursorScreenPos.y) / canvasZoom;
-		texRect.w = (maxRect.x - minRect.x) / canvasZoom;
-		texRect.h = (maxRect.y - minRect.y) / canvasZoom;
-		ASSERT(texRect.x >= 0);
-		ASSERT(texRect.y >= 0);
+		if (mouseStatus_ == MouseStatus::RELEASED)
+		{
+			texRect.x = (minRect.x - cursorScreenPos.x) / canvasZoom;
+			texRect.y = (minRect.y - cursorScreenPos.y) / canvasZoom;
+			texRect.w = (maxRect.x - minRect.x) / canvasZoom;
+			texRect.h = (maxRect.y - minRect.y) / canvasZoom;
+			ASSERT(texRect.x >= 0);
+			ASSERT(texRect.y >= 0);
 
-		if (texRect.w > 0 && texRect.h > 0)
-			sprite.setTexRect(texRect);
+			if (texRect.w > 0 && texRect.h > 0)
+				sprite.setTexRect(texRect);
 
-		// Back to idle mouse status after assigning the new texrect
-		mouseStatus_ = MouseStatus::IDLE;
+			// Back to idle mouse status after assigning the new texrect
+			mouseStatus_ = MouseStatus::IDLE;
+		}
 	}
 
 	ImGui::End();
@@ -2777,7 +2789,7 @@ void UserInterface::createTipsWindow()
 	ImGui::Begin("Tips", &showTipsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 	ImGui::Text("%s Did you know...", Labels::LightbulbIcon);
 	ImGui::NewLine();
-	ImGui::TextWrapped("%s", Tips::Strings[currentTipIndex]);
+	ImGui::TextWrapped("%s", Tips::Strings[currentTipIndex].data());
 
 	ImGui::NewLine();
 	ImGui::Checkbox("Show Tips On Start", &theCfg.showTipsOnStart);
@@ -2814,6 +2826,18 @@ void UserInterface::createTipsWindow()
 		ui::auxString = nc::fs::joinPath(ui::androidCfgDir.data(), "config.lua");
 #endif
 		theSaver->saveCfg(ui::auxString.data(), theCfg);
+	}
+
+	if (ImGui::IsWindowHovered())
+	{
+		// Disable keyboard navigation
+		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
+		enableKeyboardNav = false;
+
+		if (enablePrevButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)))
+			currentTipIndex--;
+		if (enableNextButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)))
+			currentTipIndex++;
 	}
 
 	ImGui::End();
@@ -2921,6 +2945,12 @@ void UserInterface::updateSelectedAnimOnSpriteRemoval(Sprite *sprite)
 		{
 			GridAnimation &gridAnim = static_cast<GridAnimation &>(*selectedAnimation_);
 			if (gridAnim.sprite() == sprite)
+				selectedAnimation_ = nullptr;
+		}
+		else if (selectedAnimation_->type() == IAnimation::Type::SCRIPT)
+		{
+			ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(*selectedAnimation_);
+			if (scriptAnim.sprite() == sprite)
 				selectedAnimation_ = nullptr;
 		}
 	}

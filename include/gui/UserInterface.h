@@ -165,7 +165,7 @@ class UserInterface
 	void createScriptsWindow();
 	void cloneAnimation(unsigned int &selectedIndex);
 	void removeAnimation();
-	void createAnimationListEntry(IAnimation &anim, unsigned int index);
+	void createAnimationListEntry(IAnimation &anim, unsigned int index, unsigned int &animId);
 	void createAnimationsWindow();
 
 	void createSpriteWindow();
