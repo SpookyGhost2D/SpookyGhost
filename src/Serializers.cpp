@@ -2,6 +2,7 @@
 #include "Canvas.h"
 #include "Texture.h"
 #include "Sprite.h"
+#include "SpriteManager.h"
 #include "Script.h"
 #include "ScriptManager.h"
 #include "ParallelAnimationGroup.h"
@@ -66,16 +67,52 @@ void serialize(LuaSerializer &ls, const char *name, Sprite::BlendingPreset blend
 	}
 }
 
+void serialize(LuaSerializer &ls, const SpriteEntry *spriteEntry)
+{
+	ls.buffer().append("{\n");
+	ls.indent();
+
+	switch (spriteEntry->type())
+	{
+		case SpriteEntry::Type::GROUP:
+		{
+			const SpriteGroup &spriteGroup = *spriteEntry->toGroup();
+			serialize(ls, "type", "sprite_group");
+			serialize(ls, spriteGroup);
+			break;
+		}
+		case SpriteEntry::Type::SPRITE:
+		{
+			const Sprite &sprite = *spriteEntry->toSprite();
+			serialize(ls, "type", "sprite");
+			serialize(ls, sprite);
+			break;
+		}
+	}
+
+	ls.unindent();
+	ls.buffer().append("},\n");
+}
+
+void serialize(LuaSerializer &ls, const SpriteGroup &spriteGroup)
+{
+	SerializerContext *context = static_cast<SerializerContext *>(ls.context());
+
+	serializePtr(ls, "parent_group", static_cast<const SpriteEntry *>(spriteGroup.parentGroup()), *context->spriteEntryHash);
+	serialize(ls, "entry_color", spriteGroup.entryColor());
+	serialize(ls, "name", spriteGroup.name());
+}
+
 void serialize(LuaSerializer &ls, const Sprite &sprite)
 {
 	SerializerContext *context = static_cast<SerializerContext *>(ls.context());
 
-	ls.buffer().append("{\n");
-	ls.indent();
+	serializePtr(ls, "parent_group", static_cast<const SpriteEntry *>(sprite.parentGroup()), *context->spriteEntryHash);
+	serialize(ls, "entry_color", sprite.entryColor());
+	serialize(ls, "name", sprite.name);
 
 	serializePtr(ls, "texture", &sprite.texture(), *context->textureHash);
-	serializePtr(ls, "parent", sprite.parent(), *context->spriteHash);
-	serialize(ls, "name", sprite.name);
+	serializePtr(ls, "parent", static_cast<const SpriteEntry *>(sprite.parent()), *context->spriteEntryHash);
 	serialize(ls, "visible", sprite.visible);
 	nc::Vector2f position(sprite.x, sprite.y);
 	serialize(ls, "position", position);
@@ -89,9 +126,6 @@ void serialize(LuaSerializer &ls, const Sprite &sprite)
 	serialize(ls, "flip_y", sprite.isFlippedY());
 	serialize(ls, "rgb_blending", sprite.rgbBlendingPreset());
 	serialize(ls, "alpha_blending", sprite.alphaBlendingPreset());
-
-	ls.unindent();
-	ls.buffer().append("},\n");
 }
 
 void serialize(LuaSerializer &ls, const Script &script)
@@ -159,6 +193,7 @@ void serialize(LuaSerializer &ls, const IAnimation *anim)
 	ls.unindent();
 	ls.buffer().append("},\n");
 }
+
 void serialize(LuaSerializer &ls, const LoopComponent &loop)
 {
 	switch (loop.direction())
@@ -246,7 +281,7 @@ void serialize(LuaSerializer &ls, const PropertyAnimation &anim)
 {
 	SerializerContext *context = static_cast<SerializerContext *>(ls.context());
 
-	serializePtr(ls, "sprite", anim.sprite(), *context->spriteHash);
+	serializePtr(ls, "sprite", static_cast<const SpriteEntry *>(anim.sprite()), *context->spriteEntryHash);
 	serialize(ls, "speed", anim.speed());
 	serialize(ls, "curve", anim.curve());
 	serialize(ls, "property_name", anim.propertyName());
@@ -256,7 +291,7 @@ void serialize(LuaSerializer &ls, const GridAnimation &anim)
 {
 	SerializerContext *context = static_cast<SerializerContext *>(ls.context());
 
-	serializePtr(ls, "sprite", anim.sprite(), *context->spriteHash);
+	serializePtr(ls, "sprite", static_cast<const SpriteEntry *>(anim.sprite()), *context->spriteEntryHash);
 	serialize(ls, "speed", anim.speed());
 	serialize(ls, "curve", anim.curve());
 
@@ -296,7 +331,7 @@ void serialize(LuaSerializer &ls, const ScriptAnimation &anim)
 {
 	SerializerContext *context = static_cast<SerializerContext *>(ls.context());
 
-	serializePtr(ls, "sprite", anim.sprite(), *context->spriteHash);
+	serializePtr(ls, "sprite", static_cast<const SpriteEntry *>(anim.sprite()), *context->spriteEntryHash);
 	serialize(ls, "speed", anim.speed());
 	serialize(ls, "curve", anim.curve());
 	serializePtr(ls, "script", anim.script(), *context->scriptHash);
@@ -380,18 +415,71 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture)
 	texture->setName(textureName);
 }
 
+template <>
+SpriteEntry::Type deserialize(LuaSerializer &ls, const char *name)
+{
+	lua_State *L = ls.luaState();
+	nctl::String spriteEntryTypeString = nc::LuaUtils::retrieveField<const char *>(L, -1, name);
+
+	if (spriteEntryTypeString == "sprite_group")
+		return SpriteEntry::Type::GROUP;
+	else if (spriteEntryTypeString == "sprite")
+		return SpriteEntry::Type::SPRITE;
+	else
+		return SpriteEntry::Type::SPRITE;
+}
+
+void deserialize(LuaSerializer &ls, nctl::UniquePtr<SpriteEntry> &spriteEntry)
+{
+	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
+
+	SpriteEntry::Type type = SpriteEntry::Type::SPRITE;
+	if (context->version >= 7)
+		type = deserialize<SpriteEntry::Type>(ls, "type");
+
+	switch (type)
+	{
+		case SpriteEntry::Type::GROUP:
+		{
+			nctl::UniquePtr<SpriteGroup> spriteGroup = nctl::makeUnique<SpriteGroup>();
+			deserialize(ls, spriteGroup);
+			spriteEntry = nctl::move(spriteGroup);
+			break;
+		}
+		case SpriteEntry::Type::SPRITE:
+		{
+			Texture *texture = deserializePtr(ls, "texture", *context->textures);
+			FATAL_ASSERT(texture);
+			nctl::UniquePtr<Sprite> sprite = nctl::makeUnique<Sprite>(texture);
+
+			deserialize(ls, sprite);
+			spriteEntry = nctl::move(sprite);
+			break;
+		}
+	}
+
+	SpriteGroup *parentGroup = nullptr;
+	if (context->version >= 7)
+	{
+		parentGroup = static_cast<SpriteGroup *>(deserializePtr(ls, "parent_group", *context->spriteEntries));
+		spriteEntry->entryColor() = deserialize<nc::Colorf>(ls, "entry_color");
+	}
+	parentGroup = (parentGroup == nullptr) ? &theSpriteMgr->root() : parentGroup;
+	spriteEntry->setParentGroup(parentGroup);
+}
+
+void deserialize(LuaSerializer &ls, nctl::UniquePtr<SpriteGroup> &spriteGroup)
+{
+	deserialize(ls, "name", spriteGroup->name());
+}
+
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite)
 {
 	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
 
-	Texture *texture = deserializePtr(ls, "texture", *context->textures);
-	FATAL_ASSERT(texture);
-	sprite = nctl::makeUnique<Sprite>(texture);
-
-	Sprite *parent = deserializePtr(ls, "parent", *context->sprites);
-	sprite->setParent(parent);
-
 	deserialize(ls, "name", sprite->name);
+	Sprite *parent = static_cast<Sprite *>(deserializePtr(ls, "parent", *context->spriteEntries));
+	sprite->setParent(parent);
 	deserialize(ls, "visible", sprite->visible);
 	nc::Vector2f position = deserialize<nc::Vector2f>(ls, "position");
 	sprite->x = position.x;
@@ -546,7 +634,8 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<PropertyAnimation> &anim)
 {
 	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
 
-	Sprite *sprite = deserializePtr(ls, "sprite", *context->sprites);
+	Sprite *sprite = static_cast<Sprite *>(deserializePtr(ls, "sprite", *context->spriteEntries));
+
 	anim->setSprite(sprite);
 	anim->setSpeed(deserialize<float>(ls, "speed"));
 	deserialize(ls, "curve", anim->curve());
@@ -558,7 +647,8 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<GridAnimation> &anim)
 {
 	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
 
-	Sprite *sprite = deserializePtr(ls, "sprite", *context->sprites);
+	Sprite *sprite = static_cast<Sprite *>(deserializePtr(ls, "sprite", *context->spriteEntries));
+
 	anim->setSprite(sprite);
 	anim->setSpeed(deserialize<float>(ls, "speed"));
 	deserialize(ls, "curve", anim->curve());
@@ -595,7 +685,8 @@ void deserialize(LuaSerializer &ls, nctl::UniquePtr<ScriptAnimation> &anim)
 {
 	DeserializerContext *context = static_cast<DeserializerContext *>(ls.context());
 
-	Sprite *sprite = deserializePtr(ls, "sprite", *context->sprites);
+	Sprite *sprite = static_cast<Sprite *>(deserializePtr(ls, "sprite", *context->spriteEntries));
+
 	anim->setSprite(sprite);
 	anim->setSpeed(deserialize<float>(ls, "speed"));
 	deserialize(ls, "curve", anim->curve());

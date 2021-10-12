@@ -45,6 +45,21 @@ void setBlendingFactors(Sprite::BlendingPreset rgbBlendingPreset, Sprite::Blendi
 	nc::GLBlending::blendFunc(rgbSourceFactor, rgbDestFactor, alphaSourceFactor, alphaDestFactor);
 }
 
+void recursiveLinearizeSprites(SpriteGroup &group, nctl::Array<Sprite *> &sprites, unsigned int &spriteId)
+{
+	for (unsigned int i = 0; i < group.children().size(); i++)
+	{
+		SpriteEntry &child = *group.children()[i];
+		if (child.isSprite())
+		{
+			sprites.pushBack(child.toSprite());
+			child.setSpriteId(spriteId++);
+		}
+		else if (child.isGroup())
+			recursiveLinearizeSprites(*child.toGroup(), sprites, spriteId);
+	}
+}
+
 }
 
 ///////////////////////////////////////////////////////////
@@ -52,7 +67,7 @@ void setBlendingFactors(Sprite::BlendingPreset rgbBlendingPreset, Sprite::Blendi
 ///////////////////////////////////////////////////////////
 
 SpriteManager::SpriteManager()
-    : textures_(4), sprites_(4), spritesWithoutParent_(4)
+    : textures_(4), root_(nctl::makeUnique<SpriteGroup>("Root")), spritesWithoutParent_(4), spritesArray_(4)
 {
 	nc::GLBlending::enable();
 }
@@ -61,23 +76,39 @@ SpriteManager::SpriteManager()
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+nctl::Array<nctl::UniquePtr<SpriteEntry>> &SpriteManager::children()
+{
+	return root_->children();
+}
+
+const nctl::Array<nctl::UniquePtr<SpriteEntry>> &SpriteManager::children() const
+{
+	return root_->children();
+}
+
+void SpriteManager::updateSpritesArray()
+{
+	spritesArray_.clear();
+	unsigned int spriteId = 0;
+	recursiveLinearizeSprites(*root_, spritesArray_, spriteId);
+}
+
 void SpriteManager::update()
 {
 	spritesWithoutParent_.clear();
-	for (unsigned int i = 0; i < sprites_.size(); i++)
+	for (unsigned int i = 0; i < spritesArray_.size(); i++)
 	{
-		if (sprites_[i]->parent() == nullptr)
-			spritesWithoutParent_.pushBack(sprites_[i].get());
+		if (spritesArray_[i]->parent() == nullptr)
+			spritesWithoutParent_.pushBack(spritesArray_[i]);
 	}
 
 	for (unsigned int i = 0; i < spritesWithoutParent_.size(); i++)
 		transform(spritesWithoutParent_[i]);
 
-	for (unsigned int i = 0; i < sprites_.size(); i++)
-		draw(sprites_[i].get());
+	for (unsigned int i = 0; i < spritesArray_.size(); i++)
+		draw(spritesArray_[i]);
 }
 
-// TODO: Get rid of this function
 int SpriteManager::textureIndex(const Texture *texture) const
 {
 	if (texture == nullptr)
@@ -96,23 +127,41 @@ int SpriteManager::textureIndex(const Texture *texture) const
 	return index;
 }
 
-// TODO: Get rid of this function
-int SpriteManager::spriteIndex(const Sprite *sprite) const
+SpriteGroup *SpriteManager::addGroup(SpriteEntry *selected)
 {
-	if (sprite == nullptr)
-		return -1;
+	SpriteGroup *parent = root_.get();
+	if (selected && selected->isGroup())
+		parent = selected->toGroup();
+	else if (selected && selected->isSprite())
+		parent = selected->parentGroup();
 
-	int index = -1;
-	for (unsigned int i = 0; i < sprites_.size(); i++)
-	{
-		if (sprites_[i].get() == sprite)
-		{
-			index = static_cast<int>(i);
-			break;
-		}
-	}
+	nctl::UniquePtr<SpriteGroup> spriteGroup = nctl::makeUnique<SpriteGroup>();
+	spriteGroup->setParentGroup(parent);
+	parent->children().pushBack(nctl::move(spriteGroup));
 
-	return index;
+	return parent->children().back()->toGroup();
+}
+
+Sprite *SpriteManager::addSprite(SpriteEntry *selected, Texture *texture)
+{
+	SpriteGroup *parent = root_.get();
+	if (selected && selected->isGroup())
+		parent = selected->toGroup();
+	else if (selected && selected->isSprite())
+		parent = selected->parentGroup();
+
+	nctl::UniquePtr<Sprite> sprite = nctl::makeUnique<Sprite>(texture);
+	sprite->setParentGroup(parent);
+	parent->children().pushBack(nctl::move(sprite));
+
+	return parent->children().back()->toSprite();
+}
+
+void SpriteManager::clear()
+{
+	root_->children().clear();
+	spritesArray_.clear();
+	textures_.clear();
 }
 
 ///////////////////////////////////////////////////////////

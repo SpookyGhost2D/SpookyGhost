@@ -27,7 +27,8 @@ struct VertexFormat
 ///////////////////////////////////////////////////////////
 
 Sprite::Sprite(Texture *texture)
-    : name(MaxNameLength), visible(true), x(0.0f), y(0.0f), rotation(0.0f), scaleFactor(1.0f, 1.0f),
+    : SpriteEntry(SpriteEntry::Type::SPRITE),
+      name(MaxNameLength), visible(true), x(0.0f), y(0.0f), rotation(0.0f), scaleFactor(1.0f, 1.0f),
       anchorPoint(0.0f, 0.0f), color(nc::Colorf::White), visited(false), gridAnchorPoint(0.0f, 0.0f),
       width_(0), height_(0), localMatrix_(nc::Matrix4x4f::Identity), worldMatrix_(nc::Matrix4x4f::Identity),
       absPosition_(0.0f, 0.0f), absScaleFactor_(1.0f, 1.0f), absRotation_(0.0f), absColor_(nc::Colorf::White),
@@ -91,6 +92,9 @@ nctl::UniquePtr<Sprite> Sprite::clone() const
 	// Vertices and indices don't need to be copied
 
 	sprite->setParent(parent_);
+	sprite->setParentGroup(parentGroup_);
+
+	theAnimMgr->cloneSpriteAnimations(this, sprite.get());
 
 	return sprite;
 }

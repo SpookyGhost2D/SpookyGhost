@@ -19,6 +19,8 @@ class ScriptManager
 	inline nctl::Array<nctl::UniquePtr<Script>> &scripts() { return scripts_; }
 	inline const nctl::Array<nctl::UniquePtr<Script>> &scripts() const { return scripts_; }
 
+	void clear();
+
 	int scriptIndex(const Script *script) const;
 
 	static void pushSprite(lua_State *L, Sprite *sprite);

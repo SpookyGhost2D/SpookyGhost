@@ -214,6 +214,11 @@ static const char *setVerticesV = "set_vertices_v";
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
+void ScriptManager::clear()
+{
+	scripts_.clear();
+}
+
 int ScriptManager::scriptIndex(const Script *script) const
 {
 	if (script == nullptr)

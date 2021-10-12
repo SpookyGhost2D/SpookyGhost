@@ -46,8 +46,10 @@
 #define TEXT_CURRENT "Current"
 #define TEXT_LOCKED "Locked"
 #define TEXT_SELECT_PARENT "Select Parent"
+#define TEXT_SELECT_PARENT_GROUP "Select Parent Group"
 
 #define TEXT_ADD "Add"
+#define TEXT_ADD_GROUP "Add Group"
 #define TEXT_REMOVE "Remove"
 #define TEXT_CLONE "Clone"
 #define TEXT_MOVE_UP "Move Up"
@@ -104,8 +106,10 @@ static const char *Apply = TEXT_APPLY;
 static const char *Current = TEXT_CURRENT;
 static const char *Locked = TEXT_LOCKED;
 static const char *SelectParent = TEXT_SELECT_PARENT;
+static const char *SelectParentGroup = TEXT_SELECT_PARENT_GROUP;
 
 static const char *Add = TEXT_ADD;
+static const char *AddGroup = TEXT_ADD_GROUP;
 static const char *Remove = TEXT_REMOVE;
 static const char *Clone = TEXT_CLONE;
 static const char *MoveUp = TEXT_MOVE_UP;
@@ -139,6 +143,7 @@ static const char *LockedAnimIcon = "[L]";
 static const char *StopIcon = "[Stop]";
 static const char *PauseIcon = "[Pause]";
 static const char *PlayIcon = "[Play]";
+static const char *GroupIcon = "[G]";
 
 static const char *FileDialog_OpenIcon = "";
 static const char *FileDialog_SaveIcon = "";
@@ -200,8 +205,10 @@ static const char *Apply = ICON_FA_CHECK_CIRCLE FA5_SPACING TEXT_APPLY;
 static const char *Current = ICON_FA_SYNC FA5_SPACING TEXT_CURRENT;
 static const char *Locked = ICON_FA_LOCK;
 static const char *SelectParent = ICON_FA_OBJECT_GROUP FA5_SPACING TEXT_SELECT_PARENT;
+static const char *SelectParentGroup = ICON_FA_FOLDER FA5_SPACING TEXT_SELECT_PARENT_GROUP;
 
 static const char *Add = ICON_FA_PLUS FA5_SPACING TEXT_ADD;
+static const char *AddGroup = ICON_FA_FOLDER_PLUS FA5_SPACING TEXT_ADD_GROUP;
 static const char *Remove = ICON_FA_MINUS FA5_SPACING TEXT_REMOVE;
 static const char *Clone = ICON_FA_CLONE FA5_SPACING TEXT_CLONE;
 static const char *MoveUp = ICON_FA_ANGLE_UP FA5_SPACING TEXT_MOVE_UP;
@@ -235,6 +242,7 @@ static const char *LockedAnimIcon = ICON_FA_LOCK;
 static const char *StopIcon = ICON_FA_STOP;
 static const char *PauseIcon = ICON_FA_PAUSE;
 static const char *PlayIcon = ICON_FA_PLAY;
+static const char *GroupIcon = ICON_FA_FOLDER;
 
 static const char *FileDialog_OpenIcon = ICON_FA_FOLDER_OPEN FA5_SPACING;
 static const char *FileDialog_SaveIcon = ICON_FA_SAVE FA5_SPACING;

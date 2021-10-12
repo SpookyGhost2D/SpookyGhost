@@ -6,6 +6,7 @@
 #include <ncine/Rect.h>
 #include <ncine/Matrix4x4.h>
 #include <ncine/Colorf.h>
+#include "SpriteEntry.h"
 
 namespace ncine {
 
@@ -21,7 +22,7 @@ namespace nc = ncine;
 class Texture;
 
 /// The sprite to animate
-class Sprite
+class Sprite : public SpriteEntry
 {
   public:
 	struct Vertex

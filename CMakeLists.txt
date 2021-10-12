@@ -36,6 +36,7 @@ set(NCPROJECT_SOURCES
 	include/Script.h
 	include/ScriptManager.h
 	include/ScriptAnimation.h
+	include/SpriteEntry.h
 
 	include/gui/gui_labels.h
 	include/gui/gui_tips.h
@@ -71,6 +72,7 @@ set(NCPROJECT_SOURCES
 	src/Script.cpp
 	src/ScriptManager.cpp
 	src/ScriptAnimation.cpp
+	src/SpriteEntry.cpp
 
 	src/gui/gui_common.cpp
 	src/gui/UserInterface.cpp

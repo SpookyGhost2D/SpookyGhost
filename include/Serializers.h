@@ -6,6 +6,8 @@
 class LuaSerializer;
 class Canvas;
 class Texture;
+class SpriteEntry;
+class SpriteGroup;
 class Sprite;
 class Script;
 
@@ -24,6 +26,8 @@ namespace Serializers {
 
 void serialize(LuaSerializer &ls, const char *name, const Canvas &canvas);
 void serialize(LuaSerializer &ls, const Texture &texture);
+void serialize(LuaSerializer &ls, const SpriteEntry *spriteEntry);
+void serialize(LuaSerializer &ls, const SpriteGroup &spriteGroup);
 void serialize(LuaSerializer &ls, const Sprite &sprite);
 void serialize(LuaSerializer &ls, const Script &script);
 
@@ -43,6 +47,8 @@ namespace Deserializers {
 
 bool deserialize(LuaSerializer &ls, const char *name, Canvas &canvas);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Texture> &texture);
+void deserialize(LuaSerializer &ls, nctl::UniquePtr<SpriteEntry> &spriteEntry);
+void deserialize(LuaSerializer &ls, nctl::UniquePtr<SpriteGroup> &spriteGroup);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Sprite> &sprite);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<Script> &script);
 void deserialize(LuaSerializer &ls, nctl::UniquePtr<IAnimation> &anim);

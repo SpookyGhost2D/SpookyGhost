@@ -424,6 +424,7 @@ void recursiveCloneSpriteAnimations(AnimationGroup &animGroup, const Sprite *fro
 AnimationManager::AnimationManager()
     : speedMultiplier_(1.0f), animGroup_(nctl::makeUnique<ParallelAnimationGroup>())
 {
+	animGroup_->name = "Root";
 }
 
 ///////////////////////////////////////////////////////////

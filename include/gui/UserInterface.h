@@ -26,6 +26,8 @@ class PropertyAnimation;
 class GridAnimation;
 class ScriptAnimation;
 class Texture;
+class SpriteEntry;
+class SpriteGroup;
 class Sprite;
 
 namespace nc = ncine;
@@ -114,7 +116,7 @@ class UserInterface
 		nc::Colorf color_ = nc::Colorf::White;
 	};
 	SpriteProperties spriteProps_;
-	int selectedSpriteIndex_;
+	SpriteEntry *selectedSpriteEntry_;
 	int selectedTextureIndex_;
 	int selectedScriptIndex_;
 	IAnimation *selectedAnimation_;
@@ -156,10 +158,15 @@ class UserInterface
 	void createMenuBar();
 
 	void createToolbarWindow();
+	void recursiveRemoveSpriteWithTexture(SpriteGroup &group, Texture &tex);
 	void removeTexture();
 	void createTexturesWindow();
 	void cloneSprite();
+	void cloneSpriteGroup();
 	void removeSprite();
+	void recursiveRemoveSpriteGroup(SpriteGroup &group);
+	void removeSpriteGroup();
+	void createSpriteListEntry(SpriteEntry &entry, unsigned int index);
 	void createSpritesWindow();
 	void removeScript();
 	void createScriptsWindow();
@@ -193,6 +200,7 @@ class UserInterface
 	void sanitizeConfigValues();
 	void openFile(const char *filename);
 
+	void updateParentOnSpriteRemoval(Sprite *sprite);
 	void updateSelectedAnimOnSpriteRemoval(Sprite *sprite);
 
 	friend class RenderGuiWindow;

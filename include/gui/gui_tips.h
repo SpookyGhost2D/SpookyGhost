@@ -32,7 +32,7 @@ void initStrings()
 	Strings.pushBack(nctl::String().format("Pressing the arrow keys while the cursor is on the \"%s\" window will move the selected sprite in one-pixel increments for precise positioning.", Labels::Canvas));
 	Strings.pushBack("Right-clicking on a texture, a sprite, a script, or an animation will show a contextual menu with a series of actions that you can perform.");
 	Strings.pushBack("Animation groups have an option to override the sprite used by every contained animations. It comes in handy when you clone a group to apply the same animations to a different sprite.");
-	Strings.pushBack(nctl::String().format("Press [CTRL] while selecting a sprite in the \"%s\" window or an animation in the \"%s\" window to change its name.", Labels::Sprite, Labels::Animations));
+	Strings.pushBack(nctl::String().format("Press [CTRL] while selecting a sprite or a sprite group (%s) in the \"%s\" window or an animation in the \"%s\" window to change its name.", Labels::GroupIcon, Labels::Sprite, Labels::Animations));
 	Strings.pushBack(nctl::String().format("Pressing the up or down arrow key when hovering on the \"%s\" or the \"%s\" windows will move sprites and animations up or down.", Labels::Sprites, Labels::Animations));
 	Strings.pushBack(nctl::String().format("Pressing the left or right arrow key when hovering on the \"%s\" window will show either the previous or the next tip.", Labels::Tips));
 

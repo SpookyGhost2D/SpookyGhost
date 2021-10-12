@@ -1,4 +1,5 @@
 #include "LuaSaver.h"
+#include "SpriteEntry.h"
 #include "SpriteManager.h"
 #include "Texture.h"
 #include "ScriptManager.h"
@@ -12,7 +13,7 @@
 
 namespace {
 
-const int ProjectVersion = 6;
+const int ProjectVersion = 7;
 
 }
 
@@ -34,7 +35,8 @@ bool LuaSaver::load(const char *filename, Data &data)
 	DeserializerContext context;
 	serializer_->setContext(&context);
 	context.textures = &data.spriteMgr.textures();
-	context.sprites = &data.spriteMgr.sprites();
+	nctl::Array<nctl::UniquePtr<SpriteEntry>> spriteEntries;
+	context.spriteEntries = &spriteEntries;
 	context.scripts = &data.scriptMgr.scripts();
 	nctl::Array<nctl::UniquePtr<IAnimation>> anims;
 	context.animations = &anims;
@@ -51,20 +53,26 @@ bool LuaSaver::load(const char *filename, Data &data)
 	if (serializer_->load(filename) == false)
 		return false;
 
-	data.spriteMgr.textures().clear();
-	data.spriteMgr.sprites().clear();
-	data.scriptMgr.scripts().clear();
-	data.animMgr.anims().clear();
+	data.spriteMgr.clear();
+	data.scriptMgr.clear();
+	data.animMgr.clear();
 
 	Deserializers::deserializeGlobal(*serializer_, "version", context.version);
 	ASSERT(context.version >= 1);
 	Deserializers::deserialize(*serializer_, "canvas", data.canvas);
 	Deserializers::deserialize(*serializer_, "textures", *context.textures);
-	Deserializers::deserialize(*serializer_, "sprites", *context.sprites);
+
+	nctl::String spriteTableName = "sprites";
+	if (context.version >= 7)
+		spriteTableName = "sprite_entries";
+
+	// Deserialize all sprites in an array that can be used by the animations
+	Deserializers::deserialize(*serializer_, spriteTableName.data(), *context.spriteEntries);
+
 	if (context.version >= 2)
 		Deserializers::deserialize(*serializer_, "scripts", *context.scripts);
-	Deserializers::deserialize(*serializer_, "animations", *context.animations);
 
+	Deserializers::deserialize(*serializer_, "animations", *context.animations);
 	if (data.animMgr.anims().capacity() < anims.size())
 		data.animMgr.anims().setCapacity(anims.size());
 	for (unsigned int i = 0; i < anims.size(); i++)
@@ -73,7 +81,26 @@ bool LuaSaver::load(const char *filename, Data &data)
 	// Stop all animations to get the initial state
 	data.animMgr.animGroup().stop();
 
+	// After the animations have been deserialized, the array of sprite entries can be moved to the sprite manager
+	if (data.spriteMgr.children().capacity() < spriteEntries.size())
+		data.spriteMgr.children().setCapacity(spriteEntries.size());
+	for (unsigned int i = 0; i < spriteEntries.size(); i++)
+		spriteEntries[i]->parentGroup()->children().pushBack(nctl::move(spriteEntries[i]));
+	data.spriteMgr.updateSpritesArray();
+
 	return true;
+}
+
+void visitSpriteEntries(const SpriteEntry *spriteEntry, nctl::Array<const SpriteEntry *> &spriteEntries)
+{
+	spriteEntries.pushBack(spriteEntry);
+
+	if (spriteEntry->isGroup())
+	{
+		const SpriteGroup *spriteGroup = spriteEntry->toGroup();
+		for (unsigned int i = 0; i < spriteGroup->children().size(); i++)
+			visitSpriteEntries(spriteGroup->children()[i].get(), spriteEntries);
+	}
 }
 
 void visitAnimations(const IAnimation *anim, nctl::Array<const IAnimation *> &anims)
@@ -111,16 +138,19 @@ void LuaSaver::save(const char *filename, const Data &data)
 
 		Serializers::serialize(*serializer_, "textures", data.spriteMgr.textures());
 
-		const unsigned int numSprites = data.spriteMgr.sprites().size();
-		if (numSprites > 0)
+		nctl::Array<const SpriteEntry *> spriteEntries;
+		for (unsigned int i = 0; i < data.spriteMgr.children().size(); i++)
+			visitSpriteEntries(data.spriteMgr.children()[i].get(), spriteEntries);
+
+		const unsigned int numSpriteEntries = spriteEntries.size();
+		if (numSpriteEntries > 0)
 		{
 			serializer_->buffer().append("\n");
-			context.spriteHash = nctl::makeUnique<nctl::HashMap<const Sprite *, unsigned int>>(numSprites * 2);
+			context.spriteEntryHash = nctl::makeUnique<nctl::HashMap<const SpriteEntry *, unsigned int>>(numSpriteEntries * 2);
+			for (unsigned int i = 0; i < numSpriteEntries; i++)
+				context.spriteEntryHash->insert(spriteEntries[i], i);
 
-			for (unsigned int i = 0; i < numSprites; i++)
-				context.spriteHash->insert(data.spriteMgr.sprites()[i].get(), i);
-
-			Serializers::serialize(*serializer_, "sprites", data.spriteMgr.sprites());
+			Serializers::serialize(*serializer_, "sprite_entries", spriteEntries);
 		}
 	}
 
