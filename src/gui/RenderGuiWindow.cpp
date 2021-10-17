@@ -9,6 +9,12 @@
 #include "Canvas.h"
 #include "AnimationManager.h"
 
+namespace {
+
+const char *ResizeStrings[7] = { "1/8X", "1/4X", "1/2X", "1X", "2X", "4X", "8X" };
+
+}
+
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
@@ -106,16 +112,27 @@ void RenderGuiWindow::create()
 	ImGui::InputText("Filename prefix", filename.data(), ui::MaxStringLength,
 	                 inputTextFlags, ui::inputTextCallback, &filename);
 
-	currentComboResize_ = static_cast<int>(resizeLevel);
-	ImGui::Combo("Resize Level", &currentComboResize_, ResizeStrings, IM_ARRAYSIZE(ResizeStrings));
+	int currentResizeCombo = static_cast<int>(resizeLevel);
+	ui::comboString.clear();
+	for (unsigned int i = 0; i < IM_ARRAYSIZE(ResizeStrings); i++)
+	{
+		const float resize = resizeAmount(ResizeLevel(i));
+		ui::comboString.formatAppend("%s (%d x %d)", ResizeStrings[i], static_cast<int>(theCanvas->texWidth() * resize), static_cast<int>(theCanvas->texHeight() * resize));
+		ui::comboString.setLength(ui::comboString.length() + 1);
+	}
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	// Append a second '\0' to signal the end of the combo item list
+	ui::comboString[ui::comboString.length() - 1] = '\0';
 
-	resizeLevel = static_cast<RenderGuiWindow::ResizeLevel>(currentComboResize_);
+	ImGui::Combo("Resize Level", &currentResizeCombo, ui::comboString.data());
+	resizeLevel = static_cast<RenderGuiWindow::ResizeLevel>(currentResizeCombo);
 	saveAnimStatus_.canvasResize = resizeAmount();
 
+	const unsigned int MaxSliderSeconds = 10;
 	ImGui::InputInt("FPS", &saveAnimStatus_.fps);
-	ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, 10 * saveAnimStatus_.fps); // Hard-coded limit
+	ImGui::SliderInt("Num Frames", &saveAnimStatus_.numFrames, 1, MaxSliderSeconds * saveAnimStatus_.fps); // Hard-coded limit
 	float duration = saveAnimStatus_.numFrames * saveAnimStatus_.inverseFps();
-	ImGui::SliderFloat("Duration", &duration, 0.0f, 10.0f, "%.3fs"); // Hard-coded limit
+	ImGui::SliderFloat("Duration", &duration, 0.0f, MaxSliderSeconds, "%.3fs"); // Hard-coded limit
 
 	const nc::Vector2i uncappedFrameSize(theCanvas->texWidth() * saveAnimStatus_.canvasResize, theCanvas->texHeight() * saveAnimStatus_.canvasResize);
 	// Immediately-invoked function expression for const initialization
@@ -126,14 +143,86 @@ void RenderGuiWindow::create()
 		return size;
 	}();
 
-	ui::auxString.format("%d x %d", frameSize.x, frameSize.y);
-	if (uncappedFrameSize.x > frameSize.x || uncappedFrameSize.y > frameSize.y)
-		ui::auxString.formatAppend(" (capped from %d x %d)", uncappedFrameSize.x, uncappedFrameSize.y);
-	ImGui::Text("Frame size: %s", ui::auxString.data());
+	// Immediately-invoked function expression for const initialization
+	const nc::Vector2i rectSides = [&] {
+		const int rectSideX = static_cast<int>(ceilf(sqrtf(saveAnimStatus_.numFrames)));
+		const int rectSideY = (rectSideX * (rectSideX - 1) >= saveAnimStatus_.numFrames) ? rectSideX - 1 : rectSideX;
+		return nc::Vector2i(rectSideX, rectSideY);
+	}();
 
-	const int sideX = static_cast<int>(ceil(sqrt(saveAnimStatus_.numFrames)));
-	const int sideY = (sideX * (sideX - 1) > saveAnimStatus_.numFrames) ? sideX - 1 : sideX;
-	const nc::Vector2i uncappedSpritesheetSize(sideX * frameSize.x, sideY * frameSize.y);
+	int currentLayoutCombo = static_cast<int>(layout);
+	ui::comboString.clear();
+	ui::comboString.formatAppend("HRectangle (%d x %d)", rectSides.x, rectSides.y);
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	ui::comboString.formatAppend("VRectangle (%d x %d)", rectSides.y, rectSides.x);
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	ui::comboString.formatAppend("HStrip (%d x %d)", saveAnimStatus_.numFrames, 1);
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	ui::comboString.formatAppend("VStrip (%d x %d)", 1, saveAnimStatus_.numFrames);
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	ui::comboString.append("Custom");
+	ui::comboString.setLength(ui::comboString.length() + 1);
+
+	ui::comboString.setLength(ui::comboString.length() + 1);
+	// Append a second '\0' to signal the end of the combo item list
+	ui::comboString[ui::comboString.length() - 1] = '\0';
+
+	ImGui::Combo("Layout", &currentLayoutCombo, ui::comboString.data());
+	layout = static_cast<RenderGuiWindow::SpritesheetLayout>(currentLayoutCombo);
+
+	static nc::Vector2i customSides(rectSides);
+	if (layout == SpritesheetLayout::CUSTOM)
+	{
+		static int newNumFrames = saveAnimStatus_.numFrames;
+		nc::Vector2i newCustomSides(customSides);
+		ImGui::InputInt2("H/V Sides", newCustomSides.data(), ImGuiInputTextFlags_EnterReturnsTrue);
+		if (newCustomSides.x != customSides.x)
+		{
+			newCustomSides.y = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.x)));
+			// Avoid empty lines
+			if (newCustomSides.x * newCustomSides.y > saveAnimStatus_.numFrames + newCustomSides.y)
+				newCustomSides.x = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.y)));
+		}
+		else if (newCustomSides.y != customSides.y)
+		{
+			newCustomSides.x = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.y)));
+			// Avoid empty lines
+			if (newCustomSides.x * newCustomSides.y > saveAnimStatus_.numFrames + newCustomSides.x)
+				newCustomSides.y = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.x)));
+		}
+
+		if (newNumFrames != saveAnimStatus_.numFrames &&
+		    (newCustomSides.x * newCustomSides.y < saveAnimStatus_.numFrames ||
+		     newCustomSides.x * newCustomSides.y > saveAnimStatus_.numFrames + newCustomSides.x))
+		{
+			newCustomSides = rectSides;
+			newNumFrames = saveAnimStatus_.numFrames;
+		}
+
+		customSides = newCustomSides;
+	}
+
+	nc::Vector2i uncappedSides(rectSides);
+	switch (layout)
+	{
+		case SpritesheetLayout::HRECTANGLE:
+			uncappedSides = rectSides;
+			break;
+		case SpritesheetLayout::VRECTANGLE:
+			uncappedSides.set(rectSides.y, rectSides.x);
+			break;
+		case SpritesheetLayout::HSTRIP:
+			uncappedSides.set(saveAnimStatus_.numFrames, 1);
+			break;
+		case SpritesheetLayout::VSTRIP:
+			uncappedSides.set(1, saveAnimStatus_.numFrames);
+			break;
+		case SpritesheetLayout::CUSTOM:
+			uncappedSides = customSides;
+			break;
+	}
+
+	const nc::Vector2i uncappedSpritesheetSize(uncappedSides.x * frameSize.x, uncappedSides.y * frameSize.y);
 	// Immediately-invoked function expression for const initialization
 	const nc::Vector2i spritesheetSize = [&] {
 		nc::Vector2i size = uncappedSpritesheetSize;
@@ -142,10 +231,29 @@ void RenderGuiWindow::create()
 		return size;
 	}();
 
+	// The resize combo already shows uncapped frame size information
+	if (frameSize.x != uncappedFrameSize.x || frameSize.y != uncappedFrameSize.y)
+	{
+		ui::auxString.format("%d x %d", frameSize.x, frameSize.y);
+		if (uncappedFrameSize.x > frameSize.x || uncappedFrameSize.y > frameSize.y)
+			ui::auxString.formatAppend(" (capped from %d x %d)", uncappedFrameSize.x, uncappedFrameSize.y);
+		ImGui::Text("Frame size: %s", ui::auxString.data());
+	}
+
 	ui::auxString.format("%d x %d", spritesheetSize.x, spritesheetSize.y);
 	if (uncappedSpritesheetSize.x > spritesheetSize.x || uncappedSpritesheetSize.y > spritesheetSize.y)
 		ui::auxString.formatAppend(" (capped from %d x %d)", uncappedSpritesheetSize.x, uncappedSpritesheetSize.y);
 	ImGui::Text("Spritesheet size: %s", ui::auxString.data());
+
+	// The layout combo already shows uncapped sides information
+	const nc::Vector2i sheetSides(spritesheetSize / frameSize);
+	if (sheetSides.x != uncappedSides.x || sheetSides.y != uncappedSides.y)
+	{
+		ui::auxString.format("%d x %d (%d)", sheetSides.x, sheetSides.y, sheetSides.x * sheetSides.y);
+		if (uncappedSides.x > sheetSides.x || uncappedSides.y > sheetSides.y)
+			ui::auxString.formatAppend(" (capped from %d x %d)", uncappedSides.x, uncappedSides.y);
+		ImGui::Text("Spritesheet layout: %s", ui::auxString.data());
+	}
 
 	saveAnimStatus_.numFrames = static_cast<int>(duration * saveAnimStatus_.fps);
 	if (saveAnimStatus_.numFrames < 1)

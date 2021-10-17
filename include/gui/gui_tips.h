@@ -7,6 +7,9 @@
 
 namespace Tips {
 
+/// The longest tip string will be wrapped to the following number of lines by the ImGui::Text widget
+const unsigned int MaxNumberLines = 5;
+
 const unsigned int Count = 23;
 nctl::StaticArray<nctl::String, Count> Strings;
 

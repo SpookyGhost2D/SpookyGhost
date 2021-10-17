@@ -185,6 +185,13 @@ void MyEventHandler::onFrameStart()
 	if (ui_->shouldSaveFrames() || ui_->shouldSaveSpritesheet())
 	{
 		Canvas *sourceCanvas = (saveAnimStatus.canvasResize != 1.0f) ? theResizedCanvas.get() : theCanvas.get();
+
+		if (saveAnimStatus.numSavedFrames == 0 && ui_->shouldSaveSpritesheet())
+		{
+			theSpritesheet->bindDraw();
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		}
+
 		if (saveAnimStatus.canvasResize != 1.0f)
 		{
 			theCanvas->bindRead();

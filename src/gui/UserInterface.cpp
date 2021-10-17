@@ -614,7 +614,7 @@ void UserInterface::createInitialDocking()
 	ImGui::DockBuilderSetNodeSize(dockIdLeft, ImVec2(viewport->Size.x * 0.32f, viewport->Size.y));
 	ImGui::DockBuilderSetNodeSize(dockIdRight, ImVec2(viewport->Size.x * 0.275f, viewport->Size.y));
 	ImGuiID dockIdLeftDown = ImGui::DockBuilderSplitNode(dockIdLeft, ImGuiDir_Down, 0.35f, nullptr, &dockIdLeft);
-	ImGuiID dockIdRightDown = ImGui::DockBuilderSplitNode(dockIdRight, ImGuiDir_Down, 0.33f, nullptr, &dockIdRight);
+	ImGuiID dockIdRightDown = ImGui::DockBuilderSplitNode(dockIdRight, ImGuiDir_Down, 0.335f, nullptr, &dockIdRight);
 
 	ImGui::DockBuilderDockWindow("Toolbar", dockIdUp);
 
@@ -3184,7 +3184,25 @@ void UserInterface::createTipsWindow()
 	ImGui::Begin("Tips", &showTipsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 	ImGui::Text("%s Did you know...", Labels::LightbulbIcon);
 	ImGui::NewLine();
+	const float startY = ImGui::GetCursorPosY();
 	ImGui::TextWrapped("%s", Tips::Strings[currentTipIndex].data());
+	const float endY = ImGui::GetCursorPosY();
+	const unsigned int numLines = (endY - startY) / ImGui::GetTextLineHeight();
+
+	// Check if `MaxNumberLines` has not been updated to the longest tip string
+	if (ImGui::IsWindowAppearing() == false)
+		ASSERT(numLines <= Tips::MaxNumberLines);
+
+	if (numLines < Tips::MaxNumberLines)
+	{
+		static char emptyLines[Tips::MaxNumberLines + 1] = "\0";
+		for (unsigned int i = 0; i < Tips::MaxNumberLines - numLines; i++)
+			emptyLines[i] = '\n';
+		emptyLines[Tips::MaxNumberLines - numLines] = '\0';
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+		ImGui::TextUnformatted(emptyLines);
+		ImGui::PopStyleVar();
+	}
 
 	ImGui::NewLine();
 	ImGui::Checkbox("Show Tips On Start", &theCfg.showTipsOnStart);

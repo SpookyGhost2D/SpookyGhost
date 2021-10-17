@@ -35,7 +35,17 @@ class RenderGuiWindow
 		X8
 	};
 
+	enum SpritesheetLayout
+	{
+		HRECTANGLE,
+		VRECTANGLE,
+		HSTRIP,
+		VSTRIP,
+		CUSTOM,
+	};
+
 	ResizeLevel resizeLevel = ResizeLevel::X1;
+	SpritesheetLayout layout = SpritesheetLayout::HRECTANGLE;
 	nctl::String directory = nctl::String(ui::MaxStringLength);
 	nctl::String filename = nctl::String(ui::MaxStringLength);
 
@@ -59,8 +69,6 @@ class RenderGuiWindow
 	SaveAnim saveAnimStatus_;
 	bool shouldSaveFrames_ = false;
 	bool shouldSaveSpritesheet_ = false;
-	int currentComboResize_ = RenderGuiWindow::ResizeLevel::X1;
-	const char *ResizeStrings[7] = { "1/8X", "1/4X", "1/2X", "1X", "2X", "4X", "8X" };
 };
 
 #endif

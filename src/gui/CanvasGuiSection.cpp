@@ -4,6 +4,12 @@
 #include "gui/CanvasGuiSection.h"
 #include "Canvas.h"
 
+namespace {
+
+const char *ResizeStrings[7] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "Custom" };
+
+}
+
 ///////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
@@ -26,7 +32,7 @@ void CanvasGuiSection::create(Canvas &canvas)
 	ImGui::ColorEdit4("Background", canvas.backgroundColor.data(), ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs);
 	ImGui::SameLine();
 
-	currentComboResize_ = static_cast<int>(resizePreset_);
+	int currentResizeCombo = static_cast<int>(resizePreset_);
 	ui::comboString.clear();
 	for (unsigned int i = 0; i < IM_ARRAYSIZE(ResizeStrings); i++)
 	{
@@ -44,15 +50,15 @@ void CanvasGuiSection::create(Canvas &canvas)
 	ui::comboString[ui::comboString.length() - 1] = '\0';
 
 	ui::auxString.clear();
-	if (currentComboResize_ != static_cast<int>(ResizePreset::CUSTOM))
+	if (currentResizeCombo != static_cast<int>(ResizePreset::CUSTOM))
 		ui::auxString.append("Resize");
 	ui::auxString.append("##ResizeCombo");
 
 	ImGui::PushItemWidth(100.0f);
-	ImGui::Combo(ui::auxString.data(), &currentComboResize_, ui::comboString.data());
+	ImGui::Combo(ui::auxString.data(), &currentResizeCombo, ui::comboString.data());
 	ImGui::PopItemWidth();
-	resizePreset_ = static_cast<CanvasGuiSection::ResizePreset>(currentComboResize_);
-	if (currentComboResize_ == CanvasGuiSection::ResizePreset::CUSTOM)
+	resizePreset_ = static_cast<CanvasGuiSection::ResizePreset>(currentResizeCombo);
+	if (currentResizeCombo == CanvasGuiSection::ResizePreset::CUSTOM)
 	{
 		ImGui::SameLine();
 		ImGui::PushItemWidth(80.0f);

@@ -49,8 +49,6 @@ class CanvasGuiSection
 	ZoomLevel zoomLevel_ = ZoomLevel::X1;
 	ResizePreset resizePreset_ = ResizePreset::SIZE256;
 	nc::Vector2i customCanvasSize_;
-	const char *ResizeStrings[7] = { "16x16", "32x32", "64x64", "128x128", "256x256", "512x512", "Custom" };
-	int currentComboResize_ = 0;
 	int canvasZoomRadio_ = CanvasGuiSection::ZoomLevel::X1;
 	bool showBorders_ = false;
 
