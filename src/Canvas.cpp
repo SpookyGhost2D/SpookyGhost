@@ -1,3 +1,5 @@
+#include <ncine/config.h>
+
 #include "Canvas.h"
 #include "RenderingResources.h"
 #include <ncine/Application.h>
@@ -98,7 +100,7 @@ void Canvas::unbind()
 
 void Canvas::save(const char *filename)
 {
-#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
+#if !defined(NCINE_WITH_OPENGLES) && !defined(__EMSCRIPTEN__)
 	fbo_->unbind();
 	texture_->getTexImage(0, GL_RGBA, GL_UNSIGNED_BYTE, pixels_.get());
 #else

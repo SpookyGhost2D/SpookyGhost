@@ -230,7 +230,7 @@ function(install_linux_library TARGET_NAME)
 	if(NOT LIB_LOCATION)
 		get_target_property(LIB_LOCATION ${TARGET_NAME} IMPORTED_LOCATION_RELEASE)
 	endif()
-	file(REAL_PATH ${LIB_LOCATION} LIB_LOCATION) # resolve symlink
+	get_filename_component(LIB_LOCATION ${LIB_LOCATION} REALPATH) # resolve symlink
 	install(FILES ${LIB_LOCATION} DESTINATION lib64)
 
 	get_filename_component(LIB_NAME ${LIB_LOCATION} NAME)

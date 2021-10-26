@@ -10,7 +10,7 @@ namespace Tips {
 /// The longest tip string will be wrapped to the following number of lines by the ImGui::Text widget
 const unsigned int MaxNumberLines = 5;
 
-const unsigned int Count = 23;
+const unsigned int Count = 24;
 nctl::StaticArray<nctl::String, Count> Strings;
 
 void initStrings()
@@ -38,6 +38,7 @@ void initStrings()
 	Strings.pushBack(nctl::String().format("Press [CTRL] while selecting a sprite or a sprite group (%s) in the \"%s\" window or an animation in the \"%s\" window to change its name.", Labels::GroupIcon, Labels::Sprite, Labels::Animations));
 	Strings.pushBack(nctl::String().format("Pressing the up or down arrow key when hovering on the \"%s\" or the \"%s\" windows will move sprites and animations up or down.", Labels::Sprites, Labels::Animations));
 	Strings.pushBack(nctl::String().format("Pressing the left or right arrow key when hovering on the \"%s\" window will show either the previous or the next tip.", Labels::Tips));
+	Strings.pushBack(nctl::String().format("In the \"%s\" window, press [ALT] to drag the texture rectangle around, and [SHIFT] to resize it from one corner.", Labels::TexRect));
 
 	ASSERT(Strings.size() == Count);
 }

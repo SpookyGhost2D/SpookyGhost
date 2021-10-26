@@ -2041,7 +2041,18 @@ void UserInterface::createSpriteWindow()
 		ImGui::Combo("Texture", &currentTextureCombo, ui::comboString.data());
 		Texture *newTexture = theSpriteMgr->textures()[currentTextureCombo].get();
 		if (&sprite.texture() != newTexture)
+		{
+			nc::Recti texRect = sprite.texRect();
 			sprite.setTexture(newTexture);
+			if (newTexture->width() > texRect.x && newTexture->height() > texRect.y)
+			{
+				if (newTexture->width() < texRect.x + texRect.w)
+					texRect.w = newTexture->width() - texRect.x;
+				if (newTexture->height() < texRect.y + texRect.h)
+					texRect.h = newTexture->width() - texRect.y;
+				sprite.setTexRect(texRect);
+			}
+		}
 
 		// Create an array of sprites that can be a parent of the selected one
 		static SpriteEntry *lastSelectedSpriteEntry = nullptr;
@@ -3021,6 +3032,9 @@ void UserInterface::createTexRectWindow()
 	static MouseStatus mouseStatus_ = MouseStatus::IDLE;
 	static ImVec2 startPos(0.0f, 0.0f);
 	static ImVec2 endPos(0.0f, 0.0f);
+	static bool moveRect = false;
+	static bool resizeRect = false;
+	static ImVec2 resizeDir(0.0f, 0.0f);
 
 	Sprite &sprite = *selectedSpriteEntry_->toSprite();
 	const ImVec2 size = selectedSpriteEntry_->isSprite()
@@ -3046,12 +3060,17 @@ void UserInterface::createTexRectWindow()
 	if (selectedSpriteEntry_->isSprite())
 	{
 		const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
+		nc::Recti texRect = sprite.texRect();
 		ImGui::Image(sprite.imguiTexId(), size);
 
 		mouseWheelCanvasZoom();
 
 		if (ImGui::IsItemHovered())
 		{
+			// Disable keyboard navigation
+			ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
+			enableKeyboardNav = false;
+
 			const ImVec2 mousePos = ImGui::GetMousePos();
 			ImVec2 relPos(mousePos.x - cursorScreenPos.x, mousePos.y - cursorScreenPos.y);
 
@@ -3065,6 +3084,38 @@ void UserInterface::createTexRectWindow()
 			{
 				mouseStatus_ = MouseStatus::CLICKED;
 				startPos = ImGui::GetMousePos();
+
+				// Only moving the rectangle if the user starts dragging from inside it
+				const bool insideTexRect = (relPos.x >= texRect.x) && (relPos.x <= (texRect.x + texRect.w)) &&
+				                           (relPos.y >= texRect.y) && (relPos.y <= (texRect.y + texRect.h));
+
+				moveRect = (resizeRect == false && ImGui::GetIO().KeyAlt && insideTexRect);
+				// Pressing Alt and dragging from outside the rectangle will do nothing
+				if (moveRect == false && ImGui::GetIO().KeyAlt)
+					mouseStatus_ = MouseStatus::IDLE;
+
+				resizeRect = (moveRect == false && ImGui::GetIO().KeyShift && insideTexRect);
+
+				// Determining if the user has clicked a corner or a side
+				const float threshold = 0.2f;
+				resizeDir.x = 0;
+				if ((relPos.x - texRect.x) <= texRect.w * threshold)
+					resizeDir.x = -1;
+				else if ((relPos.x - texRect.x) >= texRect.w * (1.0f - threshold))
+					resizeDir.x = 1;
+
+				resizeDir.y = 0;
+				if ((relPos.y - texRect.y) <= texRect.h * threshold)
+					resizeDir.y = -1;
+				else if ((relPos.y - texRect.y) >= texRect.h * (1.0f - threshold))
+					resizeDir.y = 1;
+
+				if (resizeDir.x == 0 && resizeDir.y == 0)
+					resizeRect = false;
+
+				// Pressing Shift and dragging from outside the rectangle will do nothing
+				if (resizeRect == false && ImGui::GetIO().KeyShift)
+					mouseStatus_ = MouseStatus::IDLE;
 			}
 		}
 
@@ -3074,6 +3125,14 @@ void UserInterface::createTexRectWindow()
 			{
 				mouseStatus_ = MouseStatus::DRAGGING;
 				endPos = ImGui::GetMousePos();
+
+				// If the user releases the Alt key while dragging
+				if (moveRect && ImGui::GetIO().KeyAlt == false)
+					mouseStatus_ = MouseStatus::RELEASED;
+
+				// If the user releases the Shift key while dragging
+				if (resizeRect && ImGui::GetIO().KeyShift == false)
+					mouseStatus_ = MouseStatus::RELEASED;
 			}
 			else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
 			{
@@ -3084,47 +3143,95 @@ void UserInterface::createTexRectWindow()
 		else if (mouseStatus_ == MouseStatus::CLICKED || mouseStatus_ == MouseStatus::DRAGGING)
 			mouseStatus_ = MouseStatus::RELEASED;
 
-		if (mouseStatus_ == MouseStatus::CLICKED)
+		if (moveRect == false && resizeRect == false)
 		{
-			// Clipping to image
-			if (startPos.x > cursorScreenPos.x + size.x)
-				startPos.x = cursorScreenPos.x + size.x;
-			if (startPos.y > cursorScreenPos.y + size.y)
-				startPos.y = cursorScreenPos.y + size.y;
-
-			// Zoomed pixel snapping
-			if (canvasZoom > 1.0f)
+			if (mouseStatus_ == MouseStatus::CLICKED)
 			{
-				startPos.x = roundf((startPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
-				startPos.y = roundf((startPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+				// Clipping to image
+				if (startPos.x > cursorScreenPos.x + size.x)
+					startPos.x = cursorScreenPos.x + size.x;
+				if (startPos.y > cursorScreenPos.y + size.y)
+					startPos.y = cursorScreenPos.y + size.y;
+
+				// Zoomed pixel snapping
+				if (canvasZoom > 1.0f)
+				{
+					startPos.x = roundf((startPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
+					startPos.y = roundf((startPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+				}
+			}
+			else if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
+			{
+				// Clipping to image
+				if (endPos.x < cursorScreenPos.x)
+					endPos.x = cursorScreenPos.x;
+				if (endPos.y < cursorScreenPos.y)
+					endPos.y = cursorScreenPos.y;
+
+				if (endPos.x > cursorScreenPos.x + size.x)
+					endPos.x = cursorScreenPos.x + size.x;
+				if (endPos.y > cursorScreenPos.y + size.y)
+					endPos.y = cursorScreenPos.y + size.y;
+
+				// Zoomed pixel snapping
+				if (canvasZoom > 1.0f)
+				{
+					endPos.x = roundf((endPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
+					endPos.y = roundf((endPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+				}
 			}
 		}
-		else if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
+		else
 		{
-			// Clipping to image
-			if (endPos.x < cursorScreenPos.x)
-				endPos.x = cursorScreenPos.x;
-			if (endPos.y < cursorScreenPos.y)
-				endPos.y = cursorScreenPos.y;
-
-			if (endPos.x > cursorScreenPos.x + size.x)
-				endPos.x = cursorScreenPos.x + size.x;
-			if (endPos.y > cursorScreenPos.y + size.y)
-				endPos.y = cursorScreenPos.y + size.y;
-
-			// Zoomed pixel snapping
-			if (canvasZoom > 1.0f)
+			if (mouseStatus_ == MouseStatus::DRAGGING || mouseStatus_ == MouseStatus::RELEASED)
 			{
-				endPos.x = roundf((endPos.x - cursorScreenPos.x) / canvasZoom) * canvasZoom + cursorScreenPos.x;
-				endPos.y = roundf((endPos.y - cursorScreenPos.y) / canvasZoom) * canvasZoom + cursorScreenPos.y;
+				const ImVec2 diff(roundf((endPos.x - startPos.x) / canvasZoom), roundf((endPos.y - startPos.y) / canvasZoom));
+
+				if (moveRect)
+				{
+					texRect.x += roundf((endPos.x - startPos.x) / canvasZoom); // rewrite
+					texRect.y += roundf((endPos.y - startPos.y) / canvasZoom);
+				}
+				else if (resizeRect)
+				{
+					if (resizeDir.x > 0.0f)
+						texRect.w += diff.x;
+					else if (resizeDir.x < 0.0f)
+					{
+						texRect.x += diff.x;
+						texRect.w -= diff.x;
+					}
+
+					if (resizeDir.y > 0.0f)
+						texRect.h += diff.y;
+					else if (resizeDir.y < 0.0f)
+					{
+						texRect.y += diff.y;
+						texRect.h -= diff.y;
+					}
+				}
+
+				if (texRect.w <= 0)
+					texRect.w = 1;
+				if (texRect.h <= 0)
+					texRect.h = 1;
+
+				// Clipping to image
+				if (texRect.x < 0)
+					texRect.x = 0;
+				if (texRect.y < 0)
+					texRect.y = 0;
+
+				if (texRect.x > size.x - texRect.w)
+					texRect.x = size.x - texRect.w;
+				if (texRect.y > size.y - texRect.h)
+					texRect.y = size.y - texRect.h;
 			}
 		}
 
 		ImVec2 minRect(startPos);
 		ImVec2 maxRect(endPos);
-		nc::Recti texRect = sprite.texRect();
-
-		if (mouseStatus_ == MouseStatus::IDLE || mouseStatus_ == MouseStatus::CLICKED ||
+		if (mouseStatus_ == MouseStatus::IDLE || mouseStatus_ == MouseStatus::CLICKED || moveRect || resizeRect ||
 		    (!(maxRect.x - minRect.x != 0.0f && maxRect.y - minRect.y != 0.0f) && mouseStatus_ != MouseStatus::DRAGGING))
 		{
 			// Setting the non covered rect from the sprite texrect
@@ -3165,6 +3272,8 @@ void UserInterface::createTexRectWindow()
 			if (texRect.w > 0 && texRect.h > 0)
 				sprite.setTexRect(texRect);
 
+			moveRect = false;
+			resizeRect = false;
 			// Back to idle mouse status after assigning the new texrect
 			mouseStatus_ = MouseStatus::IDLE;
 		}
