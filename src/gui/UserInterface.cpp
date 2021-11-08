@@ -53,7 +53,11 @@ static const int PlotArraySize = 512;
 static float plotArray[PlotArraySize];
 static int plotValueIndex = 0;
 
+#if defined(__linux__) && !defined(__ANDROID__) && defined(NCPROJECT_DATA_DIR_DIST)
+const char *docsFile = "../../doc/spookyghost/documentation.html";
+#else
 const char *docsFile = "../docs/documentation.html";
+#endif
 
 static bool showTipsWindow = false;
 static bool showAboutWindow = false;
@@ -3341,14 +3345,7 @@ void UserInterface::createTipsWindow()
 
 	// Auto-save on window close
 	if (showTipsWindow == false)
-	{
-		ui::auxString = "config.lua";
-#ifdef __ANDROID__
-		// On Android the configuration file is saved in the internal storage directory
-		ui::auxString = nc::fs::joinPath(ui::androidCfgDir.data(), "config.lua");
-#endif
-		theSaver->saveCfg(ui::auxString.data(), theCfg);
-	}
+		theSaver->saveCfg(theCfg);
 
 	if (ImGui::IsWindowHovered())
 	{

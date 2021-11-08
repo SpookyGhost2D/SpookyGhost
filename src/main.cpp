@@ -35,8 +35,10 @@
 #include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
 	#include <ncine/AndroidApplication.h>
+#elif defined(__linux__)
+	const char *linuxConfigDir = ".config/spookyghost";
 #endif
 
 nctl::UniquePtr<nc::IAppEventHandler> createAppEventHandler()
@@ -59,7 +61,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 #endif
 
 	ui::auxString = "config.lua";
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
 	ui::androidCfgDir = static_cast<nc::AndroidApplication &>(nc::theApplication()).internalDataPath();
 	// TODO: Load textures from media directory and save projects and scripts in an external path
 	ui::androidSaveDir = static_cast<nc::AndroidApplication &>(nc::theApplication()).internalDataPath();
@@ -85,12 +87,21 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	ui::auxString = nc::fs::joinPath(ui::androidCfgDir.data(), "config.lua");
 	if (nc::fs::isReadableFile(ui::auxString.data()) == false)
 		ui::auxString = "asset::config.lua";
+#elif defined(__linux__) && defined(NCPROJECT_DATA_DIR_DIST)
+	ui::auxString = nc::fs::joinPath(nc::fs::homeDir(), linuxConfigDir);
+	if (nc::fs::exists(ui::auxString.data()) == false)
+	{
+		const bool dirCreated = nc::fs::createDir(ui::auxString.data());
+		LOGI_X("Linux config directory \"%s\" created: %s", ui::auxString.data(), dirCreated ? "true" : "false");
+	}
+	ui::auxString = nc::fs::joinPath(ui::auxString, "config.lua");
 #endif
 
-	if (nc::fs::isReadableFile(ui::auxString.data()))
+	LuaSaver::setDefaultCfgFile(ui::auxString.data());
+	if (nc::fs::isReadableFile(LuaSaver::defaultCfgFile().data()))
 	{
 		LuaSaver saver(4096);
-		saver.loadCfg(ui::auxString.data(), theCfg);
+		saver.loadCfg(theCfg);
 	}
 
 #ifdef __ANDROID__
@@ -139,6 +150,12 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 
 void MyEventHandler::onInit()
 {
+#if defined(__linux__) && defined(NCPROJECT_DATA_DIR_DIST)
+	static char iniFilename[512];
+	strncpy(iniFilename, nc::fs::joinPath(nc::fs::joinPath(nc::fs::homeDir(), linuxConfigDir), "imgui.ini").data(), 512);
+	ImGui::GetIO().IniFilename = iniFilename;
+#endif
+
 	RenderingResources::create();
 	GridFunctionLibrary::init();
 

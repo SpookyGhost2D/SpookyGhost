@@ -1,3 +1,5 @@
+#include <ncine/FileSystem.h>
+
 #include "LuaSaver.h"
 #include "SpriteEntry.h"
 #include "SpriteManager.h"
@@ -16,6 +18,12 @@ namespace {
 const int ProjectVersion = 7;
 
 }
+
+///////////////////////////////////////////////////////////
+// STATIC DEFINITIONS
+///////////////////////////////////////////////////////////
+
+nctl::String LuaSaver::defaultCfgFile_(256);
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR

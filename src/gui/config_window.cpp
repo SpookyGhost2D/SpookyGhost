@@ -8,10 +8,6 @@
 #include "Configuration.h"
 #include "LuaSaver.h"
 
-#ifdef __ANDROID__
-	#include <ncine/FileSystem.h>
-#endif
-
 bool UserInterface::showConfigWindow = false;
 
 ///////////////////////////////////////////////////////////
@@ -136,14 +132,7 @@ void UserInterface::createConfigWindow()
 
 	// Auto-save on window close
 	if (showConfigWindow == false)
-	{
-		ui::auxString = "config.lua";
-#ifdef __ANDROID__
-		// On Android the configuration file is saved in the internal storage directory
-		ui::auxString = nc::fs::joinPath(ui::androidCfgDir.data(), "config.lua");
-#endif
-		theSaver->saveCfg(ui::auxString.data(), theCfg);
-	}
+		theSaver->saveCfg(theCfg);
 
 	ImGui::End();
 }

@@ -79,7 +79,7 @@ jobs:
         else
           { $nCineBuildType = "${{ matrix.BuildType }}" }
 
-        cmake -G "$env:generator" -A x64 -B ../nCine-build-$nCineBuildType -D CMAKE_BUILD_TYPE=$nCineBuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_BUILD_TESTS=OFF
+        cmake -G "$env:generator" -A x64 -B ../nCine-build-$nCineBuildType -D CMAKE_BUILD_TYPE=$nCineBuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF
 
         cd ..
         cmake --build nCine-build-$nCineBuildType --config $nCineBuildType
