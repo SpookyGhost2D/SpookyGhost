@@ -42,7 +42,7 @@ void setBlendingFactors(Sprite::BlendingPreset rgbBlendingPreset, Sprite::Blendi
 	setBlendingFactors(rgbBlendingPreset, rgbSourceFactor, rgbDestFactor);
 	setBlendingFactors(alphaBlendingPreset, alphaSourceFactor, alphaDestFactor);
 
-	nc::GLBlending::blendFunc(rgbSourceFactor, rgbDestFactor, alphaSourceFactor, alphaDestFactor);
+	nc::GLBlending::setBlendFunc(rgbSourceFactor, rgbDestFactor, alphaSourceFactor, alphaDestFactor);
 }
 
 void recursiveLinearizeSprites(SpriteGroup &group, nctl::Array<Sprite *> &sprites, unsigned int &spriteId)

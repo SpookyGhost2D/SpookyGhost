@@ -142,7 +142,6 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	config.withAudio = false;
 	config.withDebugOverlay = false;
 	config.withThreads = false;
-	config.vaoPoolSize = 1; // TODO: FIX size > 1
 
 	config.windowTitle = "SpookyGhost";
 	config.windowIconFilename = "icon96.png";

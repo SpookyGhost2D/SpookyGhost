@@ -6,6 +6,7 @@
 #include "singletons.h"
 #include <ncine/Matrix4x4.h>
 #include <ncine/RenderResources.h>
+#include <ncine/GLBufferObject.h>
 #include <ncine/GLShaderProgram.h>
 #include <ncine/GLShaderUniforms.h>
 #include <ncine/GLShaderAttributes.h>
@@ -151,6 +152,7 @@ void Sprite::updateRender()
 		meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(worldMatrix_.data());
 		meshSpriteShaderUniforms_->commitUniforms();
 
+		meshSpriteShaderAttributes_->defineVertexFormat(vbo_.get(), ibo_.get());
 		const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
 		vbo_->bufferData(vboBytes, interleavedVertices_.data(), GL_STATIC_DRAW);
 	}
@@ -168,17 +170,11 @@ void Sprite::render()
 	else
 	{
 		meshSpriteShaderProgram_->use();
-		vbo_->bind();
-		ibo_->bind();
-		meshSpriteShaderAttributes_->defineVertexFormat(vbo_.get(), ibo_.get());
 
 		if (shortIndices_.isEmpty() == false)
 			glDrawElements(GL_TRIANGLE_STRIP, shortIndices_.size(), GL_UNSIGNED_SHORT, nullptr);
 		else
 			glDrawElements(GL_TRIANGLE_STRIP, indices_.size(), GL_UNSIGNED_INT, nullptr);
-
-		vbo_->unbind();
-		ibo_->unbind();
 	}
 }
 
