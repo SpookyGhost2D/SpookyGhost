@@ -5,7 +5,7 @@ platform = "windows"
 
 [[actions]]
 name = "play"
-path = "spookyghost.app"
+path = "SpookyGhost.app"
 platform = "osx"
 
 [[actions]]
@@ -14,11 +14,22 @@ path = "launch.sh"
 platform = "linux"
 
 [[prereqs]]
-name = "vcredist-2017-x64"
+name = "vcredist-2019-x64"
 
 [[actions]]
 name = "manual"
 path = "docs/documentation.html"
+platform = "windows"
+
+[[actions]]
+name = "manual"
+path = "SpookyGhost.app/Contents/Resources/docs/documentation.html"
+platform = "osx"
+
+[[actions]]
+name = "manual"
+path = "share/doc/spookyghost/documentation.html"
+platform = "linux"
 
 [[actions]]
 name = "forums"

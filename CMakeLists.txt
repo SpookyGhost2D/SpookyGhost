@@ -1,7 +1,7 @@
 set(NCPROJECT_NAME "SpookyGhost")
 set(NCPROJECT_EXE_NAME "spookyghost")
 set(NCPROJECT_VENDOR "Angelo Theodorou")
-set(NCPROJECT_COPYRIGHT "Copyright ©2020-2021 ${NCPROJECT_VENDOR}")
+set(NCPROJECT_COPYRIGHT "Copyright ©2020-2022 ${NCPROJECT_VENDOR}")
 set(NCPROJECT_DESCRIPTION "A procedural sprite animation tool")
 set(NCPROJECT_HOMEPAGE "https://encelo.itch.io/spookyghost")
 set(NCPROJECT_REVERSE_DNS "io.itch.encelo.spookyghost")
