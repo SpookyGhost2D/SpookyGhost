@@ -9,7 +9,6 @@
 #include <ncine/GLBufferObject.h>
 #include <ncine/GLShaderProgram.h>
 #include <ncine/GLShaderUniforms.h>
-#include <ncine/GLShaderAttributes.h>
 
 #include "shader_strings.h"
 
@@ -43,7 +42,6 @@ Sprite::Sprite(Texture *texture)
 	spriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(spriteShaderProgram_);
 	spriteShaderUniforms_->setUniformsDataPointer(uniformsBuffer_);
 	spriteShaderUniforms_->uniform("uTexture")->setIntValue(0);
-	spriteShaderAttributes_ = nctl::makeUnique<nc::GLShaderAttributes>(spriteShaderProgram_);
 
 	FATAL_ASSERT(UniformsBufferSize >= spriteShaderProgram_->uniformsSize());
 
@@ -51,9 +49,8 @@ Sprite::Sprite(Texture *texture)
 	meshSpriteShaderUniforms_ = nctl::makeUnique<nc::GLShaderUniforms>(meshSpriteShaderProgram_);
 	meshSpriteShaderUniforms_->setUniformsDataPointer(uniformsBuffer_);
 	meshSpriteShaderUniforms_->uniform("uTexture")->setIntValue(0);
-	meshSpriteShaderAttributes_ = nctl::makeUnique<nc::GLShaderAttributes>(meshSpriteShaderProgram_);
-	meshSpriteShaderAttributes_->attribute("aPosition")->setVboParameters(sizeof(VertexFormat), reinterpret_cast<void *>(offsetof(VertexFormat, position)));
-	meshSpriteShaderAttributes_->attribute("aTexCoords")->setVboParameters(sizeof(VertexFormat), reinterpret_cast<void *>(offsetof(VertexFormat, texcoords)));
+	meshSpriteShaderProgram_->attribute("aPosition")->setVboParameters(sizeof(VertexFormat), reinterpret_cast<void *>(offsetof(VertexFormat, position)));
+	meshSpriteShaderProgram_->attribute("aTexCoords")->setVboParameters(sizeof(VertexFormat), reinterpret_cast<void *>(offsetof(VertexFormat, texcoords)));
 
 	FATAL_ASSERT(UniformsBufferSize >= spriteShaderProgram_->uniformsSize());
 
@@ -152,7 +149,7 @@ void Sprite::updateRender()
 		meshSpriteShaderUniforms_->uniform("modelView")->setFloatVector(worldMatrix_.data());
 		meshSpriteShaderUniforms_->commitUniforms();
 
-		meshSpriteShaderAttributes_->defineVertexFormat(vbo_.get(), ibo_.get());
+		meshSpriteShaderProgram_->defineVertexFormat(vbo_.get(), ibo_.get());
 		const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
 		vbo_->bufferData(vboBytes, interleavedVertices_.data(), GL_STATIC_DRAW);
 	}

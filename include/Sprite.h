@@ -12,7 +12,6 @@ namespace ncine {
 
 class GLShaderProgram;
 class GLShaderUniforms;
-class GLShaderAttributes;
 class GLBufferObject;
 
 }
@@ -150,11 +149,9 @@ class Sprite : public SpriteEntry
 
 	nc::GLShaderProgram *spriteShaderProgram_;
 	nctl::UniquePtr<nc::GLShaderUniforms> spriteShaderUniforms_;
-	nctl::UniquePtr<nc::GLShaderAttributes> spriteShaderAttributes_;
 
 	nc::GLShaderProgram *meshSpriteShaderProgram_;
 	nctl::UniquePtr<nc::GLShaderUniforms> meshSpriteShaderUniforms_;
-	nctl::UniquePtr<nc::GLShaderAttributes> meshSpriteShaderAttributes_;
 
 	nctl::UniquePtr<nc::GLBufferObject> vbo_;
 	nctl::UniquePtr<nc::GLBufferObject> ibo_;

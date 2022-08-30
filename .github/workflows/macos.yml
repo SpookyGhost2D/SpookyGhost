@@ -18,7 +18,7 @@ jobs:
       matrix:
         BuildType: [Debug, Release, BinDist]
 
-    runs-on: 'macOS-10.15'
+    runs-on: 'macOS-11'
 
     steps:
     - name: 'Checkout Code'

@@ -121,6 +121,11 @@ class UserInterface
 	int selectedScriptIndex_;
 	IAnimation *selectedAnimation_;
 
+#ifdef WITH_FONTAWESOME
+	/// Memory buffer for the FontAwesome icons font
+	nctl::UniquePtr<uint8_t[]> fontFileBuffer_;
+#endif
+
 	/// Used to keep track of which node can be the parent of the selected one
 	nctl::Array<SpriteStruct> spriteGraph_;
 

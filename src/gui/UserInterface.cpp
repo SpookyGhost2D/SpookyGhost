@@ -122,16 +122,15 @@ UserInterface::UserInterface()
 	ImFontConfig icons_config;
 	icons_config.MergeMode = true;
 	icons_config.PixelSnapH = true;
+	icons_config.FontDataOwnedByAtlas = false; // ImGui will otherwise try to use `free()` instead of `delete[]`
 
 	// Loading font from memory so that a font can be an Android asset file
 	nctl::UniquePtr<nc::IFile> fontFile = nc::IFile::createFileHandle(nc::fs::joinPath(nc::fs::dataPath(), "fonts/" FONT_ICON_FILE_NAME_FAS).data());
 	fontFile->open(nc::IFile::OpenMode::READ);
 	const long int fontFileSize = fontFile->size();
-	nctl::UniquePtr<uint8_t[]> fontFileBuffer = nctl::makeUnique<uint8_t[]>(fontFileSize);
-	fontFile->read(fontFileBuffer.get(), fontFileSize);
-	io.Fonts->AddFontFromMemoryTTF(fontFileBuffer.get(), fontFileSize, 12.0f, &icons_config, icons_ranges);
-	// Transfer ownership to ImGui
-	fontFileBuffer.release();
+	fontFileBuffer_ = nctl::makeUnique<uint8_t[]>(fontFileSize);
+	fontFile->read(fontFileBuffer_.get(), fontFileSize);
+	io.Fonts->AddFontFromMemoryTTF(fontFileBuffer_.get(), fontFileSize, 12.0f, &icons_config, icons_ranges);
 	fontFile->close();
 #endif
 

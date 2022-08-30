@@ -163,6 +163,7 @@ void SequentialAnimationGroup::update(float deltaTime)
 
 int SequentialAnimationGroup::nextPlayingIndex(int playingIndex)
 {
+	// Search the index of the first animation that is enabled
 	int firstEnabled = -1;
 	for (unsigned int i = 0; i < anims_.size(); i++)
 	{
@@ -173,10 +174,11 @@ int SequentialAnimationGroup::nextPlayingIndex(int playingIndex)
 		}
 	}
 
-	// Check if there are no enabled animations in the group
+	// Return an invalid index if there are no enabled animations in the group
 	if (firstEnabled < 0)
 		return -1;
 
+	// Search the index of the last animation that is enabled
 	int lastEnabled = anims_.size() - 1;
 	for (int i = anims_.size() - 1; i >= 0; i--)
 	{
@@ -236,7 +238,7 @@ int SequentialAnimationGroup::nextPlayingIndex(int playingIndex)
 				}
 				break;
 		}
-	} while (anims_[playingIndex]->enabled == false);
+	} while (playingIndex >=0 && playingIndex < anims_.size() && anims_[playingIndex]->enabled == false);
 
 	return playingIndex;
 }
