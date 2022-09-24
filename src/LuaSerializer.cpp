@@ -17,6 +17,18 @@
 
 namespace Serializers {
 
+void serialize(LuaSerializer &ls, const char *name, const nctl::Array<nctl::String> &array)
+{
+	ASSERT(name);
+	ls.buffer().formatAppend("%s =\n", name);
+	ls.buffer().append("{\n");
+	ls.indent();
+	for (unsigned int i = 0; i < array.size(); i++)
+		ls.buffer().formatAppend("\"%s\",\n", array[i].data());
+	ls.unindent();
+	ls.buffer().append("}\n");
+}
+
 void serialize(LuaSerializer &ls, const char *name, bool boolean)
 {
 	ls.buffer().formatAppend("%s = %s,\n", name, boolean ? "true" : "false");
@@ -150,6 +162,24 @@ bool Array::next()
 		return true;
 	}
 	return false;
+}
+
+bool deserialize(LuaSerializer &ls, const char *name, nctl::Array<nctl::String> &array)
+{
+	ASSERT(name);
+	lua_State *L = ls.luaState();
+
+	if (nc::LuaUtils::tryRetrieveGlobalTable(L, name) == false)
+		return false;
+	const unsigned int numElements = nc::LuaUtils::rawLen(L, -1);
+	for (unsigned int i = 0; i < numElements; i++)
+	{
+		nc::LuaUtils::rawGeti(L, -1, i + 1); // Lua arrays start from index 1
+		array.emplaceBack(nc::LuaUtils::retrieve<const char *>(L, -1));
+		nc::LuaUtils::pop(L);
+	}
+
+	return true;
 }
 
 template <>

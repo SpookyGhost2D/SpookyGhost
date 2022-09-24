@@ -355,6 +355,13 @@ void serialize(LuaSerializer &ls, const Configuration &cfg)
 	serializeGlobal(ls, "textures_path", cfg.texturesPath);
 	serializeGlobal(ls, "scripts_path", cfg.scriptsPath);
 	serializeGlobal(ls, "show_tips_on_start", cfg.showTipsOnStart);
+
+	const unsigned int numPinnedDirectories = cfg.pinnedDirectories.size();
+	if (numPinnedDirectories > 0)
+	{
+		ls.buffer().append("\n");
+		Serializers::serialize(ls, "pinned_directories", cfg.pinnedDirectories);
+	}
 }
 
 }
@@ -785,6 +792,9 @@ void deserialize(LuaSerializer &ls, Configuration &cfg)
 
 	if (version >= 4)
 		cfg.showTipsOnStart = deserializeGlobal<bool>(ls, "show_tips_on_start");
+
+	if (version >= 5)
+		deserialize(ls, "pinned_directories", cfg.pinnedDirectories);
 }
 
 }

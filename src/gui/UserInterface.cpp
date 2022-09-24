@@ -154,6 +154,9 @@ UserInterface::UserInterface()
 	if (theCfg.showTipsOnStart)
 		showTipsWindow = true;
 	currentTipIndex = nc::random().fastInteger(0, Tips::Count);
+
+	// The list of pinned directories in the file dialog will be saved in the configuration
+	FileDialog::config.pinnedDirectories = &theCfg.pinnedDirectories;
 }
 
 ///////////////////////////////////////////////////////////
@@ -319,9 +322,11 @@ void UserInterface::menuQuickSave()
 
 void UserInterface::quit()
 {
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+#ifdef __EMSCRIPTEN__
 	nc::theApplication().quit();
 #else
+	if (FileDialog::config.modalPopup)
+		FileDialog::config.windowOpen = false;
 	showQuitPopup = true;
 #endif
 }
@@ -3415,6 +3420,9 @@ void UserInterface::createQuitPopup()
 	ImGui::TextUnformatted("Quit the program?");
 	if (ImGui::Button(Labels::Ok))
 	{
+		// Save the configuration on quit (it is the only chance to save the list of pinned directories)
+		theSaver->saveCfg(theCfg);
+
 		nc::theApplication().quit();
 		showQuitPopup = false;
 		ImGui::CloseCurrentPopup();

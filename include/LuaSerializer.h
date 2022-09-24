@@ -93,6 +93,8 @@ void serialize(LuaSerializer &ls, const char *name, const nctl::Array<nctl::Uniq
 	ls.buffer().append("}\n");
 }
 
+void serialize(LuaSerializer &ls, const char *name, const nctl::Array<nctl::String> &array);
+
 void serialize(LuaSerializer &ls, const char *name, bool boolean);
 void serialize(LuaSerializer &ls, const char *name, int number);
 void serialize(LuaSerializer &ls, const char *name, unsigned int number);
@@ -175,6 +177,8 @@ bool deserialize(LuaSerializer &ls, const char *name, nctl::Array<T> &array)
 
 	return true;
 }
+
+bool deserialize(LuaSerializer &ls, const char *name, nctl::Array<nctl::String> &array);
 
 template <class T> T deserialize(LuaSerializer &ls, const char *name) {}
 template <> bool deserialize<bool>(LuaSerializer &ls, const char *name);

@@ -1,6 +1,7 @@
 #ifndef CLASS_CONFIGURATION
 #define CLASS_CONFIGURATION
 
+#include <nctl/Array.h>
 #include <nctl/String.h>
 #include <ncine/Vector2.h>
 #include "gui/gui_common.h"
@@ -10,7 +11,7 @@ namespace nc = ncine;
 /// The configuration to be loaded or saved
 struct Configuration
 {
-	const int version = 4;
+	const int version = 5;
 
 	int width = 1280;
 	int height = 720;
@@ -36,6 +37,7 @@ struct Configuration
 	nctl::String scriptsPath = nctl::String(ui::MaxStringLength); // Added in version 3
 
 	bool showTipsOnStart = true; // Added in version 4
+	nctl::Array<nctl::String> pinnedDirectories; // Added in version 5
 };
 
 #endif

@@ -62,6 +62,9 @@
 #define TEXT_SAVE_FRAMES "Save Frames"
 #define TEXT_SAVE_SPRITESHEET "Save Spritesheet"
 
+#define FILEDIALOG_PIN "Pin"
+#define FILEDIALOG_UNPIN "Unpin"
+
 #ifndef WITH_FONTAWESOME
 namespace Labels {
 
@@ -157,6 +160,8 @@ static const char *FileDialog_Size_Asc = "Size Asc";
 static const char *FileDialog_Size_Desc = "Size Desc";
 static const char *FileDialog_Date_Asc = "Date Asc";
 static const char *FileDialog_Date_Desc = "Date Desc";
+static const char *FileDialog_Pin = FILEDIALOG_PIN;
+static const char *FileDialog_Unpin = FILEDIALOG_UNPIN;
 
 }
 #else
@@ -256,6 +261,8 @@ static const char *FileDialog_Size_Asc = ICON_FA_SORT_AMOUNT_UP FA5_SPACING "Siz
 static const char *FileDialog_Size_Desc = ICON_FA_SORT_AMOUNT_DOWN FA5_SPACING "Size";
 static const char *FileDialog_Date_Asc = ICON_FA_SORT_NUMERIC_DOWN FA5_SPACING "Date";
 static const char *FileDialog_Date_Desc = ICON_FA_SORT_NUMERIC_UP FA5_SPACING "Date";
+static const char *FileDialog_Pin = ICON_FA_THUMBTACK FA5_SPACING FILEDIALOG_PIN;
+static const char *FileDialog_Unpin = ICON_FA_MINUS FA5_SPACING FILEDIALOG_UNPIN;
 
 }
 #endif

@@ -1,6 +1,7 @@
 #ifndef CLASS_FILEDIALOG
 #define CLASS_FILEDIALOG
 
+#include <nctl/Array.h>
 #include <nctl/String.h>
 #include <ncine/FileSystem.h>
 
@@ -46,15 +47,19 @@ class FileDialog
 		const char *okButton = "OK";
 
 		bool showControls = true;
-		bool showHidden = false;
-		bool showSize = true;
-		bool showDate = true;
+		bool showPinnedDirectories = true;
 #ifdef _WIN32
 		bool showPermissions = false;
 #else
 		bool showPermissions = true;
 #endif
+		bool showSize = true;
+		bool showDate = true;
+		bool showHidden = false;
+
 		Sorting sorting = Sorting::NAME_ASC;
+
+		nctl::Array<nctl::String> *pinnedDirectories = nullptr;
 
 		bool sortDirectoriesfirst = true;
 		SelectionType selectionType = SelectionType::FILE;
