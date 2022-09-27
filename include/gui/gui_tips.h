@@ -10,7 +10,7 @@ namespace Tips {
 /// The longest tip string will be wrapped to the following number of lines by the ImGui::Text widget
 const unsigned int MaxNumberLines = 5;
 
-const unsigned int Count = 25;
+const unsigned int Count = 29;
 nctl::StaticArray<nctl::String, Count> Strings;
 
 void initStrings()
@@ -41,6 +41,10 @@ void initStrings()
 	Strings.pushBack(temp.format("Pressing the left or right arrow key when hovering on the \"%s\" window will show either the previous or the next tip.", Labels::Tips));
 	Strings.pushBack(temp.format("In the \"%s\" window, press [ALT] to drag the texture rectangle around, and [SHIFT] to resize it from one corner.", Labels::TexRect));
 	Strings.pushBack(temp.format("In a file dialog window, press the \"%s\" button to save the current directory to the list on the left.\nYou can then click it to navigate there with the browser.", Labels::FileDialog_Pin));
+	Strings.pushBack(temp.format("Drag directories onto the list of pinned ones on the left side of a file dialog window to add them to the list."));
+	Strings.pushBack(temp.format("Drag a file or a directory onto the browser on the right side of a file dialog window to navigate to that file or directory."));
+	Strings.pushBack(temp.format("Drag files to the \"%s\" or \"%s\" windows to load them.", Labels::Textures, Labels::Scripts));
+	Strings.pushBack(temp.format("Drag a file or a directory to the \"%s\" window to use it as a save directory for rendering.", Labels::Render));
 
 	ASSERT(Strings.size() == Count);
 }

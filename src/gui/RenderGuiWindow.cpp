@@ -1,4 +1,5 @@
 #include <ncine/imgui.h>
+#include <ncine/InputEvents.h>
 #include <ncine/Application.h>
 #include "singletons.h"
 #include "gui/gui_labels.h"
@@ -79,6 +80,15 @@ void RenderGuiWindow::setResize(float resizeAmount)
 void RenderGuiWindow::create()
 {
 	ImGui::Begin(Labels::Render);
+
+	if (ImGui::IsWindowHovered() && ui::dropEvent != nullptr)
+	{
+		if (nc::fs::isDirectory(ui::dropEvent->paths[0]))
+			directory = ui::dropEvent->paths[0];
+		else
+			directory = nc::fs::dirName(ui::dropEvent->paths[0]);
+		ui::dropEvent = nullptr;
+	}
 
 	if (directory.isEmpty())
 	{

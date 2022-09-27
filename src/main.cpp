@@ -20,6 +20,7 @@
 #include "RenderingResources.h"
 #include "Canvas.h"
 #include "SpriteManager.h"
+#include "gui/gui_common.h"
 #include "gui/UserInterface.h"
 
 #include "AnimationManager.h"
@@ -292,6 +293,14 @@ void MyEventHandler::onKeyReleased(const nc::KeyboardEvent &event)
 		ui_->closeModalsAndUndockables();
 		ui_->cancelRender();
 	}
+}
+
+void MyEventHandler::onFilesDropped(const nc::DropEvent &event)
+{
+	// Disable auto-suspension for two frames to let the interface update
+	nc::theApplication().setAutoSuspension(false);
+	ui::dropUpdateFrames = 2;
+	ui::dropEvent = &event;
 }
 
 bool MyEventHandler::onQuitRequest()

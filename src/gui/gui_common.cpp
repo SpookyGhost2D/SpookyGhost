@@ -27,4 +27,7 @@ int inputTextCallback(ImGuiInputTextCallbackData *data)
 	return 0;
 }
 
+const nc::DropEvent *dropEvent = nullptr;
+unsigned int dropUpdateFrames = 0;
+
 }

@@ -8,6 +8,7 @@
 
 #include <nctl/Array.h>
 #include <nctl/algorithms.h>
+#include <ncine/InputEvents.h>
 #include <ncine/Application.h>
 #include <ncine/imgui_internal.h>
 
@@ -33,6 +34,30 @@ struct DragPinnedDirectoryPayload
 
 const float PinnedDirectoryTooltipDelay = 0.5f;
 const float PinnedDirectoriesColumnWeight = 0.25f;
+
+bool pinDirectory(FileDialog::Config &config, const char *path)
+{
+	ASSERT(config.showPinnedDirectories && config.pinnedDirectories != nullptr);
+	nctl::Array<nctl::String> &pinnedDirectories = *config.pinnedDirectories;
+
+	nctl::String pathToPin(path);
+	if (nc::fs::isDirectory(path) == false)
+		pathToPin = nc::fs::dirName(path);
+
+	bool alreadyPinned = false;
+	for (unsigned int i = 0; i < pinnedDirectories.size(); i++)
+	{
+		if (pinnedDirectories[i] == pathToPin)
+		{
+			alreadyPinned = true;
+			break;
+		}
+	}
+	if (alreadyPinned == false)
+		pinnedDirectories.emplaceBack(pathToPin);
+
+	return (alreadyPinned == false);
+}
 
 }
 
@@ -125,19 +150,7 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 		ImGui::TableSetColumnIndex(0);
 
 		if (ImGui::Button(Labels::FileDialog_Pin))
-		{
-			bool alreadyPinned = false;
-			for (unsigned int i = 0; i < pinnedDirectories.size(); i++)
-			{
-				if (config.directory == pinnedDirectories[i])
-				{
-					alreadyPinned = true;
-					break;
-				}
-			}
-			if (alreadyPinned == false)
-				pinnedDirectories.pushBack(config.directory);
-		}
+			pinDirectory(config, config.directory.data());
 		ImGui::SameLine();
 		const bool enableUnpinButton = pinnedDirectories.isEmpty() == false;
 		ImGui::BeginDisabled(enableUnpinButton == false);
@@ -155,6 +168,14 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 		ImGui::EndDisabled();
 
 		ImGui::BeginChild("Pinned Directories List", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() - additionalChildVSpacing));
+
+		if (ImGui::IsWindowHovered() && ui::dropEvent != nullptr)
+		{
+			// Pin directories dropped on the pinned directories list
+			for (unsigned int i = 0; i < ui::dropEvent->numPaths; i++)
+				pinDirectory(config, ui::dropEvent->paths[i]);
+			ui::dropEvent = nullptr;
+		}
 
 		int directoryToRemove = -1;
 		for (unsigned int i = 0; i < pinnedDirectories.size(); i++)
@@ -291,6 +312,16 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 	}
 
 	ImGui::BeginChild("File View", ImVec2(0.0f, -ImGui::GetFrameHeightWithSpacing() - additionalChildVSpacing));
+
+	if (ImGui::IsWindowHovered() && ui::dropEvent != nullptr)
+	{
+		// Go to the directory dropped on the file browser
+		if (nc::fs::isDirectory(ui::dropEvent->paths[0]))
+			config.directory = ui::dropEvent->paths[0];
+		else
+			config.directory = nc::fs::dirName(ui::dropEvent->paths[0]);
+		ui::dropEvent = nullptr;
+	}
 
 	nc::fs::Directory dir(config.directory.data());
 	dirEntries.clear();

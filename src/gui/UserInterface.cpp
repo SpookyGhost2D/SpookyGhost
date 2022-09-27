@@ -1,6 +1,7 @@
 #include <ctime>
 #include "gui/gui_common.h"
 #include <ncine/imgui_internal.h>
+#include <ncine/InputEvents.h>
 #include <ncine/Application.h>
 #include <ncine/FileSystem.h>
 #include <ncine/IFile.h>
@@ -373,6 +374,9 @@ void UserInterface::reloadScript()
 
 void UserInterface::createGui()
 {
+	// Cache the initial value of the auto-suspension flag
+	static bool autoSuspensionState = nc::theApplication().autoSuspension();
+
 	if (lastStatus_.secondsSince() >= 2.0f)
 		statusMessage_.clear();
 
@@ -423,6 +427,16 @@ void UserInterface::createGui()
 	enableKeyboardNav = true;
 	if (numFrames < 2)
 		numFrames++;
+
+	// Restore the initial auto-suspension state that might have been disabled by the drop callback
+	if (ui::dropUpdateFrames > 0)
+	{
+		ui::dropUpdateFrames--;
+		if (ui::dropUpdateFrames == 0)
+			nc::theApplication().setAutoSuspension(autoSuspensionState);
+	}
+	// Reset the pointer if the event has not been handled elsewhere
+	ui::dropEvent = nullptr;
 }
 
 ///////////////////////////////////////////////////////////
@@ -794,6 +808,13 @@ void openReloadTextureDialog()
 void UserInterface::createTexturesWindow()
 {
 	ImGui::Begin(Labels::Textures);
+
+	if (ImGui::IsWindowHovered() && ui::dropEvent != nullptr)
+	{
+		for (unsigned int i = 0; i < ui::dropEvent->numPaths; i++)
+			loadTexture(ui::dropEvent->paths[i]);
+		ui::dropEvent = nullptr;
+	}
 
 #if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 	const bool openBundledEnabled = TexturesStrings::Count > 0;
@@ -1420,6 +1441,13 @@ void UserInterface::removeScript()
 void UserInterface::createScriptsWindow()
 {
 	ImGui::Begin(Labels::Scripts);
+
+	if (ImGui::IsWindowHovered() && ui::dropEvent != nullptr)
+	{
+		for (unsigned int i = 0; i < ui::dropEvent->numPaths; i++)
+			loadScript(ui::dropEvent->paths[i]);
+		ui::dropEvent = nullptr;
+	}
 
 	const bool openBundledEnabled = ScriptsStrings::Count > 0;
 	if (openBundledEnabled)
