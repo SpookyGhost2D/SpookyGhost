@@ -86,6 +86,18 @@ set(NCPROJECT_SOURCES
 	src/gui/FileDialog.cpp
 )
 
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+	set(HEADER_FILES ${NCPROJECT_SOURCES})
+	list(FILTER HEADER_FILES INCLUDE REGEX ".h$")
+
+	set(SOURCE_FILES ${NCPROJECT_SOURCES})
+	list(FILTER SOURCE_FILES INCLUDE REGEX ".cpp$")
+
+	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include PREFIX "Header Files" FILES ${HEADER_FILES})
+	source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "Source Files" FILES ${SOURCE_FILES})
+endif()
+
 option(CUSTOM_ITCHIO_BUILD "Create a build for the Itch.io store" ON)
 option(CUSTOM_WITH_FONTAWESOME "Download FontAwesome and include it in ImGui atlas" ON)
 

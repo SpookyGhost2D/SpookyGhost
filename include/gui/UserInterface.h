@@ -46,6 +46,8 @@ class UserInterface
 	bool shouldSaveSpritesheet() const;
 	void signalFrameSaved();
 	void cancelRender();
+	void changeScalingFactor(float factor);
+	void openVideoModePopup();
 
 	void closeModalsAndUndockables();
 	void pressDeleteKey();
@@ -198,6 +200,7 @@ class UserInterface
 	void createTipsWindow();
 	void createAboutWindow();
 	void createQuitPopup();
+	void createVideoModePopup();
 
 	void applyDarkStyle();
 	void mouseWheelCanvasZoom();

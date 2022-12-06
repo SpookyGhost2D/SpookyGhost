@@ -342,12 +342,16 @@ void serialize(LuaSerializer &ls, const Configuration &cfg)
 	serializeGlobal(ls, "version", cfg.version);
 	serializeGlobal(ls, "width", cfg.width);
 	serializeGlobal(ls, "height", cfg.height);
-	serializeGlobal(ls, "fullscreen", cfg.fullscreen);
+	serializeGlobal(ls, "refresh_rate", cfg.refreshRate);
+	serializeGlobal(ls, "window_position_x", cfg.windowPositionX);
+	serializeGlobal(ls, "window_position_y", cfg.windowPositionY);
+	serializeGlobal(ls, "fullscreen", cfg.fullScreen);
 	serializeGlobal(ls, "resizable", cfg.resizable);
 	serializeGlobal(ls, "vsync", cfg.withVSync);
 	serializeGlobal(ls, "frame_limit", cfg.frameLimit);
 	serializeGlobal(ls, "canvas_width", cfg.canvasWidth);
 	serializeGlobal(ls, "canvas_height", cfg.canvasHeight);
+	serializeGlobal(ls, "auto_gui_scaling", cfg.autoGuiScaling);
 	serializeGlobal(ls, "gui_scaling", cfg.guiScaling);
 	serializeGlobal(ls, "startup_project_name", cfg.startupProjectName);
 	serializeGlobal(ls, "auto_play_on_start", cfg.autoPlayOnStart);
@@ -765,12 +769,20 @@ void deserialize(LuaSerializer &ls, Configuration &cfg)
 
 	cfg.width = deserializeGlobal<int>(ls, "width");
 	cfg.height = deserializeGlobal<int>(ls, "height");
-	cfg.fullscreen = deserializeGlobal<bool>(ls, "fullscreen");
+	cfg.fullScreen = deserializeGlobal<bool>(ls, "fullscreen");
 	cfg.resizable = deserializeGlobal<bool>(ls, "resizable");
 	cfg.withVSync = deserializeGlobal<bool>(ls, "vsync");
 	cfg.frameLimit = deserializeGlobal<int>(ls, "frame_limit");
 	cfg.canvasWidth = deserializeGlobal<int>(ls, "canvas_width");
 	cfg.canvasHeight = deserializeGlobal<int>(ls, "canvas_height");
+
+	if (version >= 6)
+	{
+		cfg.windowPositionX = deserializeGlobal<int>(ls, "window_position_x");
+		cfg.windowPositionY = deserializeGlobal<int>(ls, "window_position_y");
+		cfg.refreshRate = deserializeGlobal<float>(ls, "refresh_rate");
+		cfg.autoGuiScaling = deserializeGlobal<bool>(ls, "auto_gui_scaling");
+	}
 
 	if (version >= 2)
 		cfg.guiScaling = deserializeGlobal<float>(ls, "gui_scaling");

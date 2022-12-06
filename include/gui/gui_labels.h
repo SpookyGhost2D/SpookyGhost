@@ -62,6 +62,9 @@
 #define TEXT_SAVE_FRAMES "Save Frames"
 #define TEXT_SAVE_SPRITESHEET "Save Spritesheet"
 
+#define TEXT_CENTER_WINDOW "Center"
+#define TEXT_VIDEO_MODE_CHANGED "Video mode has changed"
+
 #define FILEDIALOG_PIN "Pin"
 #define FILEDIALOG_UNPIN "Unpin"
 
@@ -147,6 +150,9 @@ static const char *StopIcon = "[Stop]";
 static const char *PauseIcon = "[Pause]";
 static const char *PlayIcon = "[Play]";
 static const char *GroupIcon = "[G]";
+
+static const char *CenterWindow = TEXT_CENTER_WINDOW;
+static const char *VideoModeChanged = TEXT_VIDEO_MODE_CHANGED;
 
 static const char *FileDialog_OpenIcon = "";
 static const char *FileDialog_SaveIcon = "";
@@ -248,6 +254,9 @@ static const char *StopIcon = ICON_FA_STOP;
 static const char *PauseIcon = ICON_FA_PAUSE;
 static const char *PlayIcon = ICON_FA_PLAY;
 static const char *GroupIcon = ICON_FA_FOLDER;
+
+static const char *CenterWindow = ICON_FA_ALIGN_CENTER FA5_SPACING TEXT_CENTER_WINDOW;
+static const char *VideoModeChanged = ICON_FA_DESKTOP FA5_SPACING TEXT_VIDEO_MODE_CHANGED;
 
 static const char *FileDialog_OpenIcon = ICON_FA_FOLDER_OPEN FA5_SPACING;
 static const char *FileDialog_SaveIcon = ICON_FA_SAVE FA5_SPACING;

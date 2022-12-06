@@ -4,6 +4,7 @@
 #include <nctl/Array.h>
 #include <nctl/String.h>
 #include <ncine/Vector2.h>
+#include <ncine/AppConfiguration.h>
 #include "gui/gui_common.h"
 
 namespace nc = ncine;
@@ -11,11 +12,14 @@ namespace nc = ncine;
 /// The configuration to be loaded or saved
 struct Configuration
 {
-	const int version = 5;
+	const int version = 6;
 
 	int width = 1280;
 	int height = 720;
-	bool fullscreen = false;
+	float refreshRate = 0.0f; // Added in version 6
+	int windowPositionX = nc::AppConfiguration::WindowPositionIgnore; // Added in version 6
+	int windowPositionY = nc::AppConfiguration::WindowPositionIgnore; // Added in version 6
+	bool fullScreen = false;
 	bool resizable = true;
 
 	bool withVSync = true;
@@ -24,6 +28,7 @@ struct Configuration
 	int canvasWidth = 256;
 	int canvasHeight = 256;
 
+	bool autoGuiScaling = true; // Added in version 6
 #ifdef __ANDROID__
 	float guiScaling = 2.0f; // Added in version 2
 #else

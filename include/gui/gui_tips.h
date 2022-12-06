@@ -10,7 +10,7 @@ namespace Tips {
 /// The longest tip string will be wrapped to the following number of lines by the ImGui::Text widget
 const unsigned int MaxNumberLines = 5;
 
-const unsigned int Count = 29;
+const unsigned int Count = 30;
 nctl::StaticArray<nctl::String, Count> Strings;
 
 void initStrings()
@@ -45,6 +45,7 @@ void initStrings()
 	Strings.pushBack(temp.format("Drag a file or a directory onto the browser on the right side of a file dialog window to navigate to that file or directory."));
 	Strings.pushBack(temp.format("Drag files to the \"%s\" or \"%s\" windows to load them.", Labels::Textures, Labels::Scripts));
 	Strings.pushBack(temp.format("Drag a file or a directory to the \"%s\" window to use it as a save directory for rendering.", Labels::Render));
+	Strings.pushBack(temp.format("You can revert a video mode change before the \"%s\" popup times out by pressing [Escape].", Labels::VideoModeChanged));
 
 	ASSERT(Strings.size() == Count);
 }

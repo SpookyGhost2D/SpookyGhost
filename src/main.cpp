@@ -134,8 +134,10 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 #endif
 
 	config.resolution.set(theCfg.width, theCfg.height);
-	config.inFullscreen = theCfg.fullscreen;
-	config.isResizable = theCfg.resizable;
+	config.refreshRate = theCfg.refreshRate;
+	config.windowPosition.set(theCfg.windowPositionX, theCfg.windowPositionY);
+	config.fullScreen = theCfg.fullScreen;
+	config.resizable = theCfg.resizable;
 	config.frameLimit = static_cast<unsigned int>(theCfg.frameLimit);
 	config.withVSync = theCfg.withVSync;
 
@@ -248,6 +250,15 @@ void MyEventHandler::onFrameStart()
 	}
 
 	ui_->createGui();
+}
+
+void MyEventHandler::onChangeScalingFactor(float factor)
+{
+	if (theCfg.autoGuiScaling)
+	{
+		ui_->changeScalingFactor(factor);
+		theCfg.guiScaling = factor;
+	}
 }
 
 void MyEventHandler::onKeyPressed(const nc::KeyboardEvent &event)

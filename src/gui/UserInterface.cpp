@@ -50,9 +50,9 @@ const char *animationTypes[] = { "Parallel Group", "Sequential Group", "Property
 enum AnimationTypesEnum { PARALLEL_GROUP, SEQUENTIAL_GROUP, PROPERTY, GRID, SCRIPT };
 // clang-format on
 
-static const int PlotArraySize = 512;
-static float plotArray[PlotArraySize];
-static int plotValueIndex = 0;
+const int PlotArraySize = 512;
+float plotArray[PlotArraySize];
+int plotValueIndex = 0;
 
 #if defined(__linux__) && !defined(__ANDROID__) && defined(NCPROJECT_DATA_DIR_DIST)
 const char *docsFile = "../../doc/spookyghost/documentation.html";
@@ -60,19 +60,25 @@ const char *docsFile = "../../doc/spookyghost/documentation.html";
 const char *docsFile = "../docs/documentation.html";
 #endif
 
-static bool showTipsWindow = false;
-static bool showAboutWindow = false;
-static bool showQuitPopup = false;
-static bool hoveringOnCanvasWindow = false;
-static bool hoveringOnCanvas = false;
-static bool deleteKeyPressed = false;
-static bool enableKeyboardNav = true;
+bool showTipsWindow = false;
+bool showAboutWindow = false;
+bool showQuitPopup = false;
+bool showVideoModePopup = false;
 
-static int numFrames = 0;
-static unsigned int currentTipIndex = 0;
+bool hoveringOnCanvasWindow = false;
+bool hoveringOnCanvas = false;
+bool deleteKeyPressed = false;
+bool enableKeyboardNav = true;
+
+int numFrames = 0;
+unsigned int currentTipIndex = 0;
 
 const float imageTooltipSize = 100.0f;
 const float imageTooltipDelay = 0.5f;
+
+const float VideoModePopupTimeout = 15.0f;
+nc::TimeStamp videoModeTimeStamp;
+bool cancelVideoModeChange = false;
 
 unsigned int nextSpriteNameId()
 {
@@ -201,11 +207,30 @@ void UserInterface::cancelRender()
 	renderGuiWindow_.cancelRender();
 }
 
+void UserInterface::changeScalingFactor(float factor)
+{
+	if (ImGui::GetIO().FontGlobalScale != factor)
+	{
+		ImGui::GetIO().FontGlobalScale = factor;
+		ImGui::GetStyle() = ImGuiStyle();
+		applyDarkStyle();
+		ImGui::GetStyle().ScaleAllSizes(factor);
+	}
+}
+
+void UserInterface::openVideoModePopup()
+{
+	videoModeTimeStamp = nc::TimeStamp::now();
+	showVideoModePopup = true;
+}
+
 void UserInterface::closeModalsAndUndockables()
 {
 	showTipsWindow = false;
 	showAboutWindow = false;
 	showQuitPopup = false;
+	// Don't close the popup but revert video mode
+	cancelVideoModeChange = true;
 	FileDialog::config.windowOpen = false;
 }
 
@@ -415,6 +440,9 @@ void UserInterface::createGui()
 
 	if (showQuitPopup)
 		createQuitPopup();
+
+	if (showVideoModePopup)
+		createVideoModePopup();
 
 	createConfigWindow();
 
@@ -3448,7 +3476,17 @@ void UserInterface::createQuitPopup()
 	ImGui::TextUnformatted("Quit the program?");
 	if (ImGui::Button(Labels::Ok))
 	{
-		// Save the configuration on quit (it is the only chance to save the list of pinned directories)
+		// Save the configuration on quit
+		// It is the only chance to save the list of pinned directories and update window position and size
+		nc::IGfxDevice &gfxDevice = nc::theApplication().gfxDevice();
+		theCfg.windowPositionX = gfxDevice.windowPositionX();
+		theCfg.windowPositionY = gfxDevice.windowPositionY();
+		if (theCfg.fullScreen == false)
+		{
+			const float scalingFactor = theCfg.autoGuiScaling ? gfxDevice.windowScalingFactor() : 1.0f;
+			theCfg.width = gfxDevice.width() / scalingFactor;
+			theCfg.height = gfxDevice.height() / scalingFactor;
+		}
 		theSaver->saveCfg(theCfg);
 
 		nc::theApplication().quit();
@@ -3459,6 +3497,65 @@ void UserInterface::createQuitPopup()
 	if (ImGui::Button(Labels::Cancel))
 	{
 		showQuitPopup = false;
+		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::EndPopup();
+}
+
+void UserInterface::createVideoModePopup()
+{
+	const ImVec2 windowPos = ImVec2(ImGui::GetWindowViewport()->Size.x * 0.5f, ImGui::GetWindowViewport()->Size.y * 0.5f);
+	ImGui::SetNextWindowPos(windowPos, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+	ImGui::OpenPopup(Labels::VideoModeChanged);
+	ImGui::BeginPopupModal(Labels::VideoModeChanged, nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+	const int remainingSeconds = static_cast<int>(VideoModePopupTimeout - videoModeTimeStamp.secondsSince());
+
+	ImGui::Text("Keep the current video mode? (%d s)", remainingSeconds);
+	if (ImGui::Button(Labels::Ok))
+	{
+		// Save the video mode configuration
+		nc::IGfxDevice &gfxDevice = nc::theApplication().gfxDevice();
+		const nc::IGfxDevice::VideoMode &videoMode = gfxDevice.currentVideoMode();
+		theCfg.width = videoMode.width;
+		theCfg.height = videoMode.height;
+		theCfg.refreshRate = videoMode.refreshRate;
+		theCfg.fullScreen = gfxDevice.isFullScreen();
+		theCfg.windowPositionX = gfxDevice.windowPositionX();
+		theCfg.windowPositionX = gfxDevice.windowPositionY();
+		theSaver->saveCfg(theCfg);
+
+		showVideoModePopup = false;
+		ImGui::CloseCurrentPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Cancel) || remainingSeconds <= 0 || cancelVideoModeChange)
+	{
+		nc::IGfxDevice &gfxDevice = nc::theApplication().gfxDevice();
+		const unsigned int monitorIndex = gfxDevice.windowMonitorIndex();
+		const nc::IGfxDevice::Monitor &monitor = gfxDevice.monitor(monitorIndex);
+		const nc::IGfxDevice::VideoMode &currentVideoMode = gfxDevice.currentVideoMode(monitorIndex);
+		const unsigned int numVideoModes = monitor.numVideoModes;
+		unsigned int previousModeIndex = 0;
+		for (unsigned int modeIndex = 0; modeIndex < numVideoModes; modeIndex++)
+		{
+			const nc::IGfxDevice::VideoMode &mode = monitor.videoModes[modeIndex];
+			if (mode.width == theCfg.width && mode.height == theCfg.height && mode.refreshRate == theCfg.refreshRate)
+			{
+				previousModeIndex = modeIndex;
+				break;
+			}
+		}
+		if (theCfg.fullScreen)
+			gfxDevice.setVideoMode(previousModeIndex);
+		gfxDevice.setFullScreen(theCfg.fullScreen);
+		if (theCfg.fullScreen == false)
+			gfxDevice.setWindowPosition(theCfg.windowPositionX, theCfg.windowPositionY);
+
+		cancelVideoModeChange = false;
+		showVideoModePopup = false;
 		ImGui::CloseCurrentPopup();
 	}
 

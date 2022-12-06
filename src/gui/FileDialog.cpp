@@ -2,6 +2,7 @@
 	#include "IconsFontAwesome5.h"
 #endif
 
+#include "singletons.h"
 #include "gui/gui_labels.h"
 #include "gui/gui_common.h"
 #include "gui/FileDialog.h"
@@ -98,7 +99,8 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 		config.directory = nc::fs::absolutePath(config.directory.data());
 #endif
 
-	const ImVec2 windowSize = ImVec2(650.0f, 350.0f);
+	const float scalingFactor = theCfg.autoGuiScaling ? nc::theApplication().gfxDevice().windowScalingFactor() : theCfg.guiScaling;
+	const ImVec2 windowSize = ImVec2(650.0f * scalingFactor, 350.0f * scalingFactor);
 	ImGui::SetNextWindowSize(windowSize, ImGuiCond_Once);
 	const ImVec2 windowPos = ImVec2(ImGui::GetWindowViewport()->Size.x * 0.5f, ImGui::GetWindowViewport()->Size.y * 0.5f);
 	ImGui::SetNextWindowPos(windowPos, ImGuiCond_Once, ImVec2(0.5f, 0.5f));
@@ -129,13 +131,13 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 		ImGui::Checkbox("Show Hidden", &config.showHidden);
 		ImGui::SameLine();
 		static int currentComboSortingType = 0;
-		ImGui::PushItemWidth(100.0f);
+		ImGui::PushItemWidth(100.0f * scalingFactor);
 		ImGui::Combo(Labels::FileDialog_Sorting, &currentComboSortingType, sortingStrings, IM_ARRAYSIZE(sortingStrings));
 		ImGui::PopItemWidth();
 		config.sorting = static_cast<Sorting>(currentComboSortingType);
 	}
 
-	const float additionalChildVSpacing = (config.showPinnedDirectories && config.pinnedDirectories != nullptr) ? 6.0f : 4.0f;
+	const float additionalChildVSpacing = ((config.showPinnedDirectories && config.pinnedDirectories != nullptr) ? 6.0f : 4.0f) * scalingFactor;
 	if (config.showPinnedDirectories && config.pinnedDirectories != nullptr)
 	{
 		nctl::Array<nctl::String> &pinnedDirectories = *config.pinnedDirectories;
