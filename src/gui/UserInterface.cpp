@@ -1720,7 +1720,7 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 
 		if ((nodeFlags & ImGuiTreeNodeFlags_Leaf) == 0)
 		{
-			nodeFlags |= ImGuiTreeNodeFlags_AllowItemOverlap;
+			nodeFlags |= ImGuiTreeNodeFlags_AllowOverlap;
 			treeIsOpen = ImGui::TreeNodeEx(static_cast<void *>(&anim), nodeFlags, "");
 			ImGui::SameLine();
 		}
