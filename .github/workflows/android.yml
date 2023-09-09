@@ -22,7 +22,7 @@ jobs:
 
     steps:
     - name: 'Checkout Code'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: 'Install nCine Build Dependencies'
       run: |
@@ -86,7 +86,7 @@ jobs:
 
     - name: 'Gradle Assemble'
       run: |
-        export JAVA_HOME=$JAVA_HOME_11_X64
+        export JAVA_HOME=$JAVA_HOME_17_X64
         export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
         cd ../$PROJECT_NAME-build-${{ matrix.BuildType }}/android
         gradle assemble${{ matrix.BuildType }}
