@@ -17,8 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         BuildType: [Debug, Release, BinDist]
+        os: [macOS-12, macOS-14]
 
-    runs-on: 'macOS-11'
+    runs-on: ${{ matrix.os }}
 
     steps:
     - name: 'Checkout Code'
@@ -31,7 +32,11 @@ jobs:
 
     - name: 'Download nCine-libraries and project data'
       run: |
-        export OS=darwin
+        if [[ "${{ matrix.os }}" == "macOS-14" ]]; then
+          export OS=macos14
+        else
+          export OS=macos12
+        fi
         export CC=appleclang
 
         export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/OS/'"$OS"'/'`
@@ -107,7 +112,11 @@ jobs:
         export DEPLOY_MESSAGE=`sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/' <<< "$DEPLOY_MESSAGE"`
         export DEPLOY_MESSAGE=`sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/' <<< "$DEPLOY_MESSAGE"`
 
-        export OS=darwin
+        if [[ "${{ matrix.os }}" == "macOS-14" ]]; then
+          export OS=macos14
+        else
+          export OS=macos12
+        fi
         export CC=appleclang
         export PROJECT_EXT=dmg
 

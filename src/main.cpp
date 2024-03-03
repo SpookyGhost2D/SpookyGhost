@@ -89,7 +89,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	if (nc::fs::isReadableFile(ui::auxString.data()) == false)
 		ui::auxString = "asset::config.lua";
 #elif defined(__linux__) && defined(NCPROJECT_DATA_DIR_DIST)
-	ui::auxString = nc::fs::joinPath(nc::fs::homeDir(), linuxConfigDir);
+	ui::auxString = nc::fs::joinPath(nc::fs::homePath(), linuxConfigDir);
 	if (nc::fs::exists(ui::auxString.data()) == false)
 	{
 		const bool dirCreated = nc::fs::createDir(ui::auxString.data());
@@ -154,7 +154,7 @@ void MyEventHandler::onInit()
 {
 #if defined(__linux__) && defined(NCPROJECT_DATA_DIR_DIST)
 	static char iniFilename[512];
-	strncpy(iniFilename, nc::fs::joinPath(nc::fs::joinPath(nc::fs::homeDir(), linuxConfigDir), "imgui.ini").data(), 512);
+	strncpy(iniFilename, nc::fs::joinPath(nc::fs::joinPath(nc::fs::homePath(), linuxConfigDir), "imgui.ini").data(), 512);
 	ImGui::GetIO().IniFilename = iniFilename;
 #endif
 

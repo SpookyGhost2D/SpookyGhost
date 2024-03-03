@@ -18,7 +18,7 @@ jobs:
         ARCH: [armeabi-v7a, arm64-v8a, x86_64]
         BuildType: [Debug, Release]
 
-    runs-on: 'ubuntu-20.04'
+    runs-on: 'ubuntu-22.04'
 
     steps:
     - name: 'Checkout Code'
