@@ -1398,9 +1398,9 @@ void UserInterface::createSpritesWindow()
 			ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
 			enableKeyboardNav = false;
 
-			if (enableMoveUpButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
+			if (enableMoveUpButton && ImGui::IsKeyReleased(ImGuiKey_UpArrow))
 				moveSpriteEntry(*selectedSpriteEntry_, indexInParent, true);
-			if (enableMoveDownButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
+			if (enableMoveDownButton && ImGui::IsKeyReleased(ImGuiKey_DownArrow))
 				moveSpriteEntry(*selectedSpriteEntry_, indexInParent, false);
 		}
 
@@ -1997,9 +1997,9 @@ void UserInterface::createAnimationsWindow()
 		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
 		enableKeyboardNav = false;
 
-		if (enableMoveUpButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
+		if (enableMoveUpButton && ImGui::IsKeyReleased(ImGuiKey_UpArrow))
 			nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex - 1]);
-		if (enableMoveDownButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
+		if (enableMoveDownButton && ImGui::IsKeyReleased(ImGuiKey_DownArrow))
 			nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex + 1]);
 	}
 
@@ -3413,9 +3413,9 @@ void UserInterface::createTipsWindow()
 		ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NavEnableKeyboard);
 		enableKeyboardNav = false;
 
-		if (enablePrevButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)))
+		if (enablePrevButton && ImGui::IsKeyReleased(ImGuiKey_LeftArrow))
 			currentTipIndex--;
-		if (enableNextButton && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)))
+		if (enableNextButton && ImGui::IsKeyReleased(ImGuiKey_RightArrow))
 			currentTipIndex++;
 	}
 

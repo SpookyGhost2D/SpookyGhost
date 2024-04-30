@@ -304,7 +304,15 @@ void RenderGuiWindow::create()
 				saveAnimStatus_.filename.format("%s.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 				shouldSaveSpritesheet_ = true;
 				saveAnimStatus_.sheetDestPos.set(0, 0);
-				theResizedCanvas->resizeTexture(theCanvas->size() * saveAnimStatus_.canvasResize);
+				// Immediately-invoked function expression for const initialization
+				const nc::Vector2i resizeCanvasSize = [&] {
+					nc::Vector2i size(theCanvas->texWidth() * saveAnimStatus_.canvasResize,
+					                  theCanvas->texHeight() * saveAnimStatus_.canvasResize);
+					size.x = (size.x < 2) ? 2 : size.x;
+					size.y = (size.y < 2) ? 2 : size.y;
+					return size;
+				}();
+				theResizedCanvas->resizeTexture(resizeCanvasSize);
 				theSpritesheet->resizeTexture(spritesheetSize);
 				// Disabling V-Sync for faster render times
 				nc::theApplication().gfxDevice().setSwapInterval(0);
