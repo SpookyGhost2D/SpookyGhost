@@ -930,7 +930,7 @@ void UserInterface::createTexturesWindow()
 						width *= aspectRatio;
 
 					ImGui::BeginTooltip();
-					ImGui::Image(texture.imguiTexId(), ImVec2(width, height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+					ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(texture.imguiTexId())), ImVec2(width, height), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 					ImGui::EndTooltip();
 				}
 			}
@@ -1174,7 +1174,7 @@ void UserInterface::createSpriteListEntry(SpriteEntry &entry, unsigned int index
 					width *= aspectRatio;
 
 				ImGui::BeginTooltip();
-				ImGui::Image(sprite->texture().imguiTexId(), ImVec2(width, height), uv0, uv1);
+				ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(sprite->texture().imguiTexId())), ImVec2(width, height), uv0, uv1);
 				ImGui::EndTooltip();
 			}
 		}
@@ -2986,7 +2986,8 @@ void UserInterface::createCanvasWindow()
 	canvasGuiSection_.create(*theCanvas);
 
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
-	ImGui::Image(theCanvas->imguiTexId(), ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(theCanvas->imguiTexId())),
+				 ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	ImDrawList *drawList = ImGui::GetWindowDrawList();
 	const float lineThickness = (canvasZoom < 1.0f) ? 1.0f : canvasZoom;
@@ -3125,7 +3126,7 @@ void UserInterface::createTexRectWindow()
 	{
 		const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 		nc::Recti texRect = sprite.texRect();
-		ImGui::Image(sprite.imguiTexId(), size);
+		ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(sprite.imguiTexId())), size);
 
 		mouseWheelCanvasZoom();
 
@@ -3432,7 +3433,7 @@ void UserInterface::createAboutWindow()
 	const ImVec2 spookySize(spookyLogo_->width() * 2.0f, spookyLogo_->height() * 2.0f);
 	cursorPos.x = (ImGui::GetWindowSize().x - spookySize.x) * 0.5f;
 	ImGui::SetCursorPos(cursorPos);
-	ImGui::Image(spookyLogo_->imguiTexId(), spookySize);
+	ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(spookyLogo_->imguiTexId())), spookySize);
 	ImGui::Spacing();
 #ifdef WITH_GIT_VERSION
 	ImGui::Text("SpookyGhost %s (%s)", VersionStrings::Version, VersionStrings::GitBranch);
@@ -3451,7 +3452,7 @@ void UserInterface::createAboutWindow()
 	const ImVec2 ncineSize(ncineLogo_->width() * 2.0f, ncineLogo_->height() * 2.0f);
 	cursorPos.x = (ImGui::GetWindowSize().x - ncineSize.x) * 0.5f;
 	ImGui::SetCursorPos(cursorPos);
-	ImGui::Image(ncineLogo_->imguiTexId(), spookySize);
+	ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(ncineLogo_->imguiTexId())), spookySize);
 	ImGui::Spacing();
 	ImGui::Text("Based on nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
 	ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
