@@ -370,6 +370,7 @@ bool UserInterface::openDocumentationEnabled()
 void UserInterface::openDocumentation()
 {
 	nctl::String docsPath = nc::fs::joinPath(nc::fs::dataPath(), docsFile);
+	// Can't use `Platform_OpenInShellUserData()` from ImGui
 	openFile(docsPath.data());
 }
 
@@ -3440,7 +3441,7 @@ void UserInterface::createAboutWindow()
 #endif
 	ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
 	ImGui::Spacing();
-	ImGui::Text("https://encelo.itch.io/spookyghost");
+	ImGui::TextLinkOpenURL("https://encelo.itch.io/spookyghost", "https://encelo.itch.io/spookyghost");
 	for (unsigned int i = 0; i < 4; i++)
 		ImGui::Spacing();
 
@@ -3457,7 +3458,7 @@ void UserInterface::createAboutWindow()
 	ImGui::Text("Based on nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
 	ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
 	ImGui::Spacing();
-	ImGui::Text("https://ncine.github.io/");
+	ImGui::TextLinkOpenURL("https://ncine.github.io/", "https://ncine.github.io/");
 
 	ImGui::NewLine();
 	if (ImGui::Button(Labels::Close))
