@@ -1,3 +1,4 @@
+#include <cmath>
 #include <ncine/common_constants.h>
 #include "EasingCurve.h"
 

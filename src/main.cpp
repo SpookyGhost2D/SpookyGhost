@@ -179,7 +179,7 @@ void MyEventHandler::onShutdown()
 
 void MyEventHandler::onFrameStart()
 {
-	const float interval = nc::theApplication().interval();
+	const float frameTime = nc::theApplication().frameTime();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	theCanvas->bind();
@@ -196,7 +196,7 @@ void MyEventHandler::onFrameStart()
 		}
 	}
 	else
-		theAnimMgr->update(interval);
+		theAnimMgr->update(frameTime);
 	theSpriteMgr->update();
 
 	theCanvas->unbind();
