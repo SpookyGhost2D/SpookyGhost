@@ -41,7 +41,7 @@ jobs:
           CC: clang
           CXX: clang++
 
-    runs-on: 'ubuntu-22.04'
+    runs-on: 'ubuntu-24.04'
 
     steps:
     - name: 'Checkout Code'
@@ -50,7 +50,7 @@ jobs:
     - name: 'Install nCine Build Dependencies'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgl1-mesa-dev
+        sudo apt-get install -y libgl-dev libxext-dev
 
     - name: 'Unshallow Git Repository for Versioning'
       if: matrix.BuildType == 'BinDist'
@@ -93,7 +93,7 @@ jobs:
         else
           export NCINE_BUILD_TYPE=${{ matrix.BuildType }}
         fi
-        export CMAKE_ARGS="-B ../nCine-build-$NCINE_BUILD_TYPE -D CMAKE_BUILD_TYPE=$NCINE_BUILD_TYPE -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
+        export CMAKE_ARGS="-B ../nCine-build-$NCINE_BUILD_TYPE -D CMAKE_BUILD_TYPE=$NCINE_BUILD_TYPE -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=v1.91.9b-docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
 
         export CC= ${{ matrix.CC }}
         export CXX=${{ matrix.CXX }}
@@ -101,7 +101,7 @@ jobs:
 
         cmake $CMAKE_ARGS
         cd ..
-        make -j2 -C nCine-build-$NCINE_BUILD_TYPE
+        make -j $(getconf _NPROCESSORS_ONLN) -C nCine-build-$NCINE_BUILD_TYPE
 
     - name: 'CMake Configuration'
       run: |
@@ -124,7 +124,7 @@ jobs:
         export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
 
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../nCine-external/lib
-        make -j2 -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}
+        make -j $(getconf _NPROCESSORS_ONLN) -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}
 
     - name: 'Package'
       if: matrix.BuildType == 'BinDist'

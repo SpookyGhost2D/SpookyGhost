@@ -18,7 +18,7 @@ jobs:
         ARCH: [armeabi-v7a, arm64-v8a, x86_64]
         BuildType: [Debug, Release]
 
-    runs-on: 'ubuntu-22.04'
+    runs-on: 'ubuntu-24.04'
 
     steps:
     - name: 'Checkout Code'
@@ -27,7 +27,7 @@ jobs:
     - name: 'Install nCine Build Dependencies'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgl1-mesa-dev
+        sudo apt-get install -y libgl-dev libxext-dev
 
     - name: 'Unshallow Git Repository for Versioning'
       run: |
@@ -72,11 +72,11 @@ jobs:
     - name: 'CMake Configuration and Make of nCine as a static library'
       run: |
         cd ../nCine
-        export CMAKE_ARGS=" -B ../nCine-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=docking -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF -D NCINE_BUILD_ANDROID=ON -D NCINE_NDK_ARCHITECTURES=${{ matrix.ARCH }} -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
+        export CMAKE_ARGS=" -B ../nCine-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=v1.91.9b-docking -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF -D NCINE_BUILD_ANDROID=ON -D NCINE_NDK_ARCHITECTURES=${{ matrix.ARCH }} -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
 
         cmake $CMAKE_ARGS
         cd ..
-        make -j2 -C nCine-build-${{ matrix.BuildType }}
+        make -j $(getconf _NPROCESSORS_ONLN) -C nCine-build-${{ matrix.BuildType }}
 
     - name: 'CMake Configuration'
       run: |
@@ -88,8 +88,10 @@ jobs:
       run: |
         export JAVA_HOME=$JAVA_HOME_17_X64
         export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        export MAKEFLAGS="-j $(getconf _NPROCESSORS_ONLN)"
+
         cd ../$PROJECT_NAME-build-${{ matrix.BuildType }}/android
-        gradle assemble${{ matrix.BuildType }}
+        gradle assemble${{ matrix.BuildType }} --parallel
 
     - name: 'Push Artifacts'
       env:
