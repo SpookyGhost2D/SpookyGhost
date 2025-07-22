@@ -72,7 +72,7 @@ jobs:
     - name: 'CMake Configuration and Make of nCine as a static library'
       run: |
         cd ../nCine
-        export CMAKE_ARGS=" -B ../nCine-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=v1.91.9b-docking -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF -D NCINE_BUILD_ANDROID=ON -D NCINE_NDK_ARCHITECTURES=${{ matrix.ARCH }} -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
+        export CMAKE_ARGS=" -B ../nCine-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=v1.92.1-docking -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF -D NCINE_BUILD_ANDROID=ON -D NCINE_NDK_ARCHITECTURES=${{ matrix.ARCH }} -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
 
         cmake $CMAKE_ARGS
         cd ..

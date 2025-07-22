@@ -121,15 +121,16 @@ UserInterface::UserInterface()
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-	io.FontGlobalScale = theCfg.guiScaling;
+	ImGui::GetStyle().FontScaleMain = theCfg.guiScaling;
 
 #ifdef WITH_FONTAWESOME
+	io.Fonts->AddFontDefault(); // Cannot use `MergeMode` for the first font
 	// Merge icons from Font Awesome into the default font
-	static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-	ImFontConfig icons_config;
-	icons_config.MergeMode = true;
-	icons_config.PixelSnapH = true;
-	icons_config.FontDataOwnedByAtlas = false; // ImGui will otherwise try to use `free()` instead of `delete[]`
+	static const ImWchar iconsRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+	ImFontConfig iconsConfig;
+	iconsConfig.MergeMode = true;
+	iconsConfig.PixelSnapH = true;
+	iconsConfig.FontDataOwnedByAtlas = false; // ImGui will otherwise try to use `free()` instead of `delete[]`
 
 	// Loading font from memory so that a font can be an Android asset file
 	nctl::UniquePtr<nc::IFile> fontFile = nc::IFile::createFileHandle(nc::fs::joinPath(nc::fs::dataPath(), "fonts/" FONT_ICON_FILE_NAME_FAS).data());
@@ -137,7 +138,7 @@ UserInterface::UserInterface()
 	const long int fontFileSize = fontFile->size();
 	fontFileBuffer_ = nctl::makeUnique<uint8_t[]>(fontFileSize);
 	fontFile->read(fontFileBuffer_.get(), fontFileSize);
-	io.Fonts->AddFontFromMemoryTTF(fontFileBuffer_.get(), fontFileSize, 12.0f, &icons_config, icons_ranges);
+	io.Fonts->AddFontFromMemoryTTF(fontFileBuffer_.get(), fontFileSize, 12.0f, &iconsConfig, iconsRanges);
 	fontFile->close();
 #endif
 
@@ -209,12 +210,14 @@ void UserInterface::cancelRender()
 
 void UserInterface::changeScalingFactor(float factor)
 {
-	if (ImGui::GetIO().FontGlobalScale != factor)
+	ImGuiStyle &style = ImGui::GetStyle();
+
+	if (style.FontScaleMain != factor)
 	{
-		ImGui::GetIO().FontGlobalScale = factor;
-		ImGui::GetStyle() = ImGuiStyle();
+		style = ImGuiStyle();
+		style.FontScaleMain = factor;
 		applyDarkStyle();
-		ImGui::GetStyle().ScaleAllSizes(factor);
+		style.ScaleAllSizes(factor);
 	}
 }
 
@@ -766,7 +769,8 @@ void UserInterface::createToolbarWindow()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	ImGui::Begin("Toolbar", nullptr, windowFlags);
 
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+	const ImVec2 closeItemSpacing(ImGui::GetStyle().ItemSpacing.x * 0.5f, ImGui::GetStyle().ItemSpacing.y * 0.5f);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, closeItemSpacing);
 	if (ImGui::Button(Labels::New) && menuNewEnabled())
 		menuNew();
 	ImGui::SameLine();
@@ -1284,9 +1288,9 @@ void UserInterface::createSpriteListEntry(SpriteEntry &entry, unsigned int index
 				}
 				theSpriteMgr->updateSpritesArray();
 			}
-
-			ImGui::EndDragDropTarget();
 		}
+
+		ImGui::EndDragDropTarget();
 	}
 
 	if (entry.isGroup() && treeIsOpen)
@@ -1439,9 +1443,9 @@ void UserInterface::createSpritesWindow()
 				dragEntry->setParentGroup(&theSpriteMgr->root());
 				theSpriteMgr->children().pushBack(nctl::move(dragEntry));
 				theSpriteMgr->updateSpritesArray();
-
-				ImGui::EndDragDropTarget();
 			}
+
+			ImGui::EndDragDropTarget();
 		}
 
 		if (treeIsOpen)
@@ -1768,12 +1772,22 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 	{
 		selectedAnimation_ = &anim;
 
-		if (ImGui::MenuItem(Labels::Play))
-			selectedAnimation_->play();
-		if (ImGui::MenuItem(Labels::Pause))
-			selectedAnimation_->pause();
+		const bool enableStopButton = selectedAnimation_->isStopped() == false;
+		const bool enablePauseButton = selectedAnimation_->isPlaying() == true;
+		const bool enablePlayButton = selectedAnimation_->isPlaying() == false;
+
+		ImGui::BeginDisabled(enableStopButton == false);
 		if (ImGui::MenuItem(Labels::Stop))
 			selectedAnimation_->stop();
+		ImGui::EndDisabled();
+		ImGui::BeginDisabled(enablePauseButton == false);
+		if (ImGui::MenuItem(Labels::Pause))
+			selectedAnimation_->pause();
+		ImGui::EndDisabled();
+		ImGui::BeginDisabled(enablePlayButton == false);
+		if (ImGui::MenuItem(Labels::Play))
+			selectedAnimation_->play();
+		ImGui::EndDisabled();
 
 		ImGui::Separator();
 
@@ -1846,9 +1860,9 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 					anim.parent()->anims().insertAt(index, nctl::move(dragAnimation));
 				}
 			}
-
-			ImGui::EndDragDropTarget();
 		}
+
+		ImGui::EndDragDropTarget();
 	}
 
 	animId++;
@@ -1866,7 +1880,7 @@ void UserInterface::createAnimationsWindow()
 	ImGui::Begin(Labels::Animations);
 
 	static int currentComboAnimType = 0;
-	ImGui::PushItemWidth(150.0f);
+	ImGui::PushItemWidth(ImGui::GetFontSize() * 12.0f);
 	ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
@@ -1963,16 +1977,26 @@ void UserInterface::createAnimationsWindow()
 		selectedAnimation_->parent()->anims().insertAt(++selectedIndex, nctl::move(selectedAnimation_->clone()));
 	ImGui::EndDisabled();
 
-	const bool enablePlayButtons = selectedAnimation_ != nullptr && theAnimMgr->anims().isEmpty() == false;
-	ImGui::BeginDisabled(enablePlayButtons == false);
+	const bool enableControlButtons = selectedAnimation_ != nullptr && theAnimMgr->anims().isEmpty() == false;
+	const bool enableStopButton = enableControlButtons && selectedAnimation_->isStopped() == false;
+	const bool enablePauseButton = enableControlButtons && selectedAnimation_->isPlaying() == true;
+	const bool enablePlayButton = enableControlButtons && selectedAnimation_->isPlaying() == false;
+
+	ImGui::BeginDisabled(enableControlButtons == false);
+	ImGui::BeginDisabled(enableStopButton == false);
 	if (ImGui::Button(Labels::Stop))
 		selectedAnimation_->stop();
+	ImGui::EndDisabled();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(enablePauseButton == false);
 	if (ImGui::Button(Labels::Pause))
 		selectedAnimation_->pause();
+	ImGui::EndDisabled();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(enablePlayButton == false);
 	if (ImGui::Button(Labels::Play))
 		selectedAnimation_->play();
+	ImGui::EndDisabled();
 	ImGui::EndDisabled();
 
 	ImGui::SameLine();
@@ -2004,7 +2028,7 @@ void UserInterface::createAnimationsWindow()
 			nctl::swap(selectedAnimation_->parent()->anims()[selectedIndex], selectedAnimation_->parent()->anims()[selectedIndex + 1]);
 	}
 
-	ImGui::PushItemWidth(200.0f);
+	ImGui::PushItemWidth(ImGui::GetFontSize() * 16.0f);
 	ImGui::SliderFloat("Speed Multiplier", &theAnimMgr->speedMultiplier(), 0.0f, 5.0f);
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
@@ -2022,11 +2046,11 @@ void UserInterface::createAnimationsWindow()
 			nodeFlags |= ImGuiTreeNodeFlags_Selected;
 
 		ui::auxString.format("%s Root (%u children)", Labels::GroupIcon, theAnimMgr->anims().size());
-		if (theAnimMgr->animGroup().state() == IAnimation::State::STOPPED)
+		if (theAnimMgr->animGroup().isStopped())
 			ui::auxString.formatAppend(" %s", Labels::StopIcon);
-		else if (theAnimMgr->animGroup().state() == IAnimation::State::PAUSED)
+		else if (theAnimMgr->animGroup().isPaused())
 			ui::auxString.formatAppend(" %s", Labels::PauseIcon);
-		else if (theAnimMgr->animGroup().state() == IAnimation::State::PLAYING)
+		else if (theAnimMgr->animGroup().isPlaying())
 			ui::auxString.formatAppend(" %s", Labels::PlayIcon);
 
 		// Force tree expansion to see the selected animation
@@ -2040,12 +2064,23 @@ void UserInterface::createAnimationsWindow()
 		{
 			selectedAnimation_ = &theAnimMgr->animGroup();
 
-			if (ImGui::MenuItem(Labels::Play))
-				theAnimMgr->animGroup().play();
-			if (ImGui::MenuItem(Labels::Pause))
-				theAnimMgr->animGroup().pause();
+			const bool enableStopButton = selectedAnimation_->isStopped() == false;
+			const bool enablePauseButton = selectedAnimation_->isPlaying() == true;
+			const bool enablePlayButton = selectedAnimation_->isPlaying() == false;
+
+			ImGui::BeginDisabled(enableStopButton == false);
 			if (ImGui::MenuItem(Labels::Stop))
-				theAnimMgr->animGroup().stop();
+				selectedAnimation_->stop();
+			ImGui::EndDisabled();
+			ImGui::BeginDisabled(enablePauseButton == false);
+			if (ImGui::MenuItem(Labels::Pause))
+				selectedAnimation_->pause();
+			ImGui::EndDisabled();
+			ImGui::BeginDisabled(enablePlayButton == false);
+			if (ImGui::MenuItem(Labels::Play))
+				selectedAnimation_->play();
+			ImGui::EndDisabled();
+
 			ImGui::EndPopup();
 		}
 
@@ -2062,9 +2097,9 @@ void UserInterface::createAnimationsWindow()
 
 				dragAnimation->setParent(&theAnimMgr->animGroup());
 				theAnimMgr->anims().pushBack(nctl::move(dragAnimation));
-
-				ImGui::EndDragDropTarget();
 			}
+
+			ImGui::EndDragDropTarget();
 		}
 
 		if (treeIsOpen)
@@ -2988,7 +3023,7 @@ void UserInterface::createCanvasWindow()
 
 	const ImVec2 cursorScreenPos = ImGui::GetCursorScreenPos();
 	ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(theCanvas->imguiTexId())),
-				 ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+	             ImVec2(theCanvas->texWidth() * canvasZoom, theCanvas->texHeight() * canvasZoom), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
 	ImDrawList *drawList = ImGui::GetWindowDrawList();
 	const float lineThickness = (canvasZoom < 1.0f) ? 1.0f : canvasZoom;
@@ -3111,13 +3146,15 @@ void UserInterface::createTexRectWindow()
 	ImGui::Begin(Labels::TexRect, nullptr, ImGuiWindowFlags_HorizontalScrollbar);
 
 	ui::auxString.format("Zoom: %.2f", canvasGuiSection_.zoomAmount());
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+	const ImVec2 closeItemSpacing(ImGui::GetStyle().ItemSpacing.x * 0.5f, ImGui::GetStyle().ItemSpacing.y * 0.5f);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, closeItemSpacing);
 	if (ImGui::Button(Labels::PlusIcon))
 		canvasGuiSection_.increaseZoom();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::MinusIcon))
 		canvasGuiSection_.decreaseZoom();
 	ImGui::PopStyleVar();
+
 	ImGui::SameLine();
 	if (ImGui::Button(ui::auxString.data()))
 		canvasGuiSection_.resetZoom();
@@ -3374,7 +3411,8 @@ void UserInterface::createTipsWindow()
 		for (unsigned int i = 0; i < Tips::MaxNumberLines - numLines; i++)
 			emptyLines[i] = '\n';
 		emptyLines[Tips::MaxNumberLines - numLines] = '\0';
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+		const ImVec2 closeItemSpacing(ImGui::GetStyle().ItemSpacing.x * 0.5f, ImGui::GetStyle().ItemSpacing.y * 0.5f);
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, closeItemSpacing);
 		ImGui::TextUnformatted(emptyLines);
 		ImGui::PopStyleVar();
 	}
@@ -3439,7 +3477,7 @@ void UserInterface::createAboutWindow()
 #ifdef WITH_GIT_VERSION
 	ImGui::Text("SpookyGhost %s (%s)", VersionStrings::Version, VersionStrings::GitBranch);
 #endif
-	ImGui::Text("SpookyGhost compiled on %s at %s", __DATE__, __TIME__);
+	ImGui::Text("Compiled on %s at %s", __DATE__, __TIME__);
 	ImGui::Spacing();
 	ImGui::TextLinkOpenURL("https://encelo.itch.io/spookyghost", "https://encelo.itch.io/spookyghost");
 	for (unsigned int i = 0; i < 4; i++)
@@ -3455,8 +3493,8 @@ void UserInterface::createAboutWindow()
 	ImGui::SetCursorPos(cursorPos);
 	ImGui::Image(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(ncineLogo_->imguiTexId())), spookySize);
 	ImGui::Spacing();
-	ImGui::Text("Based on nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
-	ImGui::Text("nCine compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
+	ImGui::Text("nCine %s (%s)", nc::VersionStrings::Version, nc::VersionStrings::GitBranch);
+	ImGui::Text("Compiled on %s at %s", nc::VersionStrings::CompilationDate, nc::VersionStrings::CompilationTime);
 	ImGui::Spacing();
 	ImGui::TextLinkOpenURL("https://ncine.github.io/", "https://ncine.github.io/");
 

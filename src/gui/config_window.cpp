@@ -172,7 +172,7 @@ void UserInterface::createConfigWindow()
 	ImGui::SliderFloat("GUI Scaling", &theCfg.guiScaling, 0.5f, 2.0f, "%.2f");
 	ImGui::EndDisabled();
 
-	if (ImGui::GetIO().FontGlobalScale != theCfg.guiScaling)
+	if (ImGui::GetStyle().FontScaleMain != theCfg.guiScaling)
 		changeScalingFactor(theCfg.guiScaling);
 
 	ImGui::InputText("Start-up Project", theCfg.startupProjectName.data(), ui::MaxStringLength,

@@ -17,13 +17,15 @@ const char *ResizeStrings[7] = { "16x16", "32x32", "64x64", "128x128", "256x256"
 void CanvasGuiSection::create(Canvas &canvas)
 {
 	ui::auxString.format("Zoom: %.2f", zoomAmount());
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+	const ImVec2 closeItemSpacing(ImGui::GetStyle().ItemSpacing.x * 0.5f, ImGui::GetStyle().ItemSpacing.y * 0.5f);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, closeItemSpacing);
 	if (ImGui::Button(Labels::PlusIcon))
 		increaseZoom();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::MinusIcon))
 		decreaseZoom();
 	ImGui::PopStyleVar();
+
 	ImGui::SameLine();
 	if (ImGui::Button(ui::auxString.data()))
 		resetZoom();
@@ -54,15 +56,17 @@ void CanvasGuiSection::create(Canvas &canvas)
 		ui::auxString.append("Resize");
 	ui::auxString.append("##ResizeCombo");
 
-	ImGui::PushItemWidth(100.0f);
+	ImGui::PushItemWidth(ImGui::GetFontSize() * 8.0f);
 	ImGui::Combo(ui::auxString.data(), &currentResizeCombo, ui::comboString.data());
 	ImGui::PopItemWidth();
 	resizePreset_ = static_cast<CanvasGuiSection::ResizePreset>(currentResizeCombo);
+	bool valueChanged = false;
 	if (currentResizeCombo == CanvasGuiSection::ResizePreset::CUSTOM)
 	{
 		ImGui::SameLine();
-		ImGui::PushItemWidth(80.0f);
-		ImGui::InputInt2("Resize", customCanvasSize_.data(), ImGuiInputTextFlags_EnterReturnsTrue);
+		ImGui::PushItemWidth(ImGui::GetFontSize() * 6.5f);
+		ImGui::InputInt2("Resize", customCanvasSize_.data());
+		valueChanged = ImGui::IsItemDeactivatedAfterEdit();
 		ImGui::PopItemWidth();
 	}
 	else
@@ -79,7 +83,7 @@ void CanvasGuiSection::create(Canvas &canvas)
 	else if (desiredCanvasSize.y > canvas.maxTextureSize())
 		desiredCanvasSize.y = canvas.maxTextureSize();
 
-	if (canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y)
+	if (valueChanged && (canvas.size().x != desiredCanvasSize.x || canvas.size().y != desiredCanvasSize.y))
 		canvas.resizeTexture(desiredCanvasSize);
 
 	ImGui::SameLine();

@@ -185,20 +185,25 @@ void RenderGuiWindow::create()
 	{
 		static int newNumFrames = saveAnimStatus_.numFrames;
 		nc::Vector2i newCustomSides(customSides);
-		ImGui::InputInt2("H/V Sides", newCustomSides.data(), ImGuiInputTextFlags_EnterReturnsTrue);
-		if (newCustomSides.x != customSides.x)
+		bool valueChanged = false;
+		ImGui::InputInt2("H/V Sides", newCustomSides.data());
+		valueChanged = ImGui::IsItemDeactivatedAfterEdit();
+		if (valueChanged)
 		{
-			newCustomSides.y = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.x)));
-			// Avoid empty lines
-			if (newCustomSides.x * newCustomSides.y > saveAnimStatus_.numFrames + newCustomSides.y)
-				newCustomSides.x = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.y)));
-		}
-		else if (newCustomSides.y != customSides.y)
-		{
-			newCustomSides.x = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.y)));
-			// Avoid empty lines
-			if (newCustomSides.x * newCustomSides.y > saveAnimStatus_.numFrames + newCustomSides.x)
+			if (newCustomSides.x != customSides.x)
+			{
 				newCustomSides.y = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.x)));
+				// Avoid empty lines
+				if (newCustomSides.x * newCustomSides.y > saveAnimStatus_.numFrames + newCustomSides.y)
+					newCustomSides.x = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.y)));
+			}
+			else if (newCustomSides.y != customSides.y)
+			{
+				newCustomSides.x = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.y)));
+				// Avoid empty lines
+				if (newCustomSides.x * newCustomSides.y > saveAnimStatus_.numFrames + newCustomSides.x)
+					newCustomSides.y = static_cast<int>(ceilf(saveAnimStatus_.numFrames / static_cast<float>(newCustomSides.x)));
+			}
 		}
 
 		if (newNumFrames != saveAnimStatus_.numFrames &&

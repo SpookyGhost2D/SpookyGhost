@@ -37,6 +37,9 @@ class IAnimation
 	virtual Type type() const = 0;
 	inline State state() const { return state_; }
 	inline bool isGroup() const { return type() == Type::SEQUENTIAL_GROUP || type() == Type::PARALLEL_GROUP; }
+	inline bool isStopped() const { return state_ == State::STOPPED; }
+	inline bool isPaused() const { return state_ == State::PAUSED; }
+	inline bool isPlaying() const { return state_ == State::PLAYING; }
 
 	virtual void stop();
 	inline virtual void pause() { state_ = State::PAUSED; }

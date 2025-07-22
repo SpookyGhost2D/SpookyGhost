@@ -46,7 +46,9 @@ class FileDialog
 		const char *windowTitle = "File Browser";
 		const char *okButton = "OK";
 
+		bool showNavigation = true;
 		bool showControls = true;
+		bool showExtraControls = false;
 		bool showPinnedDirectories = true;
 #ifdef _WIN32
 		bool showPermissions = false;
@@ -60,6 +62,8 @@ class FileDialog
 		Sorting sorting = Sorting::NAME_ASC;
 
 		nctl::Array<nctl::String> *pinnedDirectories = nullptr;
+		nctl::Array<nctl::String> directoryHistory = nctl::Array<nctl::String>(8);
+		int historyIndex = -1;
 
 		bool sortDirectoriesfirst = true;
 		SelectionType selectionType = SelectionType::FILE;

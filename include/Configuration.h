@@ -42,7 +42,7 @@ struct Configuration
 	nctl::String scriptsPath = nctl::String(ui::MaxStringLength); // Added in version 3
 
 	bool showTipsOnStart = true; // Added in version 4
-	nctl::Array<nctl::String> pinnedDirectories; // Added in version 5
+	nctl::Array<nctl::String> pinnedDirectories = nctl::Array<nctl::String>(8); // Added in version 5
 };
 
 #endif
