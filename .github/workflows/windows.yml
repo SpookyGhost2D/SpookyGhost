@@ -8,6 +8,7 @@ env:
 
      - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
   DEPLOY_BRANCH: PROJECT_NAME-BRANCH_NAME-OS-COMPILER
+  IMGUI_VERSION_TAG: v1.92.4-docking
 
 on: [push, workflow_dispatch]
 
@@ -67,7 +68,7 @@ jobs:
         else
           { $nCineBuildType = "${{ matrix.BuildType }}" }
 
-        cmake -G "Visual Studio 17 2022" -A x64 -B ../nCine-build-$nCineBuildType -D CMAKE_BUILD_TYPE=$nCineBuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=v1.92.1-docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF
+        cmake -G "Visual Studio 17 2022" -A x64 -B ../nCine-build-$nCineBuildType -D CMAKE_BUILD_TYPE=$nCineBuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$env:IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF
 
         cd ..
         cmake --build nCine-build-$nCineBuildType --config $nCineBuildType -j $env:NUMBER_OF_PROCESSORS

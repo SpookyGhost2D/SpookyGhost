@@ -3,6 +3,7 @@ name: 'CodeQL'
 env:
   LIBRARIES_BRANCH: libraries-OS-COMPILER
   NCINE_SOURCE_BRANCH: BRANCH_NAME
+  IMGUI_VERSION_TAG: v1.92.4-docking
 
 on: [push, workflow_dispatch]
 
@@ -26,7 +27,7 @@ jobs:
     - run: |
         # Install nCine Build Dependencies
         sudo apt-get update
-        sudo apt-get install -y libgl-dev libxext-dev
+        sudo apt-get install -y libgl-dev libxext-dev libxrandr-dev libwayland-dev
 
         # Download nCine-libraries and project data
         export OS=linux
@@ -56,7 +57,7 @@ jobs:
 
         # CMake Configuration and Make of nCine as a static library
         cd nCine
-        export CMAKE_ARGS="-B ../nCine-build-$BuildType -D CMAKE_BUILD_TYPE=$BuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=v1.92.1-docking -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
+        export CMAKE_ARGS="-B ../nCine-build-$BuildType -D CMAKE_BUILD_TYPE=$BuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
 
         export CMAKE_ARGS="$CMAKE_ARGS -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
 
