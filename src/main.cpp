@@ -144,7 +144,7 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	config.withScenegraph = false;
 	config.withAudio = false;
 	config.withDebugOverlay = false;
-	config.withThreads = false;
+	config.withJobSystem= false;
 
 	config.windowTitle = "SpookyGhost";
 	config.windowIconFilename = "icon96.png";
