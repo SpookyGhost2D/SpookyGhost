@@ -3,46 +3,33 @@ name: 'MinGW'
 env:
   LIBRARIES_BRANCH: libraries-OS-COMPILER
   NCINE_SOURCE_BRANCH: BRANCH_NAME
-  DEPLOY_MESSAGE:
-    "Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
+  DEPLOY_MESSAGE: |
+    Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
 
-     - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
+    - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}
   DEPLOY_BRANCH: PROJECT_NAME-BRANCH_NAME-OS-COMPILER
   IMGUI_VERSION_TAG: v1.92.5-docking
 
 on: [push, workflow_dispatch]
 
 jobs:
-  MinGW:
+  Build:
     strategy:
       fail-fast: false
       matrix:
+        BuildType: [Debug, Release, BinDist]
+        compiler: [gcc, clang]
         include:
-        - BuildType: Debug
-          CC: gcc
-          CXX: g++
-
-        - BuildType: Release
-          CC: gcc
-          CXX: g++
-
-        - BuildType: BinDist
-          CC: gcc
-          CXX: g++
-
-        - BuildType: Debug
-          CC: clang
-          CXX: clang++
-
-        - BuildType: Release
-          CC: clang
-          CXX: clang++
-
-        - BuildType: BinDist
-          CC: clang
-          CXX: clang++
+          - compiler: gcc
+            CC: gcc
+            CXX: g++
+          - compiler: clang
+            CC: clang
+            CXX: clang++
 
     runs-on: 'windows-2022'
+    env:
+      MSYSTEM: MINGW64
 
     steps:
     - name: 'Checkout Code'
@@ -50,38 +37,33 @@ jobs:
 
     - name: 'Update MSYS2'
       run: |
-        $env:MSYSTEM = "MINGW64"
-
         C:\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syyuu'
         C:\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syyuu'
 
     - name: 'Install Build Dependencies'
       run: |
-        $env:MSYSTEM = "MINGW64"
-
-        C:\msys64\usr\bin\bash -lc 'pacman --needed --noconfirm -S mingw-w64-x86_64-glew mingw-w64-x86_64-glfw mingw-w64-x86_64-SDL2 mingw-w64-x86_64-openal mingw-w64-x86_64-libvorbis mingw-w64-x86_64-libwebp mingw-w64-x86_64-lua mingw-w64-x86_64-cmake make patch'
+        C:\msys64\usr\bin\bash -lc 'pacman --needed --noconfirm -S mingw-w64-x86_64-cmake make patch'
 
         if ("${{ matrix.CC }}" -eq "gcc") { C:\msys64\usr\bin\bash -lc 'pacman --needed --noconfirm -S mingw-w64-x86_64-gcc' }
         else { C:\msys64\usr\bin\bash -lc 'pacman --needed --noconfirm -S mingw-w64-x86_64-clang' }
 
         C:\msys64\usr\bin\bash -lc 'pacman --noconfirm -Scc'
 
-    - name: 'Unshallow Git Repository for Versioning'
-      if: matrix.BuildType == 'BinDist'
-      run: |
-        $env:GIT_REDIRECT_STDERR = '2>&1'
-        git fetch --unshallow; if (-not $?) { return }
-
     - name: 'Download nCine-libraries and project data'
       run: |
         $env:GIT_REDIRECT_STDERR = '2>&1'
-
-        $env:CC = "${{ matrix.CC }}"
+        $compiler = "${{ matrix.CC }}"
 
         cd ..
         git clone https://github.com/nCine/nCine-libraries-artifacts.git
         cd nCine-libraries-artifacts
 
+        $env:LIBRARIES_BRANCH = $env:LIBRARIES_BRANCH -creplace "OS","mingw64" -creplace "COMPILER",$compiler
+        git checkout $env:LIBRARIES_BRANCH
+        $libraries_file = Get-ChildItem -Path $(pwd) -Name -File | Select-Object -First 1
+        7z x $libraries_file
+
+        Move-Item -Path nCine-external -Destination ..
         cd ..
         Remove-Item nCine-libraries-artifacts -Recurse -Force
 
@@ -89,8 +71,8 @@ jobs:
 
     - name: 'Download nCine source and data'
       run: |
-        $env:branch_name = git describe --tags --exact-match; if (-not $?) { $env:branch_name = git symbolic-ref -q --short HEAD }; if (-not $?) { $env:branch_name = git rev-parse --short HEAD }
-        $env:NCINE_SOURCE_BRANCH = $env:NCINE_SOURCE_BRANCH -creplace "BRANCH_NAME","$env:branch_name"
+        $branch_name = git describe --tags --exact-match; if (-not $?) { $branch_name = git symbolic-ref -q --short HEAD }; if (-not $?) { $branch_name = git rev-parse --short HEAD }
+        $env:NCINE_SOURCE_BRANCH = $env:NCINE_SOURCE_BRANCH -creplace "BRANCH_NAME","$branch_name"
 
         cd ..
         git clone https://github.com/nCine/nCine-data.git
@@ -100,19 +82,18 @@ jobs:
       env:
         CHERE_INVOKING: on
       run: |
-        $env:CC= "${{ matrix.CC }}"
+        $env:CC = "${{ matrix.CC }}"
         $env:CXX = "${{ matrix.CXX }}"
-        $env:MSYSTEM = "MINGW64"
 
         cd ../nCine
         if ("${{ matrix.BuildType }}" -eq "BinDist")
         {
-          C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../nCine-build-Release -D CMAKE_BUILD_TYPE=Release -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$env:IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
+          C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../nCine-build-Release -D CMAKE_BUILD_TYPE=Release -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$env:IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF -D CMAKE_PREFIX_PATH=$(cygpath -m $PWD/../nCine-external)"
           C:\msys64\usr\bin\bash.exe -lc 'make -j $NUMBER_OF_PROCESSORS -C ../nCine-build-Release'
         }
         else
         {
-          C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../nCine-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$env:IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
+          C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../nCine-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$env:IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF -D CMAKE_PREFIX_PATH=$(cygpath -m $PWD/../nCine-external)"
           C:\msys64\usr\bin\bash.exe -lc 'make -j $NUMBER_OF_PROCESSORS -C ../nCine-build-${{ matrix.BuildType }}'
         }
 
@@ -120,38 +101,119 @@ jobs:
       env:
         CHERE_INVOKING: on
       run: |
-        $env:CC= "${{ matrix.CC }}"
+        $env:CC = "${{ matrix.CC }}"
         $env:CXX = "${{ matrix.CXX }}"
 
-        $env:PROJECT_NAME = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
-        $env:MSYSTEM = "MINGW64"
+        $PROJECT_NAME = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
 
         if ("${{ matrix.BuildType }}" -eq "BinDist")
-          { C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../$env:PROJECT_NAME-build-${{ matrix.BuildType }} -D NCPROJECT_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(cygpath -m $PWD/../nCine-build-Release)" }
+          { C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../$PROJECT_NAME-build-${{ matrix.BuildType }} -D NCPROJECT_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(cygpath -m $PWD/../nCine-build-Release) -D CMAKE_PREFIX_PATH=$(cygpath -m $PWD/../nCine-external)" }
         else
-          { C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../$env:PROJECT_NAME-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D nCine_DIR=$(cygpath -m $PWD/../nCine-build-${{ matrix.BuildType }})" }
+          { C:\msys64\usr\bin\bash.exe -lc "cmake -G 'MSYS Makefiles' -B ../$PROJECT_NAME-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D nCine_DIR=$(cygpath -m $PWD/../nCine-build-${{ matrix.BuildType }}) -D CMAKE_PREFIX_PATH=$(cygpath -m $PWD/../nCine-external)" }
 
     - name: 'Make'
       env:
         CHERE_INVOKING: on
       run: |
-        $env:PROJECT_NAME = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
-        $env:MSYSTEM = "MINGW64"
-
-        C:\msys64\usr\bin\bash.exe -lc 'make -j $NUMBER_OF_PROCESSORS -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}'
+        $PROJECT_NAME = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+        C:\msys64\usr\bin\bash.exe -lc "make -j $NUMBER_OF_PROCESSORS -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}"
 
     - name: 'Package'
       if: matrix.BuildType == 'BinDist'
       env:
         CHERE_INVOKING: on
       run: |
-        $env:PROJECT_NAME = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
-        $env:MSYSTEM = "MINGW64"
+        $PROJECT_NAME = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+        C:\msys64\usr\bin\bash.exe -lc "make package -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}"
 
-        C:\msys64\usr\bin\bash.exe -lc 'make package -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}'
+    - name: 'Prepare GitHub Actions Artifact'
+      if: matrix.BuildType == 'BinDist'
+      run: |
+        $project_name = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+        cd ../${project_name}-build-${{ matrix.BuildType }}/
+
+        Set-Content -Path package_file_name.cmake -Value 'include(CPackConfig.cmake)','execute_process(COMMAND ${CMAKE_COMMAND} -E echo_append "${CPACK_PACKAGE_FILE_NAME}")'
+        $package_file_name = cmake -P package_file_name.cmake
+        $package_ext = "tar.gz"
+        $package = "$package_file_name.$package_ext"
+
+        # Generate a JSON manifest file
+        $manifest = "manifest.json"
+        if ("${{ matrix.BuildType }}" -eq "LuaDist") {
+          $manifest = "manifestLua.json"
+        }
+
+        $packageInfo = Get-Item $package
+        $packageHash = (Get-FileHash -Algorithm SHA256 -Path $package).Hash.ToLower()
+
+        $manifestObj = [ordered]@{
+          filename = $package
+          size     = $packageInfo.Length
+          timestamp = $packageInfo.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")
+          sha256   = $packageHash
+          git_revision = $env:GITHUB_SHA
+        }
+
+        $manifestObj |
+          ConvertTo-Json -Depth 4 |
+          Set-Content -Encoding UTF8 $manifest
+
+        $artifactsDir = Join-Path $env:GITHUB_WORKSPACE (${project_name} + '-job-artifacts')
+        New-Item -ItemType Directory -Force $artifactsDir | Out-Null
+        Copy-Item $package $artifactsDir -Force
+        Copy-Item $manifest $artifactsDir -Force
+
+        Write-Host "Contents of the ${project_name}-job-artifacts directory:"
+        Get-ChildItem $artifactsDir
+        Write-Host "Contents of the manifest file:"
+        Get-Content $manifest -Raw
+
+    - name: 'Upload GitHub Actions Artifact'
+      if: matrix.BuildType == 'BinDist'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-job-artifacts-${{ matrix.BuildType }}-${{ matrix.compiler }}
+        path: ${{ github.event.repository.name }}-job-artifacts/*
+
+  Artifacts:
+    needs: Build
+    strategy:
+      fail-fast: false
+      matrix:
+        BuildType: [BinDist]
+        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            CC: gcc
+            CXX: g++
+          - compiler: clang
+            CC: clang
+            CXX: clang++
+
+    runs-on: 'windows-2022'
+    env:
+      MSYSTEM: MINGW64
+
+    concurrency:
+        group: artifacts-mingw64-${{ matrix.compiler }}
+        cancel-in-progress: false
+
+    steps:
+    - name: 'Checkout Code'
+      uses: actions/checkout@v4
+
+    - name: 'Unshallow Git Repository for Versioning'
+      run: |
+        $env:GIT_REDIRECT_STDERR = '2>&1'
+        git fetch --unshallow; if (-not $?) { return }
+
+    - name: 'Download GitHub Actions Artifact'
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-job-artifacts-${{ matrix.BuildType }}-${{ matrix.compiler }}
+        path: ${{ github.event.repository.name }}-job-artifacts
 
     - name: 'Push Artifacts'
-      if: matrix.BuildType == 'BinDist'
       env:
         PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
       run: |
@@ -159,27 +221,35 @@ jobs:
         git config --global user.name "Azure Pipelines"
         $env:GIT_REDIRECT_STDERR = '2>&1'
 
-        $env:CC = "${{ matrix.CC }}"
+        $CC = "${{ matrix.CC }}"
 
-        $env:project_name = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
-        $env:branch_name = git describe --tags --exact-match; if (-not $?) { $env:branch_name = git symbolic-ref -q --short HEAD }; if (-not $?) { $env:branch_name = git rev-parse --short HEAD }
-        $env:DEPLOY_MESSAGE = $env:DEPLOY_MESSAGE -creplace "PROJECT_NAME",$env:project_name
-        $env:DEPLOY_MESSAGE = $env:DEPLOY_MESSAGE -creplace "BRANCH_NAME",$env:branch_name
+        $project_name = Split-Path -Path "$env:GITHUB_REPOSITORY" -leaf
+        $branch_name = git describe --tags --exact-match; if (-not $?) { $branch_name = git symbolic-ref -q --short HEAD }; if (-not $?) { $branch_name = git rev-parse --short HEAD }
+        $env:DEPLOY_MESSAGE = $env:DEPLOY_MESSAGE -creplace "PROJECT_NAME",$project_name
+        $env:DEPLOY_MESSAGE = $env:DEPLOY_MESSAGE -creplace "BRANCH_NAME",$branch_name
 
-        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "PROJECT_NAME",$env:project_name
-        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "BRANCH_NAME",$env:branch_name
-        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "OS","mingw64" -creplace "COMPILER",$env:CC
+        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "PROJECT_NAME",$project_name
+        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "BRANCH_NAME",$branch_name
+        $env:DEPLOY_BRANCH = $env:DEPLOY_BRANCH -creplace "OS","mingw64" -creplace "COMPILER",$CC
+
+        cd ${project_name}-job-artifacts
+        $manifest = Get-ChildItem -Filter 'manifest*.json' -Name | Select-Object -First 1
+        $json = Get-Content $manifest -Raw | ConvertFrom-Json
+        $package = $json.filename
+        $package_name = ($package -replace '-.*$', '')
+        $package_ext = [System.IO.Path]::GetExtension($package).TrimStart('.')
 
         cd ..
         git clone https://$env:PUBLIC_REPO_TOKEN@github.com/$env:GITHUB_REPOSITORY-artifacts.git 2>&1>$null
-        cd $env:project_name-artifacts
+
+        cd ${project_name}-artifacts
         git checkout $env:DEPLOY_BRANCH; if (-not $?) { git checkout --orphan $env:DEPLOY_BRANCH }
         git reset
         git clean -f
         git rm *
+        Move-Item -Path ..\${project_name}-job-artifacts\$manifest -Destination . -Force
+        Move-Item -Path ..\${project_name}-job-artifacts\$package -Destination .
 
-        Move-Item -Path ..\$env:project_name-build-${{ matrix.BuildType }}\*.tar.gz -Destination .
-        git add *.tar.gz
-
+        git add $manifest "$package"
         git commit --amend -m "$env:DEPLOY_MESSAGE"; if (-not $?) { git commit -m "$env:DEPLOY_MESSAGE" }
         git push --force; if (-not $?) { git push --set-upstream origin $env:DEPLOY_BRANCH }

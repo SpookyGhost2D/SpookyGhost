@@ -3,17 +3,17 @@ name: 'Emscripten'
 env:
   LIBRARIES_BRANCH: libraries-OS-COMPILER
   NCINE_SOURCE_BRANCH: BRANCH_NAME
-  DEPLOY_MESSAGE:
-    "Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
+  DEPLOY_MESSAGE: |
+    Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
 
-     - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}"
+    - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}
   DEPLOY_BRANCH: PROJECT_NAME-BRANCH_NAME-OS-COMPILER
   IMGUI_VERSION_TAG: v1.92.5-docking
 
 on: [push, workflow_dispatch]
 
 jobs:
-  Emscripten:
+  Build:
     strategy:
       fail-fast: false
       matrix:
@@ -35,18 +35,13 @@ jobs:
         ./emsdk install latest
         ./emsdk activate latest
 
-    - name: 'Unshallow Git Repository for Versioning'
-      if: matrix.BuildType == 'BinDist'
-      run: |
-        git fetch --unshallow || true
-
     - name: 'Download nCine-libraries and project data'
       run: |
-        export OS=emscripten
-        export CC=emcc
+        OS=emscripten
+        CC=emcc
 
-        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/OS/'"$OS"'/'`
-        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/COMPILER/'"$CC"'/'`
+        LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/OS/'"$OS"'/'`
+        LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/COMPILER/'"$CC"'/'`
 
         cd ..
         git clone https://github.com/nCine/nCine-libraries-artifacts.git
@@ -62,8 +57,8 @@ jobs:
 
     - name: 'Download nCine source and data'
       run: |
-        export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
-        export NCINE_SOURCE_BRANCH=`echo $NCINE_SOURCE_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
+        BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
+        NCINE_SOURCE_BRANCH=`echo $NCINE_SOURCE_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
 
         cd ..
         git clone https://github.com/nCine/nCine-data.git
@@ -75,11 +70,11 @@ jobs:
 
         cd ../nCine
         if [[ "${{ matrix.BuildType }}" == "BinDist" ]]; then
-          export NCINE_BUILD_TYPE=Release
+          NCINE_BUILD_TYPE=Release
         else
-          export NCINE_BUILD_TYPE=${{ matrix.BuildType }}
+          NCINE_BUILD_TYPE=${{ matrix.BuildType }}
         fi
-        export CMAKE_ARGS="-B ../nCine-build-$NCINE_BUILD_TYPE -D CMAKE_BUILD_TYPE=$NCINE_BUILD_TYPE -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
+        CMAKE_ARGS="-B ../nCine-build-$NCINE_BUILD_TYPE -D CMAKE_BUILD_TYPE=$NCINE_BUILD_TYPE -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
 
         emcmake cmake $CMAKE_ARGS
         cd ..
@@ -87,57 +82,133 @@ jobs:
 
     - name: 'CMake Configuration'
       run: |
-        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        PROJECT_NAME=${GITHUB_REPOSITORY##*/}
 
         source ../emsdk/emsdk_env.sh
-        export CMAKE_ARGS="-B ../$PROJECT_NAME-build-${{ matrix.BuildType }}"
 
         if [[ "${{ matrix.BuildType }}" == "BinDist" ]]; then
-          emcmake cmake $CMAKE_ARGS -D NCPROJECT_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-Release
+          emcmake cmake -B ../$PROJECT_NAME-build-${{ matrix.BuildType }} -D NCPROJECT_OPTIONS_PRESETS=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-Release
         else
-          emcmake cmake $CMAKE_ARGS -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-${{ matrix.BuildType }}
+          emcmake cmake -B ../$PROJECT_NAME-build-${{ matrix.BuildType }} -D CMAKE_BUILD_TYPE=${{ matrix.BuildType }} -D nCine_DIR=$(pwd)/../nCine-build-${{ matrix.BuildType }}
         fi
 
     - name: 'Make'
       run: |
-        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        PROJECT_NAME=${GITHUB_REPOSITORY##*/}
         make -j $(getconf _NPROCESSORS_ONLN) -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}
 
     - name: 'Package'
       if: matrix.BuildType == 'BinDist'
       run: |
-        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        PROJECT_NAME=${GITHUB_REPOSITORY##*/}
         make package -C ../$PROJECT_NAME-build-${{ matrix.BuildType }}
 
-    - name: 'Push Artifacts'
+    - name: 'Prepare GitHub Actions Artifact'
       if: matrix.BuildType == 'BinDist'
+      run: |
+        PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        cd ../$PROJECT_NAME-build-${{ matrix.BuildType }}/
+
+        echo -e "include(CPackConfig.cmake)\nexecute_process(COMMAND \${CMAKE_COMMAND} -E echo_append \"\${CPACK_PACKAGE_FILE_NAME}\")" > package_file_name.cmake
+        PACKAGE_FILE_NAME=$(cmake -P package_file_name.cmake)
+        PACKAGE_EXT=tar.gz
+        PACKAGE="$PACKAGE_FILE_NAME.$PACKAGE_EXT"
+
+        # Generate a JSON manifest file
+        MANIFEST="manifest.json"
+
+        SIZE=$(stat -c %s "$PACKAGE")
+        MTIME=$(stat -c %y "$PACKAGE")
+        MTIME_ISO=$(date -u -d "$MTIME" +"%Y-%m-%dT%H:%M:%SZ")
+        SHA256=$(sha256sum "$PACKAGE" | awk '{print $1}')
+
+        cat > "$MANIFEST" <<EOF
+        {
+          "filename": "$PACKAGE",
+          "size": $SIZE,
+          "timestamp": "$MTIME_ISO",
+          "sha256": "$SHA256",
+          "git_revision": "$GITHUB_SHA"
+        }
+        EOF
+
+        ARTIFACTS_DIR="$GITHUB_WORKSPACE/$PROJECT_NAME-job-artifacts"
+        mkdir -p $ARTIFACTS_DIR
+        cp -p $PACKAGE $ARTIFACTS_DIR
+        cp -p $MANIFEST $ARTIFACTS_DIR
+
+        echo "Contents of the $PROJECT_NAME-job-artifacts directory:"
+        ls -l $ARTIFACTS_DIR
+        echo "Contents of the manifest file:"
+        cat $MANIFEST
+
+    - name: 'Upload GitHub Actions Artifact'
+      if: matrix.BuildType == 'BinDist'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-job-artifacts-${{ matrix.BuildType }}
+        path: ${{ github.event.repository.name }}-job-artifacts/*
+
+  Artifacts:
+    needs: Build
+    strategy:
+      fail-fast: false
+      matrix:
+        BuildType: [BinDist]
+
+    runs-on: 'ubuntu-24.04'
+    concurrency:
+        group: artifacts-emscripten-emcc
+        cancel-in-progress: false
+
+    steps:
+    - name: 'Checkout Code'
+      uses: actions/checkout@v4
+
+    - name: 'Unshallow Git Repository for Versioning'
+      run: |
+        git fetch --unshallow || true
+
+    - name: 'Download GitHub Actions Artifact'
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ github.event.repository.name }}-job-artifacts-${{ matrix.BuildType }}
+        path: ${{ github.event.repository.name }}-job-artifacts
+
+    - name: 'Push Artifacts'
       env:
         PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
       run: |
         git config --global user.email "actions@github.com"
         git config --global user.name "GitHub Actions"
 
-        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
-        export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
-        export DEPLOY_MESSAGE=`sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/' <<< "$DEPLOY_MESSAGE"`
-        export DEPLOY_MESSAGE=`sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/' <<< "$DEPLOY_MESSAGE"`
+        PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
+        DEPLOY_MESSAGE=`sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/' <<< "$DEPLOY_MESSAGE"`
+        DEPLOY_MESSAGE=`sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/' <<< "$DEPLOY_MESSAGE"`
 
-        export OS=emscripten
-        export CC=emcc
+        OS=emscripten
+        CC=emcc
+
+        cd $PROJECT_NAME-job-artifacts
+        MANIFEST=$(ls manifest*.json)
+        PACKAGE=$(jq -r '.filename' "$MANIFEST")
 
         cd ..
-        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/'`
-        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
-        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/OS/'"$OS"'/'`
-        export DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/COMPILER/'"$CC"'/'`
+        DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/PROJECT_NAME/'"$PROJECT_NAME"'/'`
+        DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
+        DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/OS/'"$OS"'/'`
+        DEPLOY_BRANCH=`echo $DEPLOY_BRANCH | sed 's/COMPILER/'"$CC"'/'`
         git clone https://$PUBLIC_REPO_TOKEN@github.com/$GITHUB_REPOSITORY-artifacts.git >/dev/null 2>&1
-        cd $PROJECT_NAME-artifacts
 
+        cd $PROJECT_NAME-artifacts
         git checkout $DEPLOY_BRANCH || git checkout --orphan $DEPLOY_BRANCH
         git reset
         git clean -f
         git rm * || true
-        mv -f ../$PROJECT_NAME-build-${{ matrix.BuildType }}/*.tar.gz .
-        git add *.tar.gz
+        mv -f ../$PROJECT_NAME-job-artifacts/$MANIFEST .
+        mv -f ../$PROJECT_NAME-job-artifacts/$PACKAGE .
+
+        git add $MANIFEST $PACKAGE
         git commit --amend -m "$DEPLOY_MESSAGE" || git commit -m "$DEPLOY_MESSAGE"
         git push --force || git push --set-upstream origin $DEPLOY_BRANCH

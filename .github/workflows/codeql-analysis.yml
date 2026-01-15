@@ -8,15 +8,14 @@ env:
 on: [push, workflow_dispatch]
 
 jobs:
-  analyze:
-    name: 'Analyze'
-    runs-on: 'ubuntu-24.04'
-
+  Analyze:
     strategy:
       fail-fast: false
 
+    runs-on: 'ubuntu-24.04'
+
     steps:
-    - name: 'Checkout Repository'
+    - name: 'Checkout Code'
       uses: actions/checkout@v4
 
     - name: 'Initialize CodeQL'
@@ -27,15 +26,15 @@ jobs:
     - run: |
         # Install nCine Build Dependencies
         sudo apt-get update
-        sudo apt-get install -y libgl-dev libxext-dev libxrandr-dev libwayland-dev
+        sudo apt-get install -y libgl1-mesa-dev libopengl-dev libegl1-mesa-dev libglvnd-dev libxext-dev libxrandr-dev libwayland-dev
 
         # Download nCine-libraries and project data
-        export OS=linux
-        export CC=gcc
-        export BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
+        OS=linux
+        CC=gcc
+        BRANCH_NAME=$(git describe --tags --exact-match 2> /dev/null || git symbolic-ref -q --short HEAD || git rev-parse --short HEAD)
 
-        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/OS/'"$OS"'/'`
-        export LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/COMPILER/'"$CC"'/'`
+        LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/OS/'"$OS"'/'`
+        LIBRARIES_BRANCH=`echo $LIBRARIES_BRANCH | sed 's/COMPILER/'"$CC"'/'`
 
         cd ..
         git clone https://github.com/nCine/nCine-libraries-artifacts.git
@@ -49,29 +48,27 @@ jobs:
         git clone https://github.com/$GITHUB_REPOSITORY-data.git
 
         # Download nCine source and data
-        export BuildType=Debug
-        export NCINE_SOURCE_BRANCH=`echo $NCINE_SOURCE_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
+        BuildType=Debug
+        NCINE_SOURCE_BRANCH=`echo $NCINE_SOURCE_BRANCH | sed 's/BRANCH_NAME/'"$BRANCH_NAME"'/'`
 
         git clone https://github.com/nCine/nCine-data.git
         git clone https://github.com/nCine/nCine.git --branch $NCINE_SOURCE_BRANCH
 
         # CMake Configuration and Make of nCine as a static library
         cd nCine
-        export CMAKE_ARGS="-B ../nCine-build-$BuildType -D CMAKE_BUILD_TYPE=$BuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
+        CMAKE_ARGS="-B ../nCine-build-$BuildType -D CMAKE_BUILD_TYPE=$BuildType -D NCINE_DYNAMIC_LIBRARY=OFF -D IMGUI_VERSION_TAG=$IMGUI_VERSION_TAG -D NCINE_PREFERRED_BACKEND=SDL2 -D NCINE_WITH_SCENEGRAPH=OFF -D NCINE_WITH_THREADS=OFF -D NCINE_WITH_WEBP=OFF -D NCINE_WITH_AUDIO=OFF -D NCINE_WITH_SCRIPTING_API=OFF -D NCINE_BUILD_TESTS=OFF"
 
-        export CMAKE_ARGS="$CMAKE_ARGS -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
+        CMAKE_ARGS="$CMAKE_ARGS -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external"
 
         cmake $CMAKE_ARGS
         cd ..
         make -j $(getconf _NPROCESSORS_ONLN) -C nCine-build-Debug
 
         # CMake Configuration and Make
-        export PROJECT_NAME=${GITHUB_REPOSITORY##*/}
+        PROJECT_NAME=${GITHUB_REPOSITORY##*/}
 
         cd $PROJECT_NAME
-        cmake -B ../$PROJECT_NAME-build-$BuildType -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external -D CMAKE_BUILD_TYPE=$BuildType -D nCine_DIR=$(pwd)/../nCine-build-$BuildType
-
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../nCine-external/lib
+        cmake -B ../$PROJECT_NAME-build-$BuildType -D CMAKE_BUILD_TYPE=$BuildType -D nCine_DIR=$(pwd)/../nCine-build-$BuildType -D CMAKE_PREFIX_PATH=$(pwd)/../nCine-external
         make -j $(getconf _NPROCESSORS_ONLN) -C ../$PROJECT_NAME-build-$BuildType
 
     - name: 'Perform CodeQL Analysis'

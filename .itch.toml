@@ -14,7 +14,7 @@ path = "launch.sh"
 platform = "linux"
 
 [[prereqs]]
-name = "vcredist-2019-x64"
+name = "vcredist-v14-x64"
 
 [[actions]]
 name = "manual"
