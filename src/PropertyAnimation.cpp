@@ -1,6 +1,5 @@
 #include "PropertyAnimation.h"
 #include "Sprite.h"
-#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -12,8 +11,8 @@ PropertyAnimation::PropertyAnimation()
 }
 
 PropertyAnimation::PropertyAnimation(Sprite *sprite)
-    : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
-      propertyType_(Properties::Types::NONE), property_(nullptr), sprite_(sprite)
+    : SpriteAnimation(sprite),
+      propertyType_(Properties::Types::NONE), property_(nullptr)
 {
 }
 
@@ -24,9 +23,8 @@ PropertyAnimation::PropertyAnimation(Sprite *sprite)
 nctl::UniquePtr<IAnimation> PropertyAnimation::clone() const
 {
 	nctl::UniquePtr<PropertyAnimation> anim = nctl::makeUnique<PropertyAnimation>(sprite_);
-	CurveAnimation::cloneTo(*anim);
+	SpriteAnimation::cloneTo(*anim);
 
-	anim->setSprite(sprite_);
 	anim->setProperty(propertyType_);
 
 	return nctl::move(anim);

@@ -22,6 +22,7 @@ set(NCPROJECT_SOURCES
 	include/EasingCurve.h
 	include/IAnimation.h
 	include/CurveAnimation.h
+	include/SpriteAnimation.h
 	include/PropertyAnimation.h
 	include/GridAnimation.h
 	include/AnimationGroup.h
@@ -59,6 +60,7 @@ set(NCPROJECT_SOURCES
 	src/EasingCurve.cpp
 	src/IAnimation.cpp
 	src/CurveAnimation.cpp
+	src/SpriteAnimation.cpp
 	src/PropertyAnimation.cpp
 	src/GridAnimation.cpp
 	src/AnimationGroup.cpp

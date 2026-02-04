@@ -1,8 +1,6 @@
 #include "GridAnimation.h"
 #include "Sprite.h"
 #include "GridFunction.h"
-#include "GridFunctionLibrary.h"
-#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -14,8 +12,7 @@ GridAnimation::GridAnimation()
 }
 
 GridAnimation::GridAnimation(Sprite *sprite)
-    : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
-      sprite_(nullptr), gridFunction_(nullptr), params_(4)
+    : SpriteAnimation(nullptr), gridFunction_(nullptr), params_(4)
 {
 	setSprite(sprite);
 }
@@ -27,9 +24,8 @@ GridAnimation::GridAnimation(Sprite *sprite)
 nctl::UniquePtr<IAnimation> GridAnimation::clone() const
 {
 	nctl::UniquePtr<GridAnimation> anim = nctl::makeUnique<GridAnimation>(sprite_);
-	CurveAnimation::cloneTo(*anim);
+	SpriteAnimation::cloneTo(*anim);
 
-	anim->setSprite(sprite_);
 	anim->gridFunction_ = gridFunction_;
 	anim->params_ = params_;
 

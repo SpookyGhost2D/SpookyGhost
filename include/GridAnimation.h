@@ -3,14 +3,13 @@
 
 #include <nctl/Array.h>
 #include <ncine/Vector2.h>
-#include "CurveAnimation.h"
+#include "SpriteAnimation.h"
 #include "GridFunctionParameter.h"
 
-class Sprite;
 class GridFunction;
 
 /// The grid animation class
-class GridAnimation : public CurveAnimation
+class GridAnimation : public SpriteAnimation
 {
   public:
 	GridAnimation();
@@ -22,9 +21,7 @@ class GridAnimation : public CurveAnimation
 
 	void perform() override;
 
-	inline const Sprite *sprite() const { return sprite_; }
-	inline Sprite *sprite() { return sprite_; }
-	void setSprite(Sprite *sprite);
+	void setSprite(Sprite *sprite) override;
 
 	inline const GridFunction *function() const { return gridFunction_; }
 	void setFunction(const GridFunction *function);
@@ -33,7 +30,6 @@ class GridAnimation : public CurveAnimation
 	inline nctl::Array<GridFunctionParameter> &parameters() { return params_; }
 
   private:
-	Sprite *sprite_;
 	const GridFunction *gridFunction_;
 	nctl::Array<GridFunctionParameter> params_;
 };

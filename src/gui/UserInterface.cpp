@@ -1618,15 +1618,10 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		animGroup = static_cast<AnimationGroup *>(&anim);
 
 	// To preserve indentation no group is created
-	if (anim.isGroup() == false)
+	if (anim.isSprite())
 	{
-		SpriteEntry *spriteEntry = nullptr;
-		if (anim.type() == IAnimation::Type::PROPERTY)
-			spriteEntry = static_cast<PropertyAnimation &>(anim).sprite();
-		else if (anim.type() == IAnimation::Type::GRID)
-			spriteEntry = static_cast<GridAnimation &>(anim).sprite();
-		else if (anim.type() == IAnimation::Type::SCRIPT)
-			spriteEntry = static_cast<ScriptAnimation &>(anim).sprite();
+		SpriteAnimation &spriteAnim = static_cast<SpriteAnimation &>(anim);
+		SpriteEntry *spriteEntry = spriteAnim.sprite();
 
 		if (spriteEntry != nullptr)
 		{
@@ -1654,45 +1649,33 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 		ui::auxString.formatAppend("Parallel Group (%u children)", animGroup->anims().size());
 	else if (anim.type() == IAnimation::Type::SEQUENTIAL_GROUP)
 		ui::auxString.formatAppend("Sequential Group (%u children)", animGroup->anims().size());
-	if (anim.type() == IAnimation::Type::PROPERTY)
+
+	if (anim.isSprite())
 	{
-		PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
-		ui::auxString.formatAppend("%s property", propertyAnim.propertyName());
-		if (propertyAnim.sprite() != nullptr)
+		SpriteAnimation &spriteAnim = static_cast<SpriteAnimation &>(anim);
+
+		if (anim.type() == IAnimation::Type::PROPERTY)
 		{
-			if (propertyAnim.sprite()->name.isEmpty() == false)
-				ui::auxString.formatAppend(" for sprite \"%s\"", propertyAnim.sprite()->name.data());
-			if (propertyAnim.sprite() == selectedSpriteEntry_)
-				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
-			if (propertyAnim.isLocked())
-				ui::auxString.formatAppend(" %s", Labels::LockedAnimIcon);
+			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
+			ui::auxString.formatAppend("%s property", propertyAnim.propertyName());
 		}
-	}
-	else if (anim.type() == IAnimation::Type::GRID)
-	{
-		GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
-		ui::auxString.formatAppend("%s grid", (gridAnim.function() != nullptr) ? gridAnim.function()->name().data() : "None");
-		if (gridAnim.sprite() != nullptr)
+		else if (anim.type() == IAnimation::Type::GRID)
 		{
-			if (gridAnim.sprite()->name.isEmpty() == false)
-				ui::auxString.formatAppend(" for sprite \"%s\"", gridAnim.sprite()->name.data());
-			if (gridAnim.sprite() == selectedSpriteEntry_)
-				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
-			if (gridAnim.isLocked())
-				ui::auxString.formatAppend(" %s", Labels::LockedAnimIcon);
+			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
+			ui::auxString.formatAppend("%s grid", (gridAnim.function() != nullptr) ? gridAnim.function()->name().data() : "None");
 		}
-	}
-	else if (anim.type() == IAnimation::Type::SCRIPT)
-	{
-		ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
-		ui::auxString.append("Script");
-		if (scriptAnim.sprite() != nullptr)
+		else if (anim.type() == IAnimation::Type::SCRIPT)
 		{
-			if (scriptAnim.sprite()->name.isEmpty() == false)
-				ui::auxString.formatAppend(" for sprite \"%s\"", scriptAnim.sprite()->name.data());
-			if (scriptAnim.sprite() == selectedSpriteEntry_)
+			ui::auxString.append("Script");
+		}
+
+		if (spriteAnim.sprite() != nullptr)
+		{
+			if (spriteAnim.sprite()->name.isEmpty() == false)
+				ui::auxString.formatAppend(" for sprite \"%s\"", spriteAnim.sprite()->name.data());
+			if (spriteAnim.sprite() == selectedSpriteEntry_)
 				ui::auxString.formatAppend(" %s", Labels::SelectedSpriteIcon);
-			if (scriptAnim.isLocked())
+			if (spriteAnim.isLocked())
 				ui::auxString.formatAppend(" %s", Labels::LockedAnimIcon);
 		}
 	}
@@ -1748,23 +1731,11 @@ void UserInterface::createAnimationListEntry(IAnimation &anim, unsigned int inde
 			setFocus = true;
 		}
 
-		if (anim.type() == IAnimation::Type::PROPERTY)
+		if (anim.isSprite())
 		{
-			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(anim);
-			if (propertyAnim.sprite())
-				selectedSpriteEntry_ = propertyAnim.sprite();
-		}
-		else if (anim.type() == IAnimation::Type::GRID)
-		{
-			GridAnimation &gridAnim = static_cast<GridAnimation &>(anim);
-			if (gridAnim.sprite())
-				selectedSpriteEntry_ = gridAnim.sprite();
-		}
-		else if (anim.type() == IAnimation::Type::SCRIPT)
-		{
-			ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(anim);
-			if (scriptAnim.sprite())
-				selectedSpriteEntry_ = scriptAnim.sprite();
+			SpriteAnimation &spriteAnim = static_cast<SpriteAnimation &>(anim);
+			if (spriteAnim.sprite())
+				selectedSpriteEntry_ = spriteAnim.sprite();
 		}
 	}
 
@@ -2573,16 +2544,9 @@ void UserInterface::createAnimationWindow()
 	ImGui::End();
 }
 
-bool createCustomSpritesCombo(CurveAnimation &anim)
+bool createCustomSpritesCombo(SpriteAnimation &anim)
 {
-	Sprite *animSprite = nullptr;
-	if (anim.type() == IAnimation::Type::PROPERTY)
-		animSprite = static_cast<PropertyAnimation &>(anim).sprite();
-	else if (anim.type() == IAnimation::Type::GRID)
-		animSprite = static_cast<GridAnimation &>(anim).sprite();
-	else if (anim.type() == IAnimation::Type::SCRIPT)
-		animSprite = static_cast<ScriptAnimation &>(anim).sprite();
-
+	Sprite *animSprite = anim.sprite();
 	const ImVec2 colorButtonComboSize(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight());
 	Sprite *selectedSprite = animSprite;
 
@@ -2637,14 +2601,7 @@ bool createCustomSpritesCombo(CurveAnimation &anim)
 	}
 
 	if (comboReturnValue)
-	{
-		if (anim.type() == IAnimation::Type::PROPERTY)
-			static_cast<PropertyAnimation &>(anim).setSprite(selectedSprite);
-		else if (anim.type() == IAnimation::Type::GRID)
-			static_cast<GridAnimation &>(anim).setSprite(selectedSprite);
-		else if (anim.type() == IAnimation::Type::SCRIPT)
-			static_cast<ScriptAnimation &>(anim).setSprite(selectedSprite);
-	}
+		anim.setSprite(selectedSprite);
 
 	return comboReturnValue;
 }
@@ -3576,7 +3533,6 @@ void UserInterface::createVideoModePopup()
 		nc::IGfxDevice &gfxDevice = nc::theApplication().gfxDevice();
 		const unsigned int monitorIndex = gfxDevice.windowMonitorIndex();
 		const nc::IGfxDevice::Monitor &monitor = gfxDevice.monitor(monitorIndex);
-		const nc::IGfxDevice::VideoMode &currentVideoMode = gfxDevice.currentVideoMode(monitorIndex);
 		const unsigned int numVideoModes = monitor.numVideoModes;
 		unsigned int previousModeIndex = 0;
 		for (unsigned int modeIndex = 0; modeIndex < numVideoModes; modeIndex++)
@@ -3644,22 +3600,10 @@ void UserInterface::updateSelectedAnimOnSpriteRemoval(Sprite *sprite)
 {
 	if (selectedAnimation_)
 	{
-		if (selectedAnimation_->type() == IAnimation::Type::PROPERTY)
+		if (selectedAnimation_->isSprite())
 		{
-			PropertyAnimation &propertyAnim = static_cast<PropertyAnimation &>(*selectedAnimation_);
-			if (propertyAnim.sprite() == sprite)
-				selectedAnimation_ = nullptr;
-		}
-		else if (selectedAnimation_->type() == IAnimation::Type::GRID)
-		{
-			GridAnimation &gridAnim = static_cast<GridAnimation &>(*selectedAnimation_);
-			if (gridAnim.sprite() == sprite)
-				selectedAnimation_ = nullptr;
-		}
-		else if (selectedAnimation_->type() == IAnimation::Type::SCRIPT)
-		{
-			ScriptAnimation &scriptAnim = static_cast<ScriptAnimation &>(*selectedAnimation_);
-			if (scriptAnim.sprite() == sprite)
+			SpriteAnimation &spriteAnim = static_cast<SpriteAnimation &>(*selectedAnimation_);
+			if (spriteAnim.sprite() == sprite)
 				selectedAnimation_ = nullptr;
 		}
 	}

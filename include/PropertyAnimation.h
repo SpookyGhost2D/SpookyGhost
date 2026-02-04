@@ -1,10 +1,7 @@
 #ifndef CLASS_PROPERTYANIMATION
 #define CLASS_PROPERTYANIMATION
 
-#include <nctl/String.h>
-#include "CurveAnimation.h"
-
-class Sprite;
+#include "SpriteAnimation.h"
 
 namespace Properties {
 
@@ -32,7 +29,7 @@ enum Types
 }
 
 /// The property animation class
-class PropertyAnimation : public CurveAnimation
+class PropertyAnimation : public SpriteAnimation
 {
   public:
 	PropertyAnimation();
@@ -49,16 +46,13 @@ class PropertyAnimation : public CurveAnimation
 	void setProperty(Properties::Types propertyType);
 	void setProperty(const char *name);
 
-	inline const Sprite *sprite() const { return sprite_; }
-	inline Sprite *sprite() { return sprite_; }
-	void setSprite(Sprite *sprite);
+	void setSprite(Sprite *sprite) override;
 
 	inline const float *property() const { return property_; }
 
   private:
 	Properties::Types propertyType_;
 	float *property_;
-	Sprite *sprite_;
 };
 
 #endif

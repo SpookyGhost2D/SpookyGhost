@@ -4,7 +4,6 @@
 #include "Script.h"
 #include "ScriptManager.h"
 #include "Sprite.h"
-#include "AnimationGroup.h"
 
 ///////////////////////////////////////////////////////////
 // CONSTRUCTORS and DESTRUCTOR
@@ -16,8 +15,7 @@ ScriptAnimation::ScriptAnimation()
 }
 
 ScriptAnimation::ScriptAnimation(Sprite *sprite, Script *script)
-    : CurveAnimation(EasingCurve::Type::LINEAR, Loop::Mode::DISABLED),
-      sprite_(nullptr), script_(nullptr)
+    : SpriteAnimation(nullptr), script_(nullptr)
 {
 	setSprite(sprite);
 	setScript(script);
@@ -33,9 +31,8 @@ ScriptAnimation::ScriptAnimation(Sprite *sprite, Script *script)
 nctl::UniquePtr<IAnimation> ScriptAnimation::clone() const
 {
 	nctl::UniquePtr<ScriptAnimation> anim = nctl::makeUnique<ScriptAnimation>(sprite_, script_);
-	CurveAnimation::cloneTo(*anim);
+	SpriteAnimation::cloneTo(*anim);
 
-	anim->setSprite(sprite_);
 	anim->setScript(script_);
 
 	return nctl::move(anim);

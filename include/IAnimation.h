@@ -26,7 +26,7 @@ class IAnimation
 	};
 
 	IAnimation();
-	virtual ~IAnimation() {}
+	virtual ~IAnimation() = default;
 
 	virtual nctl::UniquePtr<IAnimation> clone() const = 0;
 
@@ -37,6 +37,7 @@ class IAnimation
 	virtual Type type() const = 0;
 	inline State state() const { return state_; }
 	inline bool isGroup() const { return type() == Type::SEQUENTIAL_GROUP || type() == Type::PARALLEL_GROUP; }
+	inline bool isSprite() const { return type() == Type::PROPERTY || type() == Type::GRID || type() == Type::SCRIPT; }
 	inline bool isStopped() const { return state_ == State::STOPPED; }
 	inline bool isPaused() const { return state_ == State::PAUSED; }
 	inline bool isPlaying() const { return state_ == State::PLAYING; }
