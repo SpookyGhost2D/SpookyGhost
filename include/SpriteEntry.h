@@ -20,7 +20,7 @@ class SpriteEntry
 		SPRITE
 	};
 
-	SpriteEntry(Type type);
+	explicit SpriteEntry(Type type);
 	SpriteEntry(Type type, nc::Colorf entryColor);
 
 	inline Type type() const { return type_; }

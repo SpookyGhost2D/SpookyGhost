@@ -27,7 +27,7 @@ class LuaSaver
 		AnimationManager &animMgr;
 	};
 
-	LuaSaver(unsigned int bufferSize);
+	explicit LuaSaver(unsigned int bufferSize);
 
 	bool load(const char *filename, Data &data);
 	void save(const char *filename, const Data &data);

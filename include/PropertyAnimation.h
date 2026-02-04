@@ -36,7 +36,7 @@ class PropertyAnimation : public CurveAnimation
 {
   public:
 	PropertyAnimation();
-	PropertyAnimation(Sprite *sprite);
+	explicit PropertyAnimation(Sprite *sprite);
 
 	nctl::UniquePtr<IAnimation> clone() const override;
 

@@ -53,7 +53,7 @@ class Sprite : public SpriteEntry
 	/// Anchor point used by some grid animation functions
 	nc::Vector2f gridAnchorPoint;
 
-	Sprite(Texture *texture);
+	explicit Sprite(Texture *texture);
 
 	nctl::UniquePtr<Sprite> clone() const;
 

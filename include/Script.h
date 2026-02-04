@@ -15,7 +15,7 @@ class Script
 {
   public:
 	Script();
-	Script(const char *filename);
+	explicit Script(const char *filename);
 
 	inline bool canRun() const { return canRun_; }
 

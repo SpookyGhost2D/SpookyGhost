@@ -38,7 +38,7 @@ namespace nc = ncine;
 class LuaSerializer
 {
   public:
-	LuaSerializer(unsigned int bufferSize);
+	explicit LuaSerializer(unsigned int bufferSize);
 
 	void reset();
 

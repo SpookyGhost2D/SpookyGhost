@@ -14,7 +14,7 @@ class GridAnimation : public CurveAnimation
 {
   public:
 	GridAnimation();
-	GridAnimation(Sprite *sprite);
+	explicit GridAnimation(Sprite *sprite);
 
 	nctl::UniquePtr<IAnimation> clone() const override;
 

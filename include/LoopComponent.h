@@ -23,7 +23,7 @@ class LoopComponent
 {
   public:
 	LoopComponent(Loop::Mode mode, Loop::Direction direction);
-	LoopComponent(Loop::Mode mode);
+	explicit LoopComponent(Loop::Mode mode);
 	LoopComponent();
 
 	inline Loop::Direction direction() const { return direction_; }

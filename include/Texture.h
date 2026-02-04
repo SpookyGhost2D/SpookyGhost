@@ -20,7 +20,7 @@ class Texture
   public:
 	static const unsigned int MaxNameLength = 64;
 
-	Texture(const char *filename);
+	explicit Texture(const char *filename);
 	Texture(const char *bufferName, const unsigned char *bufferPtr, unsigned long int bufferSize);
 
 	inline const nctl::String &name() const { return name_; }
