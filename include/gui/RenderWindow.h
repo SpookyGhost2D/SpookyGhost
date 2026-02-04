@@ -1,5 +1,5 @@
-#ifndef CLASS_RENDERGUIWINDOW
-#define CLASS_RENDERGUIWINDOW
+#ifndef CLASS_RENDERWINDOW
+#define CLASS_RENDERWINDOW
 
 #include <ncine/Vector2.h>
 #include "gui/gui_common.h"
@@ -20,8 +20,8 @@ struct SaveAnim
 	nc::Vector2i sheetDestPos;
 };
 
-/// The render gui window class
-class RenderGuiWindow
+/// The render window class
+class RenderWindow
 {
   public:
 	enum ResizeLevel
@@ -49,7 +49,7 @@ class RenderGuiWindow
 	nctl::String directory = nctl::String(ui::MaxStringLength);
 	nctl::String filename = nctl::String(ui::MaxStringLength);
 
-	explicit RenderGuiWindow(UserInterface &ui);
+	explicit RenderWindow(UserInterface &ui);
 
 	inline const SaveAnim &saveAnimStatus() const { return saveAnimStatus_; }
 	inline SaveAnim &saveAnimStatus() { return saveAnimStatus_; }

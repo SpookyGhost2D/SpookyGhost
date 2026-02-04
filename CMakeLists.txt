@@ -45,8 +45,15 @@ set(NCPROJECT_SOURCES
 	include/gui/gui_tips.h
 	include/gui/gui_common.h
 	include/gui/UserInterface.h
+	include/gui/TexturesWindow.h
+	include/gui/SpritesWindow.h
+	include/gui/ScriptsWindow.h
+	include/gui/AnimationsWindow.h
+	include/gui/SpriteWindow.h
+	include/gui/AnimationWindow.h
 	include/gui/CanvasGuiSection.h
-	include/gui/RenderGuiWindow.h
+	include/gui/RenderWindow.h
+	include/gui/CanvasWindows.h
 	include/gui/FileDialog.h
 
 	src/singletons.cpp
@@ -80,8 +87,15 @@ set(NCPROJECT_SOURCES
 
 	src/gui/gui_common.cpp
 	src/gui/UserInterface.cpp
+	src/gui/TexturesWindow.cpp
+	src/gui/SpritesWindow.cpp
+	src/gui/ScriptsWindow.cpp
+	src/gui/AnimationsWindow.cpp
+	src/gui/SpriteWindow.cpp
+	src/gui/AnimationWindow.cpp
 	src/gui/CanvasGuiSection.cpp
-	src/gui/RenderGuiWindow.cpp
+	src/gui/RenderWindow.cpp
+	src/gui/CanvasWindows.cpp
 	src/gui/config_window.cpp
 	src/gui/style.cpp
 	src/gui/openfile.cpp

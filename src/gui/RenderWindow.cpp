@@ -4,11 +4,10 @@
 #include "singletons.h"
 #include "gui/gui_labels.h"
 #include "gui/gui_common.h"
-#include "gui/RenderGuiWindow.h"
+#include "gui/RenderWindow.h"
 #include "gui/UserInterface.h"
 #include "gui/FileDialog.h"
 #include "Canvas.h"
-#include "AnimationManager.h"
 
 namespace {
 
@@ -20,7 +19,7 @@ const char *ResizeStrings[7] = { "1/8X", "1/4X", "1/2X", "1X", "2X", "4X", "8X" 
 // CONSTRUCTORS and DESTRUCTOR
 ///////////////////////////////////////////////////////////
 
-RenderGuiWindow::RenderGuiWindow(UserInterface &ui)
+RenderWindow::RenderWindow(UserInterface &ui)
     : ui_(ui)
 {
 #ifdef __ANDROID__
@@ -32,7 +31,7 @@ RenderGuiWindow::RenderGuiWindow(UserInterface &ui)
 // PUBLIC FUNCTIONS
 ///////////////////////////////////////////////////////////
 
-float RenderGuiWindow::resizeAmount(ResizeLevel rl)
+float RenderWindow::resizeAmount(ResizeLevel rl)
 {
 	switch (rl)
 	{
@@ -54,12 +53,12 @@ float RenderGuiWindow::resizeAmount(ResizeLevel rl)
 	return 1.0f;
 }
 
-float RenderGuiWindow::resizeAmount() const
+float RenderWindow::resizeAmount() const
 {
 	return resizeAmount(resizeLevel);
 }
 
-void RenderGuiWindow::setResize(float resizeAmount)
+void RenderWindow::setResize(float resizeAmount)
 {
 	if (resizeAmount <= 0.125f)
 		resizeLevel = ResizeLevel::X1_8;
@@ -77,7 +76,7 @@ void RenderGuiWindow::setResize(float resizeAmount)
 		resizeLevel = ResizeLevel::X8;
 }
 
-void RenderGuiWindow::create()
+void RenderWindow::create()
 {
 	ImGui::Begin(Labels::Render);
 
@@ -135,7 +134,7 @@ void RenderGuiWindow::create()
 	ui::comboString[ui::comboString.length() - 1] = '\0';
 
 	ImGui::Combo("Resize Level", &currentResizeCombo, ui::comboString.data());
-	resizeLevel = static_cast<RenderGuiWindow::ResizeLevel>(currentResizeCombo);
+	resizeLevel = static_cast<RenderWindow::ResizeLevel>(currentResizeCombo);
 	saveAnimStatus_.canvasResize = resizeAmount();
 
 	const unsigned int MaxSliderSeconds = 10;
@@ -178,7 +177,7 @@ void RenderGuiWindow::create()
 	ui::comboString[ui::comboString.length() - 1] = '\0';
 
 	ImGui::Combo("Layout", &currentLayoutCombo, ui::comboString.data());
-	layout = static_cast<RenderGuiWindow::SpritesheetLayout>(currentLayoutCombo);
+	layout = static_cast<RenderWindow::SpritesheetLayout>(currentLayoutCombo);
 
 	static nc::Vector2i customSides(rectSides);
 	if (layout == SpritesheetLayout::CUSTOM)
@@ -327,7 +326,7 @@ void RenderGuiWindow::create()
 	ImGui::End();
 }
 
-void RenderGuiWindow::signalFrameSaved()
+void RenderWindow::signalFrameSaved()
 {
 	ASSERT(shouldSaveFrames_ || shouldSaveSpritesheet_);
 
@@ -357,7 +356,7 @@ void RenderGuiWindow::signalFrameSaved()
 	}
 }
 
-void RenderGuiWindow::cancelRender()
+void RenderWindow::cancelRender()
 {
 	if (shouldSaveFrames_ || shouldSaveSpritesheet_)
 	{

@@ -30,4 +30,7 @@ int inputTextCallback(ImGuiInputTextCallbackData *data)
 const nc::DropEvent *dropEvent = nullptr;
 unsigned int dropUpdateFrames = 0;
 
+float ImageTooltipSize = 100.0f;
+float ImageTooltipDelay = 0.5f;
+
 }
