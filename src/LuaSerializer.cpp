@@ -3,7 +3,7 @@
 #include <ncine/LuaVector2Utils.h>
 #include <ncine/LuaVector3Utils.h>
 #include <ncine/LuaRectUtils.h>
-#include <ncine/LuaColorUtils.h>
+#include <ncine/LuaColorfUtils.h>
 #include <ncine/IFile.h>
 
 #include <ncine/Rect.h>
@@ -251,7 +251,7 @@ nc::Vector3f deserialize<nc::Vector3f>(LuaSerializer &ls, const char *name)
 template <>
 nc::Colorf deserialize<nc::Colorf>(LuaSerializer &ls, const char *name)
 {
-	return nc::LuaColorUtils::retrieveTableField(ls.luaState(), -1, name);
+	return nc::LuaColorfUtils::retrieveTableField(ls.luaState(), -1, name);
 }
 
 template <>
@@ -347,7 +347,7 @@ void deserialize(LuaSerializer &ls, const char *name, nc::Vector3f &vector)
 
 void deserialize(LuaSerializer &ls, const char *name, nc::Colorf &color)
 {
-	color = nc::LuaColorUtils::retrieveTableField(ls.luaState(), -1, name);
+	color = nc::LuaColorfUtils::retrieveTableField(ls.luaState(), -1, name);
 }
 
 void deserializeGlobal(LuaSerializer &ls, const char *name, bool &boolean)

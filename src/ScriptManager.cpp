@@ -1,6 +1,6 @@
 #include <ncine/LuaUtils.h>
 #include <ncine/LuaVector2Utils.h>
-#include <ncine/LuaColorUtils.h>
+#include <ncine/LuaColorfUtils.h>
 #include <ncine/LuaRectUtils.h>
 #include "singletons.h"
 #include "ScriptManager.h"
@@ -475,7 +475,7 @@ int ScriptManager::color(lua_State *L)
 {
 	Sprite *sprite = retrieveSprite(L);
 	const nc::Colorf color = sprite ? sprite->color : nc::Colorf::White;
-	nc::LuaColorUtils::push(L, color);
+	nc::LuaColorfUtils::push(L, color);
 
 	return 1;
 }
@@ -716,7 +716,7 @@ int ScriptManager::setColor(lua_State *L)
 	if (sprite)
 	{
 		int colorIndex = 0;
-		const nc::Colorf color = nc::LuaColorUtils::retrieve(L, -1, colorIndex);
+		const nc::Colorf color = nc::LuaColorfUtils::retrieve(L, -1, colorIndex);
 		sprite->color = color;
 	}
 
