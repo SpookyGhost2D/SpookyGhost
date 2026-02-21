@@ -123,7 +123,7 @@ void RenderWindow::create()
 
 	int currentResizeCombo = static_cast<int>(resizeLevel);
 	ui::comboString.clear();
-	for (unsigned int i = 0; i < IM_ARRAYSIZE(ResizeStrings); i++)
+	for (unsigned int i = 0; i < IM_COUNTOF(ResizeStrings); i++)
 	{
 		const float resize = resizeAmount(ResizeLevel(i));
 		ui::comboString.formatAppend("%s (%d x %d)", ResizeStrings[i], static_cast<int>(theCanvas->texWidth() * resize), static_cast<int>(theCanvas->texHeight() * resize));

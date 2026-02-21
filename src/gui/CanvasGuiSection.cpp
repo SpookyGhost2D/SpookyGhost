@@ -36,7 +36,7 @@ void CanvasGuiSection::create(Canvas &canvas)
 
 	int currentResizeCombo = static_cast<int>(resizePreset_);
 	ui::comboString.clear();
-	for (unsigned int i = 0; i < IM_ARRAYSIZE(ResizeStrings); i++)
+	for (unsigned int i = 0; i < IM_COUNTOF(ResizeStrings); i++)
 	{
 		ui::comboString.formatAppend("%s", ResizeStrings[i]);
 		if (ResizePreset(i) != ResizePreset::CUSTOM &&

@@ -169,7 +169,7 @@ void SpriteWindow::create()
 		const float halfBiggerDimension = sprite.width() > sprite.height() ? sprite.width() * 0.5f : sprite.height() * 0.5f;
 		ImGui::SliderFloat2("Anchor Point", sprite.anchorPoint.data(), -halfBiggerDimension, halfBiggerDimension);
 		static int currentAnchorSelection = 0;
-		if (ImGui::Combo("Anchor Presets", &currentAnchorSelection, anchorPointItems, IM_ARRAYSIZE(anchorPointItems)))
+		if (ImGui::Combo("Anchor Presets", &currentAnchorSelection, anchorPointItems, IM_COUNTOF(anchorPointItems)))
 		{
 			switch (currentAnchorSelection)
 			{
@@ -248,11 +248,11 @@ void SpriteWindow::create()
 
 		ImGui::Separator();
 		int currentRgbBlendingPreset = static_cast<int>(sprite.rgbBlendingPreset());
-		ImGui::Combo("RGB Blending", &currentRgbBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
+		ImGui::Combo("RGB Blending", &currentRgbBlendingPreset, blendingPresets, IM_COUNTOF(blendingPresets));
 		sprite.setRgbBlendingPreset(static_cast<Sprite::BlendingPreset>(currentRgbBlendingPreset));
 
 		int currentAlphaBlendingPreset = static_cast<int>(sprite.alphaBlendingPreset());
-		ImGui::Combo("Alpha Blending", &currentAlphaBlendingPreset, blendingPresets, IM_ARRAYSIZE(blendingPresets));
+		ImGui::Combo("Alpha Blending", &currentAlphaBlendingPreset, blendingPresets, IM_COUNTOF(blendingPresets));
 		sprite.setAlphaBlendingPreset(static_cast<Sprite::BlendingPreset>(currentAlphaBlendingPreset));
 
 		ImGui::ColorEdit4("Color", sprite.color.data(), ImGuiColorEditFlags_AlphaBar);

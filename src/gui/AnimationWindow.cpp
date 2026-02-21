@@ -113,11 +113,11 @@ void AnimationWindow::createDelayAnimationGui(IAnimation &anim)
 void AnimationWindow::createLoopAnimationGui(LoopComponent &loop)
 {
 	int currentLoopDirection = static_cast<int>(loop.direction());
-	ImGui::Combo("Direction", &currentLoopDirection, loopDirections, IM_ARRAYSIZE(loopDirections));
+	ImGui::Combo("Direction", &currentLoopDirection, loopDirections, IM_COUNTOF(loopDirections));
 	loop.setDirection(static_cast<Loop::Direction>(currentLoopDirection));
 
 	int currentLoopMode = static_cast<int>(loop.mode());
-	ImGui::Combo("Loop Mode", &currentLoopMode, loopModes, IM_ARRAYSIZE(loopModes));
+	ImGui::Combo("Loop Mode", &currentLoopMode, loopModes, IM_COUNTOF(loopModes));
 	loop.setMode(static_cast<Loop::Mode>(currentLoopMode));
 
 	if (loop.mode() != Loop::Mode::DISABLED)
@@ -197,7 +197,7 @@ void AnimationWindow::createCurveAnimationGui(CurveAnimation &anim, const CurveA
 	createDelayAnimationGui(anim);
 
 	int currentComboCurveType = static_cast<int>(anim.curve().type());
-	ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_ARRAYSIZE(easingCurveTypes));
+	ImGui::Combo("Easing Curve", &currentComboCurveType, easingCurveTypes, IM_COUNTOF(easingCurveTypes));
 	anim.curve().setType(static_cast<EasingCurve::Type>(currentComboCurveType));
 
 	createLoopAnimationGui(anim.curve().loop());
@@ -356,7 +356,7 @@ void AnimationWindow::createPropertyAnimationGui(PropertyAnimation &anim)
 		currentComboProperty = static_cast<Properties::Types>(anim.propertyType());
 
 		bool setCurveShift = false;
-		if (ImGui::Combo("Property", &currentComboProperty, Properties::Strings, IM_ARRAYSIZE(Properties::Strings)))
+		if (ImGui::Combo("Property", &currentComboProperty, Properties::Strings, IM_COUNTOF(Properties::Strings)))
 			setCurveShift = true;
 		anim.setProperty(static_cast<Properties::Types>(currentComboProperty));
 		switch (currentComboProperty)

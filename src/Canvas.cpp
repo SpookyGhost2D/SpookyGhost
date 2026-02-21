@@ -5,7 +5,7 @@
 #include <ncine/Application.h>
 #include <ncine/GLTexture.h>
 #include <ncine/GLFramebufferObject.h>
-#include <ncine/TextureSaverPng.h>
+#include <ncine/ImageSaverPng.h>
 
 #include "shader_strings.h"
 
@@ -110,12 +110,12 @@ void Canvas::save(const char *filename)
 	fbo_->unbind();
 #endif
 
-	nc::TextureSaverPng saver;
-	nc::ITextureSaver::Properties props;
+	nc::ImageSaverPng saver;
+	nc::IImageSaver::Properties props;
 	props.width = texWidth_;
 	props.height = texHeight_;
 	props.pixels = pixels_.get();
-	props.format = nc::ITextureSaver::Format::RGBA8;
+	props.format = nc::IImageSaver::Format::RGBA8;
 	saver.saveToFile(props, filename);
 }
 

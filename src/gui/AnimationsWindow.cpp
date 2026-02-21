@@ -76,7 +76,7 @@ void AnimationsWindow::create()
 
 	static int currentComboAnimType = 0;
 	ImGui::PushItemWidth(ImGui::GetFontSize() * 12.0f);
-	ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_ARRAYSIZE(animationTypes));
+	ImGui::Combo("Type", &currentComboAnimType, animationTypes, IM_COUNTOF(animationTypes));
 	ImGui::PopItemWidth();
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Add))
