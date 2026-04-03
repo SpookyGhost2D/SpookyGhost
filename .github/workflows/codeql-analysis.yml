@@ -3,7 +3,7 @@ name: 'CodeQL'
 env:
   LIBRARIES_BRANCH: libraries-OS-COMPILER
   NCINE_SOURCE_BRANCH: BRANCH_NAME
-  IMGUI_VERSION_TAG: v1.92.6-docking
+  IMGUI_VERSION_TAG: v1.92.7-docking
 
 on: [push, workflow_dispatch]
 

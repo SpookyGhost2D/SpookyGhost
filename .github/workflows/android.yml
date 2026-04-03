@@ -7,7 +7,7 @@ env:
     Push artifact from GitHub Actions build ${{ github.run_number }} with id ${{ github.run_id }}
 
     - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}
-  IMGUI_VERSION_TAG: v1.92.6-docking
+  IMGUI_VERSION_TAG: v1.92.7-docking
 
 on: [push, workflow_dispatch]
 
