@@ -345,9 +345,9 @@ void serialize(LuaSerializer &ls, const Configuration &cfg)
 	serializeGlobal(ls, "refresh_rate", cfg.refreshRate);
 	serializeGlobal(ls, "window_position_x", cfg.windowPositionX);
 	serializeGlobal(ls, "window_position_y", cfg.windowPositionY);
-	serializeGlobal(ls, "fullscreen", cfg.fullScreen);
+	serializeGlobal(ls, "fullscreen", cfg.fullscreen);
 	serializeGlobal(ls, "resizable", cfg.resizable);
-	serializeGlobal(ls, "vsync", cfg.withVSync);
+	serializeGlobal(ls, "vsync", cfg.vsync);
 	serializeGlobal(ls, "frame_limit", cfg.frameLimit);
 	serializeGlobal(ls, "canvas_width", cfg.canvasWidth);
 	serializeGlobal(ls, "canvas_height", cfg.canvasHeight);
@@ -769,9 +769,9 @@ void deserialize(LuaSerializer &ls, Configuration &cfg)
 
 	cfg.width = deserializeGlobal<int>(ls, "width");
 	cfg.height = deserializeGlobal<int>(ls, "height");
-	cfg.fullScreen = deserializeGlobal<bool>(ls, "fullscreen");
+	cfg.fullscreen = deserializeGlobal<bool>(ls, "fullscreen");
 	cfg.resizable = deserializeGlobal<bool>(ls, "resizable");
-	cfg.withVSync = deserializeGlobal<bool>(ls, "vsync");
+	cfg.vsync = deserializeGlobal<bool>(ls, "vsync");
 	cfg.frameLimit = deserializeGlobal<int>(ls, "frame_limit");
 	cfg.canvasWidth = deserializeGlobal<int>(ls, "canvas_width");
 	cfg.canvasHeight = deserializeGlobal<int>(ls, "canvas_height");

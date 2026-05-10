@@ -133,21 +133,21 @@ void MyEventHandler::onPreInit(nc::AppConfiguration &config)
 	ui::scriptsDataDir = nc::fs::joinPath(nc::fs::dataPath(), "scripts");
 #endif
 
-	config.resolution.set(theCfg.width, theCfg.height);
-	config.refreshRate = theCfg.refreshRate;
-	config.windowPosition.set(theCfg.windowPositionX, theCfg.windowPositionY);
-	config.fullScreen = theCfg.fullScreen;
-	config.resizable = theCfg.resizable;
-	config.frameLimit = static_cast<unsigned int>(theCfg.frameLimit);
-	config.withVSync = theCfg.withVSync;
+	config.window.resolution.set(theCfg.width, theCfg.height);
+	config.window.refreshRate = theCfg.refreshRate;
+	config.window.position.set(theCfg.windowPositionX, theCfg.windowPositionY);
+	config.window.fullscreen = theCfg.fullscreen;
+	config.window.resizable = theCfg.resizable;
+	config.window.title = "SpookyGhost";
+	config.window.iconFilename = "icon96.png";
 
-	config.withScenegraph = false;
-	config.withAudio = false;
-	config.withDebugOverlay = false;
-	config.withJobSystem= false;
+	config.graphics.frameLimit = static_cast<unsigned int>(theCfg.frameLimit);
+	config.graphics.vsync = theCfg.vsync;
 
-	config.windowTitle = "SpookyGhost";
-	config.windowIconFilename = "icon96.png";
+	config.audio.enabled = false;
+	config.jobSystem.enabled = false;
+	config.features.debugOverlay = false;
+	config.features.scenegraph = false;
 }
 
 void MyEventHandler::onInit()

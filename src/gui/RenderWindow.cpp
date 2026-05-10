@@ -351,7 +351,7 @@ void RenderWindow::signalFrameSaved()
 		ui_.pushStatusInfoMessage("Animation saved");
 
 		// Re-enabling V-Sync if it was enabled in the configuration
-		if (theCfg.withVSync)
+		if (theCfg.vsync)
 			nc::theApplication().gfxDevice().setSwapInterval(1);
 	}
 }
@@ -370,7 +370,7 @@ void RenderWindow::cancelRender()
 		shouldSaveSpritesheet_ = false;
 
 		// Re-enabling V-Sync if it was enabled in the configuration
-		if (theCfg.withVSync)
+		if (theCfg.vsync)
 			nc::theApplication().gfxDevice().setSwapInterval(1);
 	}
 }

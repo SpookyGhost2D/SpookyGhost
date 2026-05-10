@@ -32,13 +32,13 @@ void UserInterface::createConfigWindow()
 	ImGui::TextUnformatted("Resizable: false");
 	ImGui::TextUnformatted("Fullscreen: true");
 #else
-	static bool fullScreen = theCfg.fullScreen;
+	static bool fullscreen = theCfg.fullscreen;
 	static int selectedVideoMode[nc::IGfxDevice::MaxMonitors] = {};
 	const unsigned int monitorIndex = gfxDevice.windowMonitorIndex();
 	const nc::IGfxDevice::VideoMode &currentVideoMode = gfxDevice.currentVideoMode(monitorIndex);
 	const nc::IGfxDevice::Monitor &monitor = gfxDevice.monitor(monitorIndex);
 
-	ImGui::BeginDisabled(gfxDevice.isFullScreen());
+	ImGui::BeginDisabled(gfxDevice.isFullscreen());
 	ImGui::AlignTextToFramePadding();
 	ImGui::Text("Window Position: %d, %d", gfxDevice.windowPositionX(), gfxDevice.windowPositionY());
 	ImGui::SameLine();
@@ -52,7 +52,7 @@ void UserInterface::createConfigWindow()
 	theCfg.windowPositionX = gfxDevice.windowPositionX();
 	theCfg.windowPositionY = gfxDevice.windowPositionY();
 
-	ImGui::BeginDisabled(fullScreen);
+	ImGui::BeginDisabled(fullscreen);
 	ImGui::SliderInt("Window Width", &theCfg.width, 0, currentVideoMode.width / scalingFactor);
 	ImGui::SliderInt("Window Height", &theCfg.height, 0, currentVideoMode.height / scalingFactor);
 	const nc::Vector2i scaledWindowSize(theCfg.width * scalingFactor, theCfg.height * scalingFactor);
@@ -83,9 +83,9 @@ void UserInterface::createConfigWindow()
 		selectedVideoMode[monitorIndex] = monitor.numVideoModes - 1;
 
 	ImGui::Combo("Video Mode", &selectedVideoMode[monitorIndex], ui::comboString.data());
-	ImGui::Checkbox("Full Screen", &fullScreen);
+	ImGui::Checkbox("Full Screen", &fullscreen);
 
-	ImGui::BeginDisabled(fullScreen);
+	ImGui::BeginDisabled(fullscreen);
 	ImGui::SameLine();
 	if (ImGui::Checkbox("Resizable", &theCfg.resizable) && theCfg.resizable != gfxDevice.isResizable())
 		pushStatusInfoMessage("Restart the application to see the changes");
@@ -93,15 +93,15 @@ void UserInterface::createConfigWindow()
 
 	const bool shouldChangeVideoMode = (monitor.videoModes[selectedVideoMode[monitorIndex]] != currentVideoMode);
 	const bool shouldChangeWindowSize = (gfxDevice.resolution().x != scaledWindowSize.x || gfxDevice.resolution().y != scaledWindowSize.y);
-	const bool canApply = (gfxDevice.isFullScreen() != fullScreen) || (fullScreen && shouldChangeVideoMode) || shouldChangeWindowSize;
+	const bool canApply = (gfxDevice.isFullscreen() != fullscreen) || (fullscreen && shouldChangeVideoMode) || shouldChangeWindowSize;
 	ImGui::BeginDisabled(canApply == false);
 	ImGui::SameLine();
 	if (ImGui::Button(Labels::Apply))
 	{
-		if (fullScreen)
+		if (fullscreen)
 		{
 			gfxDevice.setVideoMode(selectedVideoMode[monitorIndex]);
-			gfxDevice.setFullScreen(fullScreen);
+			gfxDevice.setFullscreen(fullscreen);
 
 			if (shouldChangeVideoMode)
 				openVideoModePopup(); // The popup saves the configuration
@@ -110,23 +110,23 @@ void UserInterface::createConfigWindow()
 				theCfg.width = currentVideoMode.width;
 				theCfg.height = currentVideoMode.height;
 				theCfg.refreshRate = 0.0f;
-				theCfg.fullScreen = fullScreen;
+				theCfg.fullscreen = fullscreen;
 			}
 		}
 		else
 		{
-			gfxDevice.setFullScreen(fullScreen);
+			gfxDevice.setFullscreen(fullscreen);
 			theCfg.refreshRate = 0.0f;
 			const nc::Vector2i halfScreenResolution(currentVideoMode.width / 2, currentVideoMode.height / 2);
 			gfxDevice.setWindowPosition(monitor.position + halfScreenResolution - scaledWindowSize / 2);
 			gfxDevice.setWindowSize(scaledWindowSize);
-			theCfg.fullScreen = fullScreen;
+			theCfg.fullscreen = fullscreen;
 		}
 	}
 	ImGui::EndDisabled();
 
 	ImGui::SameLine();
-	const bool currentEnabled = (shouldChangeVideoMode || gfxDevice.isFullScreen() != fullScreen ||
+	const bool currentEnabled = (shouldChangeVideoMode || gfxDevice.isFullscreen() != fullscreen ||
 	                             shouldChangeWindowSize || gfxDevice.isResizable() != theCfg.resizable);
 	ImGui::BeginDisabled(currentEnabled == false);
 	if (ImGui::Button(Labels::Current))
@@ -141,7 +141,7 @@ void UserInterface::createConfigWindow()
 		}
 		theCfg.width = gfxDevice.width() / scalingFactor;
 		theCfg.height = gfxDevice.height() / scalingFactor;
-		fullScreen = gfxDevice.isFullScreen();
+		fullscreen = gfxDevice.isFullscreen();
 		theCfg.resizable = gfxDevice.isResizable();
 	}
 	ImGui::EndDisabled();
@@ -151,8 +151,8 @@ void UserInterface::createConfigWindow()
 #ifdef __ANDROID__
 	ImGui::Text("Vertical Sync: true");
 #else
-	ImGui::Checkbox("Vertical Sync", &theCfg.withVSync);
-	nc::theApplication().gfxDevice().setSwapInterval(theCfg.withVSync ? 1 : 0);
+	ImGui::Checkbox("Vertical Sync", &theCfg.vsync);
+	nc::theApplication().gfxDevice().setSwapInterval(theCfg.vsync ? 1 : 0);
 #endif
 	int frameLimit = theCfg.frameLimit;
 	ImGui::SliderInt("Frame Limit", &frameLimit, 0, 240);

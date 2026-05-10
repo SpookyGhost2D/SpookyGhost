@@ -803,7 +803,7 @@ void UserInterface::createQuitPopup()
 		nc::IGfxDevice &gfxDevice = nc::theApplication().gfxDevice();
 		theCfg.windowPositionX = gfxDevice.windowPositionX();
 		theCfg.windowPositionY = gfxDevice.windowPositionY();
-		if (theCfg.fullScreen == false)
+		if (theCfg.fullscreen == false)
 		{
 			const float scalingFactor = theCfg.autoGuiScaling ? gfxDevice.windowScalingFactor() : 1.0f;
 			theCfg.width = gfxDevice.width() / scalingFactor;
@@ -844,7 +844,7 @@ void UserInterface::createVideoModePopup()
 		theCfg.width = videoMode.width;
 		theCfg.height = videoMode.height;
 		theCfg.refreshRate = videoMode.refreshRate;
-		theCfg.fullScreen = gfxDevice.isFullScreen();
+		theCfg.fullscreen = gfxDevice.isFullscreen();
 		theCfg.windowPositionX = gfxDevice.windowPositionX();
 		theCfg.windowPositionX = gfxDevice.windowPositionY();
 		theSaver->saveCfg(theCfg);
@@ -869,10 +869,10 @@ void UserInterface::createVideoModePopup()
 				break;
 			}
 		}
-		if (theCfg.fullScreen)
+		if (theCfg.fullscreen)
 			gfxDevice.setVideoMode(previousModeIndex);
-		gfxDevice.setFullScreen(theCfg.fullScreen);
-		if (theCfg.fullScreen == false)
+		gfxDevice.setFullscreen(theCfg.fullscreen);
+		if (theCfg.fullscreen == false)
 			gfxDevice.setWindowPosition(theCfg.windowPositionX, theCfg.windowPositionY);
 
 		cancelVideoModeChange = false;

@@ -17,12 +17,12 @@ struct Configuration
 	int width = 1280;
 	int height = 720;
 	float refreshRate = 0.0f; // Added in version 6
-	int windowPositionX = nc::AppConfiguration::WindowPositionIgnore; // Added in version 6
-	int windowPositionY = nc::AppConfiguration::WindowPositionIgnore; // Added in version 6
-	bool fullScreen = false;
+	int windowPositionX = nc::AppConfiguration::Window::IgnorePosition; // Added in version 6
+	int windowPositionY = nc::AppConfiguration::Window::IgnorePosition; // Added in version 6
+	bool fullscreen = false;
 	bool resizable = true;
 
-	bool withVSync = true;
+	bool vsync = true;
 	int frameLimit = 0;
 
 	int canvasWidth = 256;

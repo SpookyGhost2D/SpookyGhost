@@ -48,7 +48,9 @@ void RenderingResources::create()
 		{ RenderingResources::meshSpriteShaderProgram_, ShaderStrings::meshsprite_vs, ShaderStrings::sprite_fs, nc::GLShaderProgram::Introspection::ENABLED },
 	};
 
-	const nc::GLShaderProgram::QueryPhase queryPhase = appCfg.deferShaderQueries ? nc::GLShaderProgram::QueryPhase::DEFERRED : nc::GLShaderProgram::QueryPhase::IMMEDIATE;
+	const nc::GLShaderProgram::QueryPhase queryPhase = appCfg.graphics.opengl.deferShaderQueries
+	        ? nc::GLShaderProgram::QueryPhase::DEFERRED
+	        : nc::GLShaderProgram::QueryPhase::IMMEDIATE;
 	const unsigned int numShaderToLoad = (sizeof(shadersToLoad) / sizeof(*shadersToLoad));
 	for (unsigned int i = 0; i < numShaderToLoad; i++)
 	{
