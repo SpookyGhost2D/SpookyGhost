@@ -8,7 +8,7 @@ env:
 
     - PROJECT_NAME artifact from branch 'BRANCH_NAME' with commit id ${{ github.sha }}
   DEPLOY_BRANCH: PROJECT_NAME-BRANCH_NAME-OS-COMPILER
-  IMGUI_VERSION_TAG: v1.92.7-docking
+  IMGUI_VERSION_TAG: 2af6dd9694288e6befe1edb7ce25510911693c22
 
 on:
   push:

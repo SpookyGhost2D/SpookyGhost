@@ -43,7 +43,7 @@ void CanvasWindows::createCanvasWindow()
 	if (ui_.canvasGuiSection_.showBorders())
 	{
 		const ImRect borderRect(cursorScreenPos.x, cursorScreenPos.y, cursorScreenPos.x + theCanvas->texWidth() * canvasZoom, cursorScreenPos.y + theCanvas->texHeight() * canvasZoom);
-		drawList->AddRect(borderRect.Min, borderRect.Max, ImColor(1.0f, 0.0f, 1.0f, 1.0f), 0.0f, ImDrawFlags_RoundCornersAll, lineThickness);
+		drawList->AddRect(borderRect.Min, borderRect.Max, ImColor(1.0f, 0.0f, 1.0f, 1.0f), 0.0f, lineThickness, ImDrawFlags_RoundCornersAll);
 	}
 
 	hoveringOnCanvas_ = false;
@@ -82,7 +82,7 @@ void CanvasWindows::createCanvasWindow()
 				                        cursorScreenPos.y + (sprite.absPosition().y - sprite.absHeight() / 2) * canvasZoom,
 				                        cursorScreenPos.x + (sprite.absPosition().x + sprite.absWidth() / 2) * canvasZoom,
 				                        cursorScreenPos.y + (sprite.absPosition().y + sprite.absHeight() / 2) * canvasZoom);
-				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, ImDrawFlags_RoundCornersAll, lineThickness);
+				drawList->AddRect(spriteRect.Min, spriteRect.Max, color, 0.0f, lineThickness, ImDrawFlags_RoundCornersAll);
 				if (spriteRect.Contains(mousePos))
 				{
 					drawList->AddLine(ImVec2(spriteRect.Min.x, mousePos.y), ImVec2(spriteRect.Max.x, mousePos.y), color, lineThickness);
