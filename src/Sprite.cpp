@@ -152,6 +152,17 @@ void Sprite::updateRender()
 		meshSpriteShaderProgram_->defineVertexFormat(vbo_.get(), ibo_.get());
 		const long int vboBytes = interleavedVertices_.size() * sizeof(Vertex);
 		vbo_->bufferData(vboBytes, interleavedVertices_.data(), GL_STATIC_DRAW);
+
+		if (shortIndices_.isEmpty() == false)
+		{
+			const long int iboBytes = shortIndices_.size() * sizeof(unsigned short);
+			ibo_->bufferData(iboBytes, shortIndices_.data(), GL_STATIC_DRAW);
+		}
+		else
+		{
+			const long int iboBytes = indices_.size() * sizeof(unsigned int);
+			ibo_->bufferData(iboBytes, indices_.data(), GL_STATIC_DRAW);
+		}
 	}
 }
 

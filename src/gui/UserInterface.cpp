@@ -66,7 +66,10 @@ UserInterface::UserInterface()
 	ImGui::GetStyle().FontScaleMain = theCfg.guiScaling;
 
 #ifdef WITH_FONTAWESOME
-	io.Fonts->AddFontDefault(); // Cannot use `MergeMode` for the first font
+	// Before merging, the default font must use an explicit reference size matching its natural default (13px)
+	ImFontConfig defaultFontConfig;
+	defaultFontConfig.SizePixels = 13.0f;
+	io.Fonts->AddFontDefault(&defaultFontConfig); // Cannot use `MergeMode` for the first font
 	// Merge icons from Font Awesome into the default font
 	static const ImWchar iconsRanges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
 	ImFontConfig iconsConfig;
