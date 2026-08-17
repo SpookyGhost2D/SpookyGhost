@@ -19,6 +19,19 @@
 ScriptsWindow::ScriptsWindow(UserInterface &ui)
     : ui_(ui)
 {
+#ifdef __EMSCRIPTEN__
+	loadScriptLocalFile_.setLoadedCallback([](const nc::EmscriptenLocalFile &localFile, void *userData) {
+		ScriptsWindow *sw = reinterpret_cast<ScriptsWindow *>(userData);
+		if (localFile.size() > 0)
+			sw->loadScript(localFile.filename(), localFile.data(), localFile.size());
+	}, this);
+
+	reloadScriptLocalFile_.setLoadedCallback([](const nc::EmscriptenLocalFile &localFile, void *userData) {
+		ScriptsWindow *sw = reinterpret_cast<ScriptsWindow *>(userData);
+		if (localFile.size() > 0)
+			sw->reloadScript(localFile.filename(), localFile.data(), localFile.size());
+	}, this);
+#endif
 }
 
 ///////////////////////////////////////////////////////////
@@ -61,6 +74,7 @@ void ScriptsWindow::create()
 
 	if (ImGui::Button(Labels::Load))
 	{
+#ifndef __EMSCRIPTEN__
 		FileDialog::config.directory = theCfg.scriptsPath;
 		FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
 		FileDialog::config.windowTitle = "Load script file";
@@ -69,6 +83,9 @@ void ScriptsWindow::create()
 		FileDialog::config.extensions = "lua\0\0";
 		FileDialog::config.action = FileDialog::Action::LOAD_SCRIPT;
 		FileDialog::config.windowOpen = true;
+#else
+		loadScriptLocalFile_.load();
+#endif
 	}
 
 	const bool enableButtons = theScriptingMgr->scripts().isEmpty() == false;
@@ -177,6 +194,51 @@ void ScriptsWindow::reloadScript() // TODO: Move back to ui?
 		ui_.pushStatusInfoMessage(ui::auxString.data());
 	}
 }
+
+#ifdef __EMSCRIPTEN__
+bool ScriptsWindow::loadScript(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize)
+{
+	nctl::UniquePtr<Script> script = nctl::makeUnique<Script>();
+	const bool hasLoaded = script->load(bufferName, bufferPtr, bufferSize);
+
+	theScriptingMgr->scripts().pushBack(nctl::move(script));
+	ui_.selectedScriptIndex_ = theScriptingMgr->scripts().size() - 1;
+
+	if (hasLoaded)
+	{
+		if (theScriptingMgr->scripts().back()->canRun())
+		{
+			ui::auxString.format("Loaded script \"%s\"", bufferName);
+			ui_.pushStatusInfoMessage(ui::auxString.data());
+		}
+		else
+		{
+			ui::auxString.format("Loaded script \"%s\", but it cannot run", bufferName);
+			ui_.pushStatusErrorMessage(ui::auxString.data());
+		}
+	}
+	else
+	{
+		ui::auxString.format("Cannot load script \"%s\"", bufferName);
+		ui_.pushStatusErrorMessage(ui::auxString.data());
+	}
+
+	return hasLoaded;
+}
+
+void ScriptsWindow::reloadScript(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize)
+{
+	if (theScriptingMgr->scripts().isEmpty() == false)
+	{
+		Script *script = theScriptingMgr->scripts()[ui_.selectedScriptIndex_].get();
+		script->reload(bufferName, bufferPtr, bufferSize);
+		theAnimMgr->reloadScript(script);
+
+		ui::auxString.format("Reloaded script \"%s\"\n", script->name().data());
+		ui_.pushStatusInfoMessage(ui::auxString.data());
+	}
+}
+#endif
 
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS

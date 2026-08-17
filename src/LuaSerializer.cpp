@@ -430,10 +430,17 @@ bool LuaSerializer::load(const char *filename, const nc::EmscriptenLocalFile *lo
 }
 
 void LuaSerializer::save(const char *filename)
+#ifdef __EMSCRIPTEN__
+{
+	// Don't trigger a browser download for the configuration file, only write it to the virtual filesystem
+	save(filename, strncmp(filename, "config.lua", 10) == 0);
+}
+
+void LuaSerializer::save(const char *filename, bool alwaysWriteToFile)
+#endif
 {
 #ifdef __EMSCRIPTEN__
-	// Don't save the configuration file locally
-	if (strncmp(filename, "config.lua", 10) == 0)
+	if (alwaysWriteToFile)
 	{
 #endif
 

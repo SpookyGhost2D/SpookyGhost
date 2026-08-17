@@ -4,6 +4,10 @@
 #include <nctl/String.h>
 #include <ncine/TimeStamp.h>
 
+#ifdef __EMSCRIPTEN__
+	#include <ncine/EmscriptenLocalFile.h>
+#endif
+
 #include "LuaSaver.h"
 #include "gui/CanvasGuiSection.h"
 #include "gui/TexturesWindow.h"
@@ -97,7 +101,15 @@ class UserInterface
 	nctl::UniquePtr<Texture> spookyLogo_;
 	nctl::UniquePtr<Texture> ncineLogo_;
 
+#ifdef __EMSCRIPTEN__
+	nc::EmscriptenLocalFile openProjectLocalFile_;
+#endif
+
 	bool openProject(const char *filename);
+#ifdef __EMSCRIPTEN__
+	bool openProject(const char *filename, const nc::EmscriptenLocalFile &localFile);
+#endif
+	void onProjectLoaded(const char *filename);
 
 	void createDockingSpace();
 	void createInitialDocking();

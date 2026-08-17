@@ -39,6 +39,13 @@ LuaSaver::LuaSaver(unsigned int bufferSize)
 ///////////////////////////////////////////////////////////
 
 bool LuaSaver::load(const char *filename, Data &data)
+#ifdef __EMSCRIPTEN__
+{
+	return load(filename, data, nullptr);
+}
+
+bool LuaSaver::load(const char *filename, Data &data, const nc::EmscriptenLocalFile *localFile)
+#endif
 {
 	DeserializerContext context;
 	serializer_->setContext(&context);
@@ -58,7 +65,12 @@ bool LuaSaver::load(const char *filename, Data &data)
 		functionHash.insert(function.name().data(), &function);
 	}
 
-	if (serializer_->load(filename) == false)
+#ifdef __EMSCRIPTEN__
+	const bool hasLoaded = (localFile != nullptr) ? serializer_->load(filename, localFile) : serializer_->load(filename);
+#else
+	const bool hasLoaded = serializer_->load(filename);
+#endif
+	if (hasLoaded == false)
 		return false;
 
 	data.spriteMgr.clear();
@@ -125,6 +137,13 @@ void visitAnimations(const IAnimation *anim, nctl::Array<const IAnimation *> &an
 }
 
 void LuaSaver::save(const char *filename, const Data &data)
+#ifdef __EMSCRIPTEN__
+{
+	save(filename, data, false);
+}
+
+void LuaSaver::save(const char *filename, const Data &data, bool alwaysWriteToFile)
+#endif
 {
 	SerializerContext context;
 	serializer_->setContext(&context);
@@ -189,7 +208,11 @@ void LuaSaver::save(const char *filename, const Data &data)
 		Serializers::serialize(*serializer_, "animations", anims);
 	}
 
+#ifdef __EMSCRIPTEN__
+	serializer_->save(filename, alwaysWriteToFile);
+#else
 	serializer_->save(filename);
+#endif
 }
 
 bool LuaSaver::loadCfg(const char *filename, Configuration &cfg)

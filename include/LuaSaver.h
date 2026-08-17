@@ -4,6 +4,12 @@
 #include <nctl/UniquePtr.h>
 #include <nctl/String.h>
 
+#ifdef __EMSCRIPTEN__
+namespace ncine {
+	class EmscriptenLocalFile;
+}
+#endif
+
 class LuaSerializer;
 class UserInterface;
 class Canvas;
@@ -30,7 +36,14 @@ class LuaSaver
 	explicit LuaSaver(unsigned int bufferSize);
 
 	bool load(const char *filename, Data &data);
+#ifdef __EMSCRIPTEN__
+	bool load(const char *filename, Data &data, const ncine::EmscriptenLocalFile *localFile);
+#endif
 	void save(const char *filename, const Data &data);
+#ifdef __EMSCRIPTEN__
+	/// Writes to the virtual filesystem instead of triggering a browser download, regardless of filename
+	void save(const char *filename, const Data &data, bool alwaysWriteToFile);
+#endif
 
 	bool loadCfg(const char *filename, Configuration &cfg);
 	void saveCfg(const char *filename, const Configuration &cfg);

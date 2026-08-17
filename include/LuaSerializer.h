@@ -47,6 +47,10 @@ class LuaSerializer
 	bool load(const char *filename, const nc::EmscriptenLocalFile *localFile);
 #endif
 	void save(const char *filename);
+#ifdef __EMSCRIPTEN__
+	/// Writes to the virtual filesystem instead of triggering a browser download, regardless of filename
+	void save(const char *filename, bool alwaysWriteToFile);
+#endif
 
 	inline void setContext(void *context) { context_ = context; }
 	inline void *context() const { return context_; }

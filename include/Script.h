@@ -26,6 +26,10 @@ class Script
 
 	bool load(const char *filename);
 	bool reload();
+#ifdef __EMSCRIPTEN__
+	bool load(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize);
+	bool reload(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize);
+#endif
 
   private:
 	bool canRun_;
@@ -34,6 +38,9 @@ class Script
 	nc::LuaStateManager luaState_;
 
 	bool run(const char *filename, const char *chunkName);
+#ifdef __EMSCRIPTEN__
+	bool run(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize, const char *chunkName);
+#endif
 
 	friend class ScriptAnimation;
 };

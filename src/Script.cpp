@@ -55,6 +55,21 @@ bool Script::reload()
 	return hasLoaded;
 }
 
+#ifdef __EMSCRIPTEN__
+bool Script::load(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize)
+{
+	name_ = bufferName;
+	return run(bufferName, bufferPtr, bufferSize, nc::fs::baseName(bufferName).data());
+}
+
+bool Script::reload(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize)
+{
+	luaState_.reopen();
+	// The name is intentionally left unchanged, so it keeps identifying the script for relocatable project files
+	return run(bufferName, bufferPtr, bufferSize, name_.data());
+}
+#endif
+
 ///////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ///////////////////////////////////////////////////////////
@@ -67,3 +82,14 @@ bool Script::run(const char *filename, const char *chunkName)
 
 	return canRun_;
 }
+
+#ifdef __EMSCRIPTEN__
+bool Script::run(const char *bufferName, const char *bufferPtr, unsigned long int bufferSize, const char *chunkName)
+{
+	ScriptManager::exposeConstants(luaState_.state());
+	ScriptManager::exposeFunctions(luaState_.state());
+	canRun_ = luaState_.runFromMemory(bufferName, bufferPtr, bufferSize, &errorMessage_);
+
+	return canRun_;
+}
+#endif

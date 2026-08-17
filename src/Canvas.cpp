@@ -7,6 +7,11 @@
 #include <ncine/GLFramebufferObject.h>
 #include <ncine/ImageSaverPng.h>
 
+#ifdef __EMSCRIPTEN__
+	#include <ncine/IFile.h>
+	#include <ncine/EmscriptenLocalFile.h>
+#endif
+
 #include "shader_strings.h"
 
 #ifdef __MINGW32__
@@ -116,7 +121,25 @@ void Canvas::save(const char *filename)
 	props.height = texHeight_;
 	props.pixels = pixels_.get();
 	props.format = nc::IImageSaver::Format::RGBA8;
-	saver.saveToFile(props, filename);
+
+	const bool hasSaved = saver.saveToFile(props, filename);
+#ifdef __EMSCRIPTEN__
+	if (hasSaved)
+	{
+		// After writing the encoded image to Emscripten's in-memory MEMFS, read it back in an
+		// `EmscriptenLocalFile` so that the browser can offer it to the user as a download.
+		nctl::UniquePtr<nc::IFile> file = nc::IFile::createFileHandle(filename);
+		file->open(nc::IFile::OpenMode::READ | nc::IFile::OpenMode::BINARY);
+		if (file->isOpened())
+		{
+			nctl::UniquePtr<unsigned char[]> fileBuffer = nctl::makeUnique<unsigned char[]>(file->size());
+			file->read(fileBuffer.get(), file->size());
+			nc::EmscriptenLocalFile localFileSave;
+			localFileSave.write(fileBuffer.get(), file->size());
+			localFileSave.save(filename);
+		}
+	}
+#endif
 }
 
 void *Canvas::imguiTexId()

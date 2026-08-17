@@ -13,6 +13,16 @@ namespace {
 
 const char *ResizeStrings[7] = { "1/8X", "1/4X", "1/2X", "1X", "2X", "4X", "8X" };
 
+// Saving on Emscripten triggers a browser download, but there's no directory to select and to prepend
+nctl::String savePath(const nctl::String &directory, const nctl::String &filename)
+{
+#ifdef __EMSCRIPTEN__
+	return filename;
+#else
+	return nc::fs::joinPath(directory, filename);
+#endif
+}
+
 }
 
 ///////////////////////////////////////////////////////////
@@ -89,13 +99,14 @@ void RenderWindow::create()
 		ui::dropEvent = nullptr;
 	}
 
+#ifndef __EMSCRIPTEN__
 	if (directory.isEmpty())
 	{
-#ifdef __ANDROID__
+	#ifdef __ANDROID__
 		directory.assign(ui::androidSaveDir);
-#else
+	#else
 		directory.assign(nc::fs::currentDir());
-#endif
+	#endif
 	}
 	if (shouldSaveFrames_ == false && shouldSaveSpritesheet_ == false)
 	{
@@ -114,6 +125,7 @@ void RenderWindow::create()
 	}
 	else
 		ImGui::Text("%s", directory.data());
+#endif
 
 	int inputTextFlags = ImGuiInputTextFlags_CallbackResize;
 	if (shouldSaveFrames_ || shouldSaveSpritesheet_)
@@ -291,7 +303,7 @@ void RenderWindow::create()
 				ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 			else
 			{
-				saveAnimStatus_.filename.format("%s_%03d.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
+				saveAnimStatus_.filename.format("%s_%03d.png", savePath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 				shouldSaveFrames_ = true;
 				theResizedCanvas->resizeTexture(frameSize);
 				// Disabling V-Sync for faster render times
@@ -305,7 +317,7 @@ void RenderWindow::create()
 				ui_.pushStatusErrorMessage("Set a filename prefix before saving an animation");
 			else
 			{
-				saveAnimStatus_.filename.format("%s.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
+				saveAnimStatus_.filename.format("%s.png", savePath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 				shouldSaveSpritesheet_ = true;
 				saveAnimStatus_.sheetDestPos.set(0, 0);
 				// Immediately-invoked function expression for const initialization
@@ -332,7 +344,7 @@ void RenderWindow::signalFrameSaved()
 
 	saveAnimStatus_.numSavedFrames++;
 	if (shouldSaveFrames_)
-		saveAnimStatus_.filename.format("%s_%03d.png", nc::fs::joinPath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
+		saveAnimStatus_.filename.format("%s_%03d.png", savePath(directory, filename).data(), saveAnimStatus_.numSavedFrames);
 	else if (shouldSaveSpritesheet_)
 	{
 		Canvas &sourceCanvas = (saveAnimStatus_.canvasResize != 1.0f) ? *theResizedCanvas : *theCanvas;

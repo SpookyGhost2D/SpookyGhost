@@ -34,6 +34,10 @@ const char *docsFile = "../../doc/spookyghost/documentation.html";
 const char *docsFile = "../docs/documentation.html";
 #endif
 
+#ifdef __EMSCRIPTEN__
+const char *docsUrl = "https://spookyghost2d.github.io/docs/";
+#endif
+
 bool showTipsWindow = false;
 bool showAboutWindow = false;
 bool showQuitPopup = false;
@@ -110,6 +114,14 @@ UserInterface::UserInterface()
 
 	// The list of pinned directories in the file dialog will be saved in the configuration
 	FileDialog::config.pinnedDirectories = &theCfg.pinnedDirectories;
+
+#ifdef __EMSCRIPTEN__
+	openProjectLocalFile_.setLoadedCallback([](const nc::EmscriptenLocalFile &localFile, void *userData) {
+		UserInterface *ui = reinterpret_cast<UserInterface *>(userData);
+		if (localFile.size() > 0 && ui->openProject(localFile.filename(), localFile))
+			ui->numFrames_ = 0; // force focus on the canvas
+	}, this);
+#endif
 }
 
 ///////////////////////////////////////////////////////////
@@ -240,6 +252,7 @@ void UserInterface::menuNew()
 
 void UserInterface::menuOpen()
 {
+#ifndef __EMSCRIPTEN__
 	FileDialog::config.directory = theCfg.projectsPath;
 	FileDialog::config.windowIcon = Labels::FileDialog_OpenIcon;
 	FileDialog::config.windowTitle = "Open project file";
@@ -248,6 +261,9 @@ void UserInterface::menuOpen()
 	FileDialog::config.extensions = "lua\0\0";
 	FileDialog::config.action = FileDialog::Action::OPEN_PROJECT;
 	FileDialog::config.windowOpen = true;
+#else
+	openProjectLocalFile_.load();
+#endif
 }
 
 void UserInterface::menuSave()
@@ -289,7 +305,12 @@ void UserInterface::menuQuickSave()
 	fileName.setLength(length);
 	lastQuickSavedProject_ = nc::fs::joinPath(lastQuickSavedProject_, fileName);
 
+#ifdef __EMSCRIPTEN__
+	// Quick Save should always write to the virtual filesystem instead of triggering a browser download
+	theSaver->save(lastQuickSavedProject_.data(), saverData_, true);
+#else
 	theSaver->save(lastQuickSavedProject_.data(), saverData_);
+#endif
 	ui::auxString.format("Saved project file \"%s\"\n", lastQuickSavedProject_.data());
 	pushStatusInfoMessage(ui::auxString.data());
 }
@@ -309,6 +330,8 @@ bool UserInterface::openDocumentationEnabled()
 {
 #ifdef __ANDROID__
 	return false; // TODO: open with a WebView
+#elif defined(__EMSCRIPTEN__)
+	return true; // Opens `docsUrl` in a new browser tab instead of a local file
 #else
 	nctl::String docsPath = nc::fs::joinPath(nc::fs::dataPath(), docsFile);
 	return nc::fs::isReadableFile(docsPath.data());
@@ -317,9 +340,13 @@ bool UserInterface::openDocumentationEnabled()
 
 void UserInterface::openDocumentation()
 {
+#ifdef __EMSCRIPTEN__
+	ImGui::GetPlatformIO().Platform_OpenInShellFn(ImGui::GetCurrentContext(), docsUrl);
+#else
 	nctl::String docsPath = nc::fs::joinPath(nc::fs::dataPath(), docsFile);
-	// Can't use `Platform_OpenInShellUserData()` from ImGui
+	// Can't use `Platform_OpenInShellFn()` from ImGui as it only handles URLs, not local file paths
 	openFile(docsPath.data());
+#endif
 }
 
 void UserInterface::toggleAnimation()
@@ -416,18 +443,7 @@ bool UserInterface::openProject(const char *filename)
 {
 	if (nc::fs::isReadableFile(filename) && theSaver->load(filename, saverData_))
 	{
-		selectedSpriteEntry_ = &theSpriteMgr->root();
-		selectedTextureIndex_ = 0;
-		selectedScriptIndex_ = 0;
-		selectedAnimation_ = &theAnimMgr->animGroup();
-
-		canvasGuiSection_.setResize(theCanvas->size());
-		renderWindow_.setResize(renderWindow_.saveAnimStatus().canvasResize);
-
-		lastLoadedProject_ = filename;
-		ui::auxString.format("Loaded project file \"%s\"\n", filename);
-		pushStatusInfoMessage(ui::auxString.data());
-
+		onProjectLoaded(filename);
 		return true;
 	}
 	else
@@ -437,6 +453,39 @@ bool UserInterface::openProject(const char *filename)
 
 		return false;
 	}
+}
+
+#ifdef __EMSCRIPTEN__
+bool UserInterface::openProject(const char *filename, const nc::EmscriptenLocalFile &localFile)
+{
+	if (theSaver->load(filename, saverData_, &localFile))
+	{
+		onProjectLoaded(filename);
+		return true;
+	}
+	else
+	{
+		ui::auxString.format("Cannot load project file \"%s\"\n", filename);
+		pushStatusErrorMessage(ui::auxString.data());
+
+		return false;
+	}
+}
+#endif
+
+void UserInterface::onProjectLoaded(const char *filename)
+{
+	selectedSpriteEntry_ = &theSpriteMgr->root();
+	selectedTextureIndex_ = 0;
+	selectedScriptIndex_ = 0;
+	selectedAnimation_ = &theAnimMgr->animGroup();
+
+	canvasGuiSection_.setResize(theCanvas->size());
+	renderWindow_.setResize(renderWindow_.saveAnimStatus().canvasResize);
+
+	lastLoadedProject_ = filename;
+	ui::auxString.format("Loaded project file \"%s\"\n", filename);
+	pushStatusInfoMessage(ui::auxString.data());
 }
 
 void UserInterface::createDockingSpace()
@@ -626,7 +675,16 @@ void UserInterface::createFileDialog()
 {
 	static nctl::String selection = nctl::String(nc::fs::MaxPathLength);
 
-	if (FileDialog::create(FileDialog::config, selection))
+#ifdef __EMSCRIPTEN__
+	// There is no real directory to browse on Emscripten, so a project save only ever asks for a name
+	const bool hasResult = (FileDialog::config.action == FileDialog::Action::SAVE_PROJECT)
+	                            ? FileDialog::createNameOnly(FileDialog::config, selection)
+	                            : FileDialog::create(FileDialog::config, selection);
+#else
+	const bool hasResult = FileDialog::create(FileDialog::config, selection);
+#endif
+
+	if (hasResult)
 	{
 		switch (FileDialog::config.action)
 		{
@@ -637,12 +695,14 @@ void UserInterface::createFileDialog()
 			case FileDialog::Action::SAVE_PROJECT:
 				if (nc::fs::hasExtension(selection.data(), "lua") == false)
 					selection = selection + ".lua";
+#ifndef __EMSCRIPTEN__
 				if (nc::fs::isFile(selection.data()) && FileDialog::config.allowOverwrite == false)
 				{
 					ui::auxString.format("Cannot overwrite existing file \"%s\"\n", selection.data());
 					pushStatusErrorMessage(ui::auxString.data());
 				}
 				else
+#endif
 				{
 #ifdef __EMSCRIPTEN__
 					theSaver->save(nc::fs::baseName(selection.data()).data(), saverData_);

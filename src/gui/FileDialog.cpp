@@ -330,8 +330,9 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 		config.sorting = static_cast<Sorting>(currentComboSortingType);
 	}
 
-	const float additionalChildVSpacing = ((config.showPinnedDirectories && config.pinnedDirectories != nullptr) ? 6.0f : 4.0f) * scalingFactor;
-	if (config.showPinnedDirectories && config.pinnedDirectories != nullptr)
+	const bool showPinnedPanel = (config.showPinnedDirectories && config.pinnedDirectories != nullptr);
+	const float additionalChildVSpacing = (showPinnedPanel ? 6.0f : 4.0f) * scalingFactor;
+	if (showPinnedPanel)
 	{
 		nctl::Array<nctl::String> &pinnedDirectories = *config.pinnedDirectories;
 
@@ -697,7 +698,7 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 
 	ImGui::EndChild();
 
-	if (config.showPinnedDirectories && config.pinnedDirectories != nullptr)
+	if (showPinnedPanel)
 		ImGui::EndTable();
 
 	ImGui::Separator();
@@ -791,3 +792,74 @@ bool FileDialog::create(Config &config, nctl::String &selection)
 
 	return selected;
 }
+
+#ifdef __EMSCRIPTEN__
+bool FileDialog::createNameOnly(Config &config, nctl::String &selection)
+{
+	if (config.windowOpen == false)
+		return false;
+
+	static nctl::String auxString(512);
+	static nctl::String inputTextString(256);
+
+	const float scalingFactor = theCfg.autoGuiScaling ? nc::theApplication().gfxDevice().windowScalingFactor() : theCfg.guiScaling;
+	ImGui::SetNextWindowSize(ImVec2(440.0f * scalingFactor, 60.0f * scalingFactor), ImGuiCond_Once);
+	const ImVec2 windowPos = ImVec2(ImGui::GetWindowViewport()->Size.x * 0.5f, ImGui::GetWindowViewport()->Size.y * 0.5f);
+	ImGui::SetNextWindowPos(windowPos, ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+	auxString.format("%s%s", config.windowIcon, config.windowTitle);
+	if (config.modalPopup)
+	{
+		ImGui::OpenPopup(auxString.data());
+		ImGui::BeginPopupModal(auxString.data());
+	}
+	else
+		ImGui::Begin(auxString.data(), &config.windowOpen, ImGuiWindowFlags_NoDocking);
+
+	bool selected = false;
+	ImGui::Separator();
+	const ImGuiInputTextFlags inputTextFlags = ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_EnterReturnsTrue;
+	ImGui::PushItemWidth(ImGui::GetFontSize() * 20.0f);
+	if (ImGui::InputText("Name", inputTextString.data(), nc::fs::MaxPathLength, inputTextFlags, ui::inputTextCallback, &inputTextString))
+	{
+		// Perform a selection by pressing the Enter key
+		selection = inputTextString;
+		inputTextString.clear();
+
+		selected = true;
+		config.windowOpen = false;
+		if (config.modalPopup)
+			ImGui::CloseCurrentPopup();
+	}
+	ImGui::PopItemWidth();
+
+	ImGui::SameLine();
+	if (ImGui::Button(config.okButton))
+	{
+		// Perform a selection by pressing the OK button
+		selection = inputTextString;
+		inputTextString.clear();
+
+		selected = true;
+		config.windowOpen = false;
+		if (config.modalPopup)
+			ImGui::CloseCurrentPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(Labels::Cancel))
+	{
+		selection.clear();
+		inputTextString.clear();
+
+		config.windowOpen = false;
+		if (config.modalPopup)
+			ImGui::CloseCurrentPopup();
+	}
+
+	if (config.modalPopup)
+		ImGui::EndPopup();
+	else
+		ImGui::End();
+
+	return selected;
+}
+#endif

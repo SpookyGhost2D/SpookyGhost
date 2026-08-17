@@ -80,6 +80,10 @@ class FileDialog
 
 	static Config config;
 	static bool create(Config &config, nctl::String &selection);
+#ifdef __EMSCRIPTEN__
+	/// A minimal file dialog variant with only a name to type in, as there is no real directory to browse on Emscripten
+	static bool createNameOnly(Config &config, nctl::String &selection);
+#endif
 
   private:
 	struct DirEntry
