@@ -141,7 +141,7 @@ void AnimationWindow::createOverrideSpriteGui(AnimationGroup &animGroup)
 		const ImVec2 colorButtonComboSize(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight());
 
 		bool comboReturnValue = false;
-		if ((comboReturnValue = ImGui::BeginCombo("Sprite##Override", "", ImGuiComboFlags_CustomPreview)))
+		if ((comboReturnValue = ImGui::BeginCombo("Sprite##Override", "")))
 		{
 			// Reversed order to match the rendering layer order
 			for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)
@@ -281,7 +281,7 @@ bool createCustomSpritesCombo(SpriteAnimation &anim)
 	Sprite *selectedSprite = animSprite;
 
 	bool comboReturnValue = false;
-	if ((comboReturnValue = ImGui::BeginCombo("Sprite", "", ImGuiComboFlags_CustomPreview)))
+	if ((comboReturnValue = ImGui::BeginCombo("Sprite", "")))
 	{
 		// Reversed order to match the rendering layer order
 		for (int i = theSpriteMgr->sprites().size() - 1; i >= 0; i--)

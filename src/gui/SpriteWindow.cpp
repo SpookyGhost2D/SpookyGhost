@@ -91,7 +91,7 @@ void SpriteWindow::create()
 		const ImVec2 colorButtonComboSize(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight());
 		Sprite *parentSprite = sprite.parent();
 
-		if (ImGui::BeginCombo("Parent", "", ImGuiComboFlags_CustomPreview))
+		if (ImGui::BeginCombo("Parent", ""))
 		{
 			// Reversed order to match the rendering layer order
 			for (int i = spriteGraph_.size() - 1; i >= 0; i--)
